@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --background: #07070a;
+  --foreground: #f7f7fb;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f5f5f8;
+  --foreground: #121219;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(229, 38, 78, 0.13), transparent 28rem),
+    radial-gradient(circle at 90% 15%, rgba(122, 77, 255, 0.12), transparent 26rem),
+    var(--background);
+  color: var(--foreground);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.comet-gradient {
+  background: linear-gradient(135deg, #e5264e, #e143a6 48%, #7a4dff);
+}
+
+.comet-text-gradient {
+  background: linear-gradient(135deg, #ff5c78, #f36ec1 48%, #9a80ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
