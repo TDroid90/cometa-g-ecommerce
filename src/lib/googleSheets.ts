@@ -1,8 +1,11 @@
+import { createSign } from "crypto";
 import { LayoutSection, Product, StockStatus } from "@/lib/types";
 
 type SheetRow = Record<string, string>;
+type GoogleToken = { accessToken: string; expiresAt: number };
 
 const TRUE_VALUES = new Set(["true", "1", "si", "sí", "yes", "y"]);
+let cachedGoogleToken: GoogleToken | null = null;
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
@@ -77,6 +80,17 @@ function parseVariables(value: unknown): Record<string, string[]> | undefined {
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
+function rowsFromValues(values: unknown[][]): SheetRow[] {
+  const [headerRow = [], ...dataRows] = values;
+  const headers = headerRow.map((header) => clean(header));
+
+  return dataRows
+    .filter((cells) => cells.some((cell) => clean(cell)))
+    .map((cells) =>
+      Object.fromEntries(headers.map((header, index) => [header, clean(cells[index])]))
+    );
+}
+
 function parseCsv(csv: string): SheetRow[] {
   const rows: string[][] = [];
   let field = "";
@@ -111,12 +125,111 @@ function parseCsv(csv: string): SheetRow[] {
     rows.push(row);
   }
 
-  const headers = (rows.shift() ?? []).map((header) => clean(header));
-  return rows
-    .filter((cells) => cells.some((cell) => clean(cell)))
-    .map((cells) =>
-      Object.fromEntries(headers.map((header, index) => [header, clean(cells[index])]))
-    );
+  return rowsFromValues(rows);
+}
+
+function base64Url(input: string): string {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function getServiceAccountConfig(): { clientEmail: string; privateKey: string } | null {
+  const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (rawJson) {
+    const parsed = JSON.parse(rawJson);
+    return {
+      clientEmail: clean(parsed.client_email),
+      privateKey: clean(parsed.private_key).replace(/\\n/g, "\n")
+    };
+  }
+
+  const clientEmail = clean(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+  const privateKey = clean(process.env.GOOGLE_PRIVATE_KEY).replace(/\\n/g, "\n");
+
+  if (!clientEmail || !privateKey) return null;
+  return { clientEmail, privateKey };
+}
+
+async function getGoogleAccessToken(): Promise<string | null> {
+  const serviceAccount = getServiceAccountConfig();
+  if (!serviceAccount) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedGoogleToken && cachedGoogleToken.expiresAt - 60 > now) {
+    return cachedGoogleToken.accessToken;
+  }
+
+  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claimSet = base64Url(
+    JSON.stringify({
+      iss: serviceAccount.clientEmail,
+      scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+      aud: "https://oauth2.googleapis.com/token",
+      exp: now + 3600,
+      iat: now
+    })
+  );
+  const unsignedJwt = `${header}.${claimSet}`;
+  const signer = createSign("RSA-SHA256");
+  signer.update(unsignedJwt);
+  signer.end();
+  const signature = signer
+    .sign(serviceAccount.privateKey, "base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${unsignedJwt}.${signature}`
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo autenticar la service account de Google.");
+  }
+
+  const token = (await response.json()) as { access_token: string; expires_in: number };
+  cachedGoogleToken = {
+    accessToken: token.access_token,
+    expiresAt: now + token.expires_in
+  };
+
+  return cachedGoogleToken.accessToken;
+}
+
+async function fetchPrivateSheetRows(
+  sheetNameEnv: string,
+  fallbackName: string
+): Promise<SheetRow[] | null> {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  if (!spreadsheetId) return null;
+
+  const accessToken = await getGoogleAccessToken();
+  if (!accessToken) return null;
+
+  const sheetName = process.env[sheetNameEnv] || fallbackName;
+  const encodedRange = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}`,
+    {
+      next: { revalidate: toNumber(process.env.GOOGLE_SHEETS_REVALIDATE_SECONDS, 60) },
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo leer ${fallbackName} desde Google Sheets privado.`);
+  }
+
+  const payload = (await response.json()) as { values?: unknown[][] };
+  return rowsFromValues(payload.values ?? []);
 }
 
 function sheetUrl(sheetNameEnv: string, urlEnv: string, fallbackName: string): string | null {
@@ -136,6 +249,9 @@ async function fetchSheetRows(
   urlEnv: string,
   fallbackName: string
 ): Promise<SheetRow[] | null> {
+  const privateRows = await fetchPrivateSheetRows(sheetNameEnv, fallbackName);
+  if (privateRows) return privateRows;
+
   const url = sheetUrl(sheetNameEnv, urlEnv, fallbackName);
   if (!url) return null;
 

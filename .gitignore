@@ -5,6 +5,8 @@ out
 dist
 .env
 .env.local
+cometag-*.json
+*service-account*.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
