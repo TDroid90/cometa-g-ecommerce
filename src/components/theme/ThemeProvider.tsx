@@ -12,12 +12,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem("cometag-theme") as Theme | null;
-    if (saved === "light" || saved === "dark") setTheme(saved);
-  }, []);
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
