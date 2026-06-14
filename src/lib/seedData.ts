@@ -26,7 +26,25 @@ export const seedLayout: LayoutSection[] = [
     background_color: "#07070A",
     text_color: "#F8F8FF",
     accent_color: "#E5264E",
-    layout_variant: "split"
+    layout_variant: "split",
+    carousel_enabled: true,
+    autoplay: true
+  },
+  {
+    section_id: "promo-cards-home",
+    area: "body",
+    section_type: "promo_tile_grid",
+    text: "Catch big|Hot deals in GPUs|https://images.unsplash.com/photo-1591488320449-011701bb6704?auto=format&fit=crop&w=500&q=80|/productos?categoria=Placas%20de%20video|Shop now;The new|Gaming PCs|https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=500&q=80|/productos|Ver equipos;Monitores|QHD y más|https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=500&q=80|/productos?categoria=Monitores|Ver más;Periféricos|RGB sobrio|https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=500&q=80|/productos?categoria=Perifericos|Comprar",
+    order: 20,
+    visible: true
+  },
+  {
+    section_id: "beneficios-home",
+    area: "body",
+    section_type: "service_strip",
+    text: "Envío rápido|a todo el país;Soporte gamer|asesoría de compra;Garantía oficial|productos seleccionados;Pago seguro|checkout preparado;Solo marcas top|stock actualizado",
+    order: 25,
+    visible: true
   },
   {
     section_id: "strip-oferta",
@@ -36,8 +54,8 @@ export const seedLayout: LayoutSection[] = [
     text: "Reserva GPUs, monitores y notebooks seleccionadas antes de su lanzamiento.",
     link_url: "/productos?disponibilidad=preventa",
     button_text: "Reservar ahora",
-    order: 20,
-    visible: true
+    order: 26,
+    visible: false
   },
   {
     section_id: "categorias-home",
@@ -46,19 +64,19 @@ export const seedLayout: LayoutSection[] = [
     title: "Compra por categoria",
     subtitle: "Atajos directos a lo que mas se busca.",
     order: 30,
-    visible: true,
+    visible: false,
     desktop_columns: 4,
     mobile_columns: 2
   },
   {
     section_id: "destacados-home",
     area: "body",
-    section_type: "product_grid",
+    section_type: "product_tabs",
     title: "Productos destacados",
-    subtitle: "Curados para una tienda rapida, sobria y facil de administrar.",
+    text: "Featured Products|destacado;Latest Products|;Sale Products|oferta",
     order: 40,
     visible: true,
-    desktop_columns: 4,
+    desktop_columns: 5,
     mobile_columns: 2,
     taxonomies_filter: "destacado"
   },

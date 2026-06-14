@@ -24,6 +24,12 @@ function Section({ section, products }: { section: LayoutSection; products: Prod
   switch (section.section_type) {
     case "main_banner":
       return <MainBanner section={section} />;
+    case "promo_tile_grid":
+      return <PromoTileGrid section={section} />;
+    case "service_strip":
+      return <ServiceStrip section={section} />;
+    case "product_tabs":
+      return <ProductTabs section={section} products={products} />;
     case "promo_strip":
       return <PromoStrip section={section} />;
     case "category_grid":
@@ -55,6 +61,13 @@ function SectionHeader({ section }: { section: LayoutSection }) {
       )}
     </div>
   );
+}
+
+function parseItems(text?: string): string[][] {
+  return (text || "")
+    .split(";")
+    .map((item) => item.split("|").map((part) => part.trim()))
+    .filter((parts) => parts.some(Boolean));
 }
 
 function MainBanner({ section }: { section: LayoutSection }) {
@@ -107,7 +120,102 @@ function MainBanner({ section }: { section: LayoutSection }) {
             />
           )}
         </div>
+
+        {section.carousel_enabled && (
+          <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+            <span className="h-2 w-8 rounded-full comet-gradient" />
+            <span className="h-2 w-2 rounded-full bg-white/35" />
+            <span className="h-2 w-2 rounded-full bg-white/35" />
+          </div>
+        )}
       </div>
+    </section>
+  );
+}
+
+function PromoTileGrid({ section }: { section: LayoutSection }) {
+  const items = parseItems(section.text);
+
+  return (
+    <section className="bg-[#f3f4f6] px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {items.map(([title, subtitle, image, href, button], index) => (
+          <Link
+            key={`${title}-${index}`}
+            href={href || "/productos"}
+            className="grid min-h-32 grid-cols-[42%_1fr] items-center gap-3 rounded-md bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="relative h-24">
+              {image && (
+                <Image src={image} alt={title} fill sizes="180px" className="object-contain" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium uppercase leading-5 text-zinc-600">{title}</p>
+              {subtitle && <p className="text-lg font-black uppercase leading-5 text-zinc-900">{subtitle}</p>}
+              {button && <p className="mt-3 text-sm font-black text-comet-fuchsia">{button}</p>}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ServiceStrip({ section }: { section: LayoutSection }) {
+  const items = parseItems(section.text);
+
+  return (
+    <section className="bg-[#f3f4f6] px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-zinc-200 bg-white md:grid-cols-5">
+        {items.map(([title, subtitle], index) => (
+          <div
+            key={`${title}-${index}`}
+            className="flex items-center justify-center gap-4 border-b border-zinc-200 p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-full border border-comet-fuchsia/30 text-sm font-black text-comet-fuchsia">
+              {index + 1}
+            </div>
+            <div>
+              <p className="text-sm font-black text-zinc-900">{title}</p>
+              {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProductTabs({ section, products }: { section: LayoutSection; products: Product[] }) {
+  const tabs = parseItems(section.text);
+  const activeLabel = tabs[0]?.[0] || section.title || "Featured Products";
+  const scopedProducts = sectionProducts(
+    { ...section, taxonomies_filter: tabs[0]?.[1] || section.taxonomies_filter || "destacado" },
+    products
+  );
+
+  return (
+    <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-7 border-b border-zinc-200">
+        {(tabs.length ? tabs : [[activeLabel, "destacado"]]).map(([label], index) => (
+          <span
+            key={label}
+            className={`relative pb-4 text-lg ${
+              index === 0 ? "font-black text-zinc-900" : "font-medium text-zinc-500"
+            }`}
+          >
+            {label}
+            {index === 0 && (
+              <>
+                <span className="absolute bottom-0 left-0 h-0.5 w-full comet-gradient" />
+                <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-comet-fuchsia" />
+              </>
+            )}
+          </span>
+        ))}
+      </div>
+      <ProductGrid products={scopedProducts} desktopColumns={section.desktop_columns || 5} mobileColumns={section.mobile_columns || 2} />
     </section>
   );
 }
