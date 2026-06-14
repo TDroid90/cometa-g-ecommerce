@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice, productPrice } from "@/lib/data";
 import { useCart } from "@/components/cart/CartProvider";
+import { CheckoutButton } from "@/components/cart/CheckoutButton";
 
 export default function CartPage() {
   const { items, subtotal, hasPreorder, updateQuantity, removeItem, clearCart } = useCart();
@@ -74,9 +75,7 @@ export default function CartPage() {
                 Este carrito contiene productos en preventa. La reserva queda preparada para integrarse con pago o confirmacion manual.
               </div>
             )}
-            <button className="mt-6 h-12 w-full rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110">
-              Preparar checkout
-            </button>
+            <CheckoutButton items={items} />
             <button onClick={clearCart} className="mt-3 h-11 w-full rounded-md border border-comet-border text-sm font-bold text-zinc-300 hover:text-white">
               Vaciar carrito
             </button>

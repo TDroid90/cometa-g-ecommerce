@@ -7,6 +7,8 @@ import { WishlistProvider } from "@/components/wishlist/WishlistProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "COMETA G - Computación Gamer",
   description: "Tienda online gamer administrable desde Google Sheets."

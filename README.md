@@ -101,6 +101,25 @@ ADMIN_UPLOAD_SECRET=una_clave_larga_inventada_por_vos
 
 También se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.
 
+## Payway
+
+El carrito usa el SDK Node de Payway para crear un link de checkout seguro. Configura estas variables en Vercel:
+
+```env
+PAYWAY_ENVIRONMENT=developer
+PAYWAY_PUBLIC_KEY=tu_public_key
+PAYWAY_PRIVATE_KEY=tu_private_key
+PAYWAY_SITE_ID=tu_site_id
+PAYWAY_COMPANY=COMETA G
+PAYWAY_USER=COMETA G Web
+PAYWAY_TEMPLATE_ID=1
+PAYWAY_INSTALLMENTS=1,3,6
+PAYWAY_AUTH_3DS=true
+NEXT_PUBLIC_SITE_URL=https://www.cometag.store
+```
+
+Usa `PAYWAY_ENVIRONMENT=developer` para sandbox y `PAYWAY_ENVIRONMENT=production` para cobros reales.
+
 ## Panel admin en Google Sheets
 
 El panel lateral vive en `apps-script/`.

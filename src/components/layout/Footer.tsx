@@ -20,19 +20,19 @@ const defaultUsefulLinks = [
   { label: "Mi cuenta", href: "/perfil" }
 ];
 
-function PaymentLogo({ type }: { type: "visa" | "master" | "maestro" | "cabal" | "amex" | "mipyme" }) {
+function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto" }) {
   if (type === "visa") {
     return <span className="text-[15px] font-black italic tracking-tight text-[#2147a8]">VISA</span>;
   }
 
-  if (type === "master" || type === "maestro") {
+  if (type === "master") {
     return (
       <span className="inline-flex items-center gap-2">
         <span className="relative inline-block h-5 w-8">
           <span className="absolute left-0 top-0 h-5 w-5 rounded-full bg-[#eb001b]" />
           <span className="absolute right-0 top-0 h-5 w-5 rounded-full bg-[#f79e1b] mix-blend-screen" />
         </span>
-        <span className="text-[11px] font-black text-zinc-900">{type === "master" ? "Mastercard" : "Maestro"}</span>
+        <span className="text-[11px] font-black text-zinc-900">Mastercard</span>
       </span>
     );
   }
@@ -45,10 +45,19 @@ function PaymentLogo({ type }: { type: "visa" | "master" | "maestro" | "cabal" |
     return <span className="rounded-sm bg-[#2e77bb] px-1.5 py-0.5 text-[10px] font-black text-white">AMEX</span>;
   }
 
+  if (type === "mipyme") {
+    return (
+      <span className="inline-flex flex-col leading-none">
+        <span className="text-[11px] font-medium text-[#6aa5f2]">cuotas</span>
+        <span className="text-[18px] font-black text-[#6aa5f2]">MiPyME</span>
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex flex-col leading-none">
-      <span className="text-[11px] font-medium text-[#6aa5f2]">cuotas</span>
-      <span className="text-[18px] font-black text-[#6aa5f2]">MiPyME</span>
+      <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f7931a] text-[13px] font-black text-white">B</span>
+      <span className="mt-1 text-[11px] font-black text-zinc-900">CRIPTO</span>
     </span>
   );
 }
@@ -134,7 +143,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         <div>
           <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(["visa", "master", "maestro", "cabal", "amex", "mipyme"] as const).map((method) => (
+            {(["cabal", "visa", "master", "amex", "mipyme", "cripto"] as const).map((method) => (
               <span
                 key={method}
                 className="inline-flex h-10 min-w-[74px] items-center justify-center rounded-md border border-comet-border bg-white px-3"
