@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Instagram, MessageCircle, Send } from "lucide-react";
 import { LayoutSection } from "@/lib/types";
@@ -19,7 +20,38 @@ const defaultUsefulLinks = [
   { label: "Mi cuenta", href: "/perfil" }
 ];
 
-const paymentMethods = ["Visa", "Master Card", "Maestro", "Cabal", "American Express", "MIPYME 3", "MIPYME 6"];
+function PaymentLogo({ type }: { type: "visa" | "master" | "maestro" | "cabal" | "amex" | "mipyme" }) {
+  if (type === "visa") {
+    return <span className="text-[15px] font-black italic tracking-tight text-[#2147a8]">VISA</span>;
+  }
+
+  if (type === "master" || type === "maestro") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="relative inline-block h-5 w-8">
+          <span className="absolute left-0 top-0 h-5 w-5 rounded-full bg-[#eb001b]" />
+          <span className="absolute right-0 top-0 h-5 w-5 rounded-full bg-[#f79e1b] mix-blend-screen" />
+        </span>
+        <span className="text-[11px] font-black text-zinc-900">{type === "master" ? "Mastercard" : "Maestro"}</span>
+      </span>
+    );
+  }
+
+  if (type === "cabal") {
+    return <span className="text-[13px] font-black tracking-tight text-[#165aa7]">CABAL</span>;
+  }
+
+  if (type === "amex") {
+    return <span className="rounded-sm bg-[#2e77bb] px-1.5 py-0.5 text-[10px] font-black text-white">AMEX</span>;
+  }
+
+  return (
+    <span className="inline-flex flex-col leading-none">
+      <span className="text-[11px] font-medium text-[#6aa5f2]">cuotas</span>
+      <span className="text-[18px] font-black text-[#6aa5f2]">MiPyME</span>
+    </span>
+  );
+}
 
 export function Footer({ sections }: { sections: LayoutSection[] }) {
   const linksSection = sections.find((section) => section.section_type === "footer_links");
@@ -51,7 +83,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[30%_1fr] lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.25fr_.8fr_1.6fr_.75fr] lg:px-8">
         <div>
           <Link href="/" className="inline-flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-md comet-gradient text-lg font-black text-white">
@@ -88,34 +120,50 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           </div>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-[220px_1fr]">
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-wide text-white">Links útiles</h3>
-            <div className="mt-4 grid gap-3">
-              {usefulLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="text-sm text-zinc-400 hover:text-white">
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-wide text-white">Links útiles</h3>
+          <div className="mt-4 grid gap-3">
+            {usefulLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="text-sm text-zinc-400 hover:text-white">
+                {link.label}
+              </Link>
+            ))}
           </div>
+        </div>
 
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {paymentMethods.map((method) => (
-                <span
-                  key={method}
-                  className="rounded-md border border-comet-border bg-comet-panel px-3 py-2 text-xs font-black text-zinc-100"
-                >
-                  {method}
-                </span>
-              ))}
-            </div>
-            <p className="mt-6 max-w-xl text-sm leading-6 text-zinc-500">
-              {contactSection?.text || "Ventas online, reservas, stock actualizado y asesoramiento gamer."}
-            </p>
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(["visa", "master", "maestro", "cabal", "amex", "mipyme"] as const).map((method) => (
+              <span
+                key={method}
+                className="inline-flex h-10 min-w-[74px] items-center justify-center rounded-md border border-comet-border bg-white px-3"
+              >
+                <PaymentLogo type={method} />
+              </span>
+            ))}
           </div>
+          <p className="mt-6 max-w-xl text-sm leading-6 text-zinc-500">
+            {contactSection?.text || "Ventas online, reservas, stock actualizado y asesoramiento gamer."}
+          </p>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-wide text-white">Data Fiscal</h3>
+          <a
+            href="https://www.afip.gob.ar/landing/default.asp"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex rounded-md border border-comet-border bg-[#242424] p-3 transition hover:border-comet-fuchsia"
+          >
+            <Image
+              src="/data-fiscal-arca.svg"
+              alt="Data Fiscal ARCA"
+              width={74}
+              height={98}
+              className="h-auto w-[74px]"
+            />
+          </a>
         </div>
       </div>
     </footer>
