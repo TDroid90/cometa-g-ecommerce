@@ -8,14 +8,16 @@ import { ProductGrid } from "@/components/products/ProductGrid";
 
 export function CatalogClient({
   products,
+  initialQuery,
   initialCategory,
   initialAvailability
 }: {
   products: Product[];
+  initialQuery?: string;
   initialCategory?: string;
   initialAvailability?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery || "");
   const [categoria, setCategoria] = useState(initialCategory || "");
   const [marca, setMarca] = useState("");
   const [disponibilidad, setDisponibilidad] = useState(initialAvailability || "todos");

@@ -62,25 +62,25 @@ function MainBanner({ section }: { section: LayoutSection }) {
       className="border-b border-comet-border"
       style={{ backgroundColor: section.background_color || undefined, color: section.text_color || undefined }}
     >
-      <div className="mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_.9fr] lg:px-8">
+      <div className="mx-auto grid min-h-[560px] w-full max-w-7xl items-center gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1fr_.95fr] lg:px-8">
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-comet-fuchsia">
             {section.subtitle || "COMETA G"}
           </p>
-          <h1 className="mt-4 text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="mt-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
             {section.title}
           </h1>
           {section.text && <p className="mt-5 max-w-xl text-base leading-7 text-zinc-300">{section.text}</p>}
           {section.link_url && section.button_text && (
             <Link
               href={section.link_url}
-              className="mt-8 inline-flex h-12 items-center justify-center rounded-md comet-gradient px-6 text-sm font-black text-white transition hover:brightness-110"
+              className="mt-8 inline-flex h-12 items-center justify-center rounded-md comet-gradient px-6 text-sm font-extrabold text-white transition hover:brightness-110"
             >
               {section.button_text}
             </Link>
           )}
         </div>
-        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-comet-border bg-comet-panel shadow-glow">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-comet-border bg-comet-panel shadow-glow">
           {section.image_url ? (
             <Image
               src={section.image_url}

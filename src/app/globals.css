@@ -31,6 +31,11 @@ body {
     radial-gradient(circle at 90% 15%, rgba(122, 77, 255, 0.12), transparent 26rem),
     var(--background);
   color: var(--foreground);
+  font-family: Inter, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {

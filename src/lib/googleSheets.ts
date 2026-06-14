@@ -166,7 +166,7 @@ async function getGoogleAccessToken(): Promise<string | null> {
   const claimSet = base64Url(
     JSON.stringify({
       iss: serviceAccount.clientEmail,
-      scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+      scope: "https://www.googleapis.com/auth/spreadsheets",
       aud: "https://oauth2.googleapis.com/token",
       exp: now + 3600,
       iat: now
@@ -202,6 +202,70 @@ async function getGoogleAccessToken(): Promise<string | null> {
   };
 
   return cachedGoogleToken.accessToken;
+}
+
+export async function readSheetRows(sheetName: string): Promise<SheetRow[]> {
+  const rows = await fetchPrivateSheetRows("", sheetName);
+  if (!rows) {
+    throw new Error(`No hay credenciales privadas para leer ${sheetName}.`);
+  }
+
+  return rows;
+}
+
+export async function appendSheetRow(sheetName: string, values: unknown[]): Promise<void> {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const accessToken = await getGoogleAccessToken();
+  if (!spreadsheetId || !accessToken) {
+    throw new Error(`No hay credenciales privadas para escribir ${sheetName}.`);
+  }
+
+  const encodedRange = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo escribir en ${sheetName}.`);
+  }
+}
+
+export async function updateSheetRow(
+  sheetName: string,
+  rowNumber: number,
+  values: unknown[]
+): Promise<void> {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const accessToken = await getGoogleAccessToken();
+  if (!spreadsheetId || !accessToken) {
+    throw new Error(`No hay credenciales privadas para actualizar ${sheetName}.`);
+  }
+
+  const lastColumn = String.fromCharCode("A".charCodeAt(0) + values.length - 1);
+  const encodedRange = encodeURIComponent(`${sheetName}!A${rowNumber}:${lastColumn}${rowNumber}`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?valueInputOption=USER_ENTERED`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo actualizar ${sheetName}.`);
+  }
 }
 
 async function fetchPrivateSheetRows(
