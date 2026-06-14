@@ -74,6 +74,16 @@ https://imagen-1.jpg|https://imagen-2.jpg|https://imagen-3.jpg
 
 La primera imagen sale de `imagen_principal`; las demás aparecen como miniaturas.
 
+### Imágenes desde Google Drive
+
+Podés pegar links públicos de Drive en `imagen_principal` o `imagenes_extra`, por ejemplo:
+
+```txt
+https://drive.google.com/file/d/ID_DEL_ARCHIVO/view?usp=sharing
+```
+
+La app los convierte a una URL directa. El archivo tiene que estar compartido como "cualquier persona con el enlace puede ver". Para imágenes privadas de Drive hace falta un proxy/API con service account; funciona, pero no es lo ideal para ecommerce por velocidad y límites.
+
 ### Relacionados
 
 En la página de producto se muestran hasta 5 productos de la misma `categoria`, ordenados por `orden` descendente. Es decir: los últimos cargados aparecen primero.

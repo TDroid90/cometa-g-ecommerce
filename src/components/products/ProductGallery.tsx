@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
+import { normalizeImageUrl } from "@/lib/images";
 
 export function ProductGallery({
   name,
@@ -14,10 +15,18 @@ export function ProductGallery({
   extraImages: string[];
 }) {
   const images = useMemo(
-    () => [mainImage, ...extraImages].filter(Boolean) as string[],
+    () => [mainImage, ...extraImages].map(normalizeImageUrl).filter(Boolean) as string[],
     [mainImage, extraImages]
   );
-  const [active, setActive] = useState(images[0]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState<"next" | "prev">("next");
+  const active = images[activeIndex] || images[0];
+
+  function selectImage(index: number) {
+    if (index === activeIndex) return;
+    setDirection(index > activeIndex ? "next" : "prev");
+    setActiveIndex(index);
+  }
 
   if (!images.length) {
     return (
@@ -31,12 +40,13 @@ export function ProductGallery({
     <div className="space-y-3">
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
         <Image
+          key={active}
           src={active || images[0]}
           alt={name}
           fill
           sizes="(max-width: 768px) 100vw, 50vw"
           priority
-          className="object-cover"
+          className={clsx("object-cover", direction === "next" ? "gallery-slide-next" : "gallery-slide-prev")}
         />
       </div>
 
@@ -45,11 +55,11 @@ export function ProductGallery({
           {images.map((image, index) => (
             <button
               key={`${image}-${index}`}
-              onClick={() => setActive(image)}
               className={clsx(
                 "relative aspect-square overflow-hidden rounded-md border bg-comet-panel transition",
-                active === image ? "border-comet-fuchsia" : "border-comet-border hover:border-comet-violet"
+                activeIndex === index ? "border-comet-fuchsia" : "border-comet-border hover:border-comet-violet"
               )}
+              onClick={() => selectImage(index)}
               aria-label={`Ver imagen ${index + 1} de ${name}`}
               title={`Imagen ${index + 1}`}
             >

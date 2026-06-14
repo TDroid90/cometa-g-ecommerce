@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { Eye, ShieldCheck, Truck } from "lucide-react";
 import { ProductActions } from "@/components/products/ProductActions";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductGrid } from "@/components/products/ProductGrid";
@@ -23,10 +23,29 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/productos" className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
-        <ChevronLeft size={17} />
-        Volver al catálogo
-      </Link>
+      <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm text-zinc-500" aria-label="Breadcrumb">
+        <Link href="/productos" className="hover:text-white">Productos</Link>
+        {product.categoria && (
+          <>
+            <span>&gt;</span>
+            <Link href={`/productos?categoria=${encodeURIComponent(product.categoria)}`} className="hover:text-white">
+              {product.categoria}
+            </Link>
+          </>
+        )}
+        {product.subcategoria && (
+          <>
+            <span>&gt;</span>
+            <span className="text-zinc-300">{product.subcategoria}</span>
+          </>
+        )}
+        {product.marca && (
+          <>
+            <span>&gt;</span>
+            <span className="font-semibold text-comet-fuchsia">{product.marca}</span>
+          </>
+        )}
+      </nav>
 
       <div className="grid gap-8 md:grid-cols-[1fr_.9fr]">
         <ProductGallery
@@ -91,6 +110,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </div>
             )}
           </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="flex items-center gap-3 rounded-md border border-comet-border bg-comet-panel p-3 text-sm text-zinc-200">
+              <ShieldCheck size={19} className="text-comet-fuchsia" />
+              <span className="font-bold">Garantía</span>
+              <Link
+                href="/terminos-y-condiciones#garantia"
+                className="inline-flex items-center gap-1 text-zinc-400 hover:text-white"
+                aria-label="Ver términos de garantía"
+                title="Ver términos de garantía"
+              >
+                <Eye size={17} />
+                <span>*</span>
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 rounded-md border border-comet-border bg-comet-panel p-3 text-sm text-zinc-200">
+              <Truck size={19} className="text-comet-violet" />
+              <span className="font-bold">Envíos a todo el País</span>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -101,7 +140,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </p>
 
         {product.atributos && (
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {Object.entries(product.atributos).map(([key, value]) => (
               <div key={key} className="rounded-md border border-comet-border bg-comet-black px-3 py-2.5">
                 <p className="text-xs text-zinc-500">{key}</p>

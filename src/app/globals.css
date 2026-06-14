@@ -80,3 +80,33 @@ textarea {
   background-clip: text;
   color: transparent;
 }
+
+@keyframes gallery-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gallery-in-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.gallery-slide-next {
+  animation: gallery-in-from-right 220ms ease-out;
+}
+
+.gallery-slide-prev {
+  animation: gallery-in-from-left 220ms ease-out;
+}

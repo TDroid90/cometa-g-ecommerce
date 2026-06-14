@@ -6,6 +6,7 @@ import { Heart, ShoppingCart } from "lucide-react";
 import clsx from "clsx";
 import { Product } from "@/lib/types";
 import { formatPrice, productPrice } from "@/lib/data";
+import { normalizeImageUrl } from "@/lib/images";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 
@@ -20,6 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { hasItem, toggleItem } = useWishlist();
   const disabled = product.stock_status === "sin_stock" && !product.preventa;
   const isSaved = hasItem(product.id);
+  const imageUrl = normalizeImageUrl(product.imagen_principal);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-comet-border bg-comet-card shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50 hover:shadow-lg">
@@ -42,9 +44,9 @@ export function ProductCard({ product }: { product: Product }) {
       </button>
 
       <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-[#101014] p-5">
-        {product.imagen_principal ? (
+        {imageUrl ? (
           <Image
-            src={product.imagen_principal}
+            src={imageUrl}
             alt={product.nombre}
             fill
             sizes="(max-width: 768px) 50vw, 20vw"

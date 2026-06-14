@@ -142,7 +142,13 @@ export const seedProducts: Product[] = [
       "https://images.unsplash.com/photo-1603481588273-2f908a9a7a1b?auto=format&fit=crop&w=900&q=80",
       "https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?auto=format&fit=crop&w=900&q=80"
     ],
-    atributos: { Memoria: "12GB GDDR6X", Uso: "Gaming 1440p" },
+    atributos: {
+      Memoria: "12GB GDDR6X",
+      Uso: "Gaming 1440p",
+      Consumo: "220W",
+      "Fuente recomendada": "650W",
+      Conectores: "HDMI + DisplayPort"
+    },
     variables: undefined,
     color: "Negro",
     garantia: "12 meses",
