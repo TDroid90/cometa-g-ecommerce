@@ -4,6 +4,34 @@ import { LayoutSection, Product, StockStatus } from "@/lib/types";
 type SheetRow = Record<string, string>;
 type GoogleToken = { accessToken: string; expiresAt: number };
 
+export const PRODUCT_COLUMNS = [
+  "id",
+  "sku",
+  "nombre",
+  "slug",
+  "descripcion_corta",
+  "descripcion_larga",
+  "precio",
+  "precio_oferta",
+  "stock",
+  "stock_status",
+  "categoria",
+  "subcategoria",
+  "marca",
+  "tags",
+  "imagen_principal",
+  "imagenes_extra",
+  "atributos",
+  "variables",
+  "color",
+  "garantia",
+  "destacado",
+  "preventa",
+  "fecha_lanzamiento",
+  "visible",
+  "orden"
+] as const;
+
 const TRUE_VALUES = new Set(["true", "1", "si", "sí", "yes", "y"]);
 let cachedGoogleToken: GoogleToken | null = null;
 
@@ -236,6 +264,13 @@ export async function appendSheetRow(sheetName: string, values: unknown[]): Prom
   if (!response.ok) {
     throw new Error(`No se pudo escribir en ${sheetName}.`);
   }
+}
+
+export async function appendProductRow(product: Record<string, unknown>): Promise<void> {
+  await appendSheetRow(
+    process.env.GOOGLE_SHEETS_PRODUCTOS_NAME || "PRODUCTOS",
+    PRODUCT_COLUMNS.map((column) => product[column] ?? "")
+  );
 }
 
 export async function updateSheetRow(

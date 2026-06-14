@@ -1,0 +1,363 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, Arial, sans-serif;
+        background: #09090d;
+        color: #f6f6fb;
+      }
+      body {
+        margin: 0;
+        padding: 14px;
+        background: #09090d;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      label {
+        display: block;
+        margin: 10px 0 5px;
+        color: #a1a1aa;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #2a2a36;
+        border-radius: 7px;
+        background: #12121a;
+        color: #fff;
+        padding: 9px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 64px;
+        resize: vertical;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .hint {
+        color: #858596;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .images {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .image-row {
+        display: grid;
+        grid-template-columns: 54px 1fr auto;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid #2a2a36;
+        border-radius: 8px;
+        background: #101017;
+        padding: 7px;
+      }
+      .image-row img {
+        width: 54px;
+        height: 54px;
+        border-radius: 6px;
+        object-fit: cover;
+      }
+      .image-row p {
+        margin: 0;
+        word-break: break-all;
+        font-size: 12px;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+      button {
+        border: 0;
+        border-radius: 7px;
+        background: linear-gradient(135deg, #e5264e, #e143a6 48%, #7a4dff);
+        color: white;
+        cursor: pointer;
+        font-weight: 900;
+        padding: 10px;
+      }
+      button.secondary {
+        border: 1px solid #2a2a36;
+        background: #151520;
+      }
+      button:disabled {
+        cursor: wait;
+        filter: grayscale(1);
+        opacity: .7;
+      }
+      .footer {
+        position: sticky;
+        bottom: 0;
+        margin: 14px -14px -14px;
+        padding: 12px 14px;
+        border-top: 1px solid #242430;
+        background: #09090d;
+      }
+      .status {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #a1a1aa;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Crear producto</h1>
+    <p class="hint">Las imágenes se suben a Blob en el orden visible. La primera queda como imagen principal.</p>
+
+    <label>Nombre</label>
+    <input id="nombre" required>
+
+    <div class="grid">
+      <div>
+        <label>SKU</label>
+        <input id="sku">
+      </div>
+      <div>
+        <label>Slug</label>
+        <input id="slug" placeholder="auto">
+      </div>
+    </div>
+
+    <label>Descripción corta</label>
+    <textarea id="descripcion_corta"></textarea>
+
+    <label>Descripción larga</label>
+    <textarea id="descripcion_larga"></textarea>
+
+    <div class="grid">
+      <div>
+        <label>Precio</label>
+        <input id="precio" type="number" min="0">
+      </div>
+      <div>
+        <label>Precio oferta</label>
+        <input id="precio_oferta" type="number" min="0">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Stock</label>
+        <input id="stock" type="number" min="0" value="0">
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="stock_status">
+          <option value="disponible">Disponible</option>
+          <option value="sin_stock">Sin stock</option>
+          <option value="preventa">Preventa</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Categoría</label>
+        <input id="categoria">
+      </div>
+      <div>
+        <label>Subcategoría</label>
+        <input id="subcategoria">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Marca</label>
+        <input id="marca">
+      </div>
+      <div>
+        <label>Orden</label>
+        <input id="orden" type="number" value="999">
+      </div>
+    </div>
+
+    <label>Tags</label>
+    <input id="tags" placeholder="gpu|rtx|destacado">
+
+    <label>Atributos</label>
+    <textarea id="atributos" placeholder="Memoria:12GB|Uso:Gaming|Consumo:220W"></textarea>
+
+    <label>Variables</label>
+    <input id="variables" placeholder="Color:Negro,Blanco|Memoria:16GB,32GB">
+
+    <div class="grid">
+      <div>
+        <label>Color</label>
+        <input id="color">
+      </div>
+      <div>
+        <label>Garantía</label>
+        <input id="garantia" value="12 meses">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Destacado</label>
+        <select id="destacado"><option>FALSE</option><option>TRUE</option></select>
+      </div>
+      <div>
+        <label>Preventa</label>
+        <select id="preventa"><option>FALSE</option><option>TRUE</option></select>
+      </div>
+    </div>
+
+    <label>Fecha lanzamiento</label>
+    <input id="fecha_lanzamiento" type="date">
+
+    <label>Imágenes</label>
+    <input id="images" type="file" accept="image/*" multiple>
+    <div id="preview" class="images"></div>
+
+    <div class="footer">
+      <button id="create">CREAR</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <script>
+      const state = { images: [] };
+      const imageInput = document.getElementById("images");
+      const preview = document.getElementById("preview");
+      const statusEl = document.getElementById("status");
+      const createButton = document.getElementById("create");
+
+      google.script.run.withSuccessHandler((config) => {
+        if (!config.apiUrl || !config.hasSecret) {
+          statusEl.textContent = "Primero configurá COMETA G > Configurar API.";
+        }
+      }).getAdminConfig();
+
+      function slugify(value) {
+        return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      }
+
+      document.getElementById("nombre").addEventListener("input", (event) => {
+        const slug = document.getElementById("slug");
+        if (!slug.dataset.touched) slug.value = slugify(event.target.value);
+      });
+      document.getElementById("slug").addEventListener("input", (event) => {
+        event.target.dataset.touched = "1";
+      });
+
+      imageInput.addEventListener("change", async () => {
+        const files = Array.from(imageInput.files || []);
+        for (const file of files) {
+          const base64 = await fileToBase64(file);
+          state.images.push({ name: file.name, type: file.type, base64, preview: URL.createObjectURL(file) });
+        }
+        imageInput.value = "";
+        renderImages();
+      });
+
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function moveImage(index, delta) {
+        const next = index + delta;
+        if (next < 0 || next >= state.images.length) return;
+        const [item] = state.images.splice(index, 1);
+        state.images.splice(next, 0, item);
+        renderImages();
+      }
+
+      function removeImage(index) {
+        state.images.splice(index, 1);
+        renderImages();
+      }
+
+      function renderImages() {
+        preview.innerHTML = "";
+        state.images.forEach((image, index) => {
+          const row = document.createElement("div");
+          row.className = "image-row";
+          row.innerHTML = `
+            <img src="${image.preview}">
+            <p>${index + 1}. ${image.name}<br><span class="hint">${index === 0 ? "Principal" : "Extra"}</span></p>
+            <div class="actions">
+              <button class="secondary" type="button" data-up="${index}">↑</button>
+              <button class="secondary" type="button" data-down="${index}">↓</button>
+              <button class="secondary" type="button" data-remove="${index}" style="grid-column: span 2;">Borrar</button>
+            </div>
+          `;
+          preview.appendChild(row);
+        });
+        preview.querySelectorAll("[data-up]").forEach((btn) => btn.onclick = () => moveImage(Number(btn.dataset.up), -1));
+        preview.querySelectorAll("[data-down]").forEach((btn) => btn.onclick = () => moveImage(Number(btn.dataset.down), 1));
+        preview.querySelectorAll("[data-remove]").forEach((btn) => btn.onclick = () => removeImage(Number(btn.dataset.remove)));
+      }
+
+      function field(id) {
+        return document.getElementById(id).value.trim();
+      }
+
+      createButton.addEventListener("click", () => {
+        const fields = {
+          id: field("sku") || field("slug"),
+          sku: field("sku"),
+          nombre: field("nombre"),
+          slug: field("slug"),
+          descripcion_corta: field("descripcion_corta"),
+          descripcion_larga: field("descripcion_larga"),
+          precio: field("precio"),
+          precio_oferta: field("precio_oferta"),
+          stock: field("stock"),
+          stock_status: field("stock_status"),
+          categoria: field("categoria"),
+          subcategoria: field("subcategoria"),
+          marca: field("marca"),
+          tags: field("tags"),
+          atributos: field("atributos"),
+          variables: field("variables"),
+          color: field("color"),
+          garantia: field("garantia"),
+          destacado: field("destacado"),
+          preventa: field("preventa"),
+          fecha_lanzamiento: field("fecha_lanzamiento"),
+          visible: "TRUE",
+          orden: field("orden")
+        };
+        if (!fields.nombre || !fields.precio) {
+          statusEl.textContent = "Nombre y precio son obligatorios.";
+          return;
+        }
+
+        createButton.disabled = true;
+        statusEl.textContent = "Subiendo imágenes y creando producto...";
+        google.script.run
+          .withSuccessHandler((result) => {
+            createButton.disabled = false;
+            statusEl.textContent = `Producto creado.\n${result.product_url}\n${(result.urls || []).join("\\n")}`;
+          })
+          .withFailureHandler((error) => {
+            createButton.disabled = false;
+            statusEl.textContent = `Error: ${error.message || error}`;
+          })
+          .createProductFromSidebar({ fields, images: state.images.map(({ name, type, base64 }) => ({ name, type, base64 })) });
+      });
+    </script>
+  </body>
+</html>
