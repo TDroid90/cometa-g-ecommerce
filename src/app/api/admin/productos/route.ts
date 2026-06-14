@@ -18,8 +18,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado." }, { status: 401 });
     }
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json({ error: "Falta BLOB_READ_WRITE_TOKEN en Vercel." }, { status: 500 });
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+      return NextResponse.json(
+        { error: "Falta configurar Blob: BLOB_STORE_ID o BLOB_READ_WRITE_TOKEN." },
+        { status: 500 }
+      );
     }
 
     const formData = await request.formData();

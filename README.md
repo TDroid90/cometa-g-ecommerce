@@ -94,7 +94,8 @@ En la página de producto se muestran hasta 5 productos de la misma `categoria`,
 GOOGLE_SHEETS_ID=tu_spreadsheet_id
 GOOGLE_SERVICE_ACCOUNT_JSON={...}
 GOOGLE_SHEETS_REVALIDATE_SECONDS=60
-BLOB_READ_WRITE_TOKEN=token_de_vercel_blob
+BLOB_READ_WRITE_TOKEN=token_de_vercel_blob_opcional
+BLOB_STORE_ID=store_xxx_si_usas_integracion_oidc_de_vercel
 ADMIN_UPLOAD_SECRET=una_clave_larga_inventada_por_vos
 ```
 
