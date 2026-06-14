@@ -6,6 +6,7 @@
   color-scheme: dark;
   --background: #07070a;
   --foreground: #f7f7fb;
+  --font-inter: Inter, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
 }
 
 [data-theme="light"] {
@@ -31,11 +32,27 @@ body {
     radial-gradient(circle at 90% 15%, rgba(122, 77, 255, 0.12), transparent 26rem),
     var(--background);
   color: var(--foreground);
-  font-family: Inter, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter);
   letter-spacing: 0;
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+button,
+input,
+select,
+textarea,
+span {
+  font-family: var(--font-inter);
 }
 
 a {

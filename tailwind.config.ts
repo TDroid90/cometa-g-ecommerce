@@ -21,7 +21,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"]
+        sans: ["Inter", "Segoe UI", "Roboto", "Arial", "Helvetica", "sans-serif"]
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(225,67,166,.18), 0 16px 50px rgba(0,0,0,.35)"
