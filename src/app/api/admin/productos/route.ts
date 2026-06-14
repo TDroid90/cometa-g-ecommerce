@@ -12,6 +12,18 @@ function isAuthorized(request: Request): boolean {
   return header === expected;
 }
 
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    name: "COMETA G Admin Products API",
+    method: "POST",
+    usage: "Usar desde el panel lateral de Google Sheets. Requiere header x-admin-secret.",
+    blob: Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN),
+    sheets: Boolean(process.env.GOOGLE_SHEETS_ID && process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+    admin_secret: Boolean(process.env.ADMIN_UPLOAD_SECRET)
+  });
+}
+
 export async function POST(request: Request) {
   try {
     if (!isAuthorized(request)) {
