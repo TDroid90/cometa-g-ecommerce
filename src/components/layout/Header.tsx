@@ -1,25 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Heart,
-  LocateFixed,
-  Menu,
-  Moon,
-  PackageCheck,
-  Search,
-  ShoppingCart,
-  Sun,
-  User,
-  X
-} from "lucide-react";
+import { Heart, LocateFixed, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
 import { useState } from "react";
 import { LayoutSection } from "@/lib/types";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
-import { useTheme } from "@/components/theme/ThemeProvider";
 
-const navItems = [
+const defaultNavItems = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
   { href: "/productos?categoria=Placas%20de%20video", label: "Placas de video" },
@@ -28,12 +16,25 @@ const navItems = [
   { href: "/productos?disponibilidad=preventa", label: "Preventa" }
 ];
 
+function parseNavItems(text?: string) {
+  const items = (text || "")
+    .split(",")
+    .map((item) => {
+      const [label, href] = item.split("|").map((part) => part.trim());
+      return label && href ? { label, href } : null;
+    })
+    .filter(Boolean) as { label: string; href: string }[];
+
+  return items.length ? items : defaultNavItems;
+}
+
 export function Header({ sections }: { sections: LayoutSection[] }) {
   const [open, setOpen] = useState(false);
   const { itemCount } = useCart();
   const { wishlist } = useWishlist();
-  const { theme, toggleTheme } = useTheme();
   const nav = sections.find((section) => section.section_type === "navbar");
+  const categoryNav = sections.find((section) => section.section_type === "category_nav" && section.visible);
+  const navItems = parseNavItems(categoryNav?.text);
   const title = nav?.title || "COMETA G";
   const subtitle = nav?.subtitle || "Computación Gamer";
 
@@ -87,14 +88,6 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
         </form>
 
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={toggleTheme}
-            className="grid h-10 w-10 place-items-center rounded-md border border-comet-border text-zinc-300 transition hover:border-comet-violet hover:text-white"
-            aria-label="Cambiar tema"
-            title="Cambiar tema"
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
           <Link
             href="/perfil"
             className="hidden h-10 w-10 place-items-center rounded-md border border-comet-border text-zinc-300 transition hover:border-comet-fuchsia hover:text-white sm:grid"

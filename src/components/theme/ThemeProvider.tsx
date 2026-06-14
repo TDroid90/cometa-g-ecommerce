@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
-type Theme = "dark" | "light";
+type Theme = "dark";
 
 type ThemeContextValue = {
   theme: Theme;
@@ -12,20 +12,18 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
-
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    window.localStorage.setItem("cometag-theme", theme);
-  }, [theme]);
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.classList.add("dark");
+    window.localStorage.setItem("cometag-theme", "dark");
+  }, []);
 
   const value = useMemo(
     () => ({
-      theme,
-      toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark"))
+      theme: "dark" as Theme,
+      toggleTheme: () => undefined
     }),
-    [theme]
+    []
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

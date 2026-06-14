@@ -22,7 +22,7 @@ export function ProductCard({ product }: { product: Product }) {
   const isSaved = hasItem(product.id);
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/40 hover:shadow-lg">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-comet-border bg-comet-card shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50 hover:shadow-lg">
       <div className="absolute left-3 top-3 z-10 rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-black text-white">
         {statusLabel(product)}
       </div>
@@ -30,10 +30,10 @@ export function ProductCard({ product }: { product: Product }) {
       <button
         onClick={() => toggleItem(product)}
         className={clsx(
-          "absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border bg-white transition",
+          "absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border bg-comet-panel transition",
           isSaved
             ? "border-comet-fuchsia text-comet-fuchsia"
-            : "border-zinc-200 text-zinc-400 hover:text-comet-fuchsia"
+            : "border-comet-border text-zinc-400 hover:text-comet-fuchsia"
         )}
         aria-label="Guardar en wishlist"
         title="Guardar en wishlist"
@@ -41,7 +41,7 @@ export function ProductCard({ product }: { product: Product }) {
         <Heart size={17} fill={isSaved ? "currentColor" : "none"} />
       </button>
 
-      <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-white p-5">
+      <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-[#101014] p-5">
         {product.imagen_principal ? (
           <Image
             src={product.imagen_principal}
@@ -55,11 +55,11 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col border-t border-zinc-100 p-4">
+      <div className="flex flex-1 flex-col border-t border-comet-border p-4">
         <p className="text-xs font-semibold text-zinc-400">{product.categoria || product.marca}</p>
         <Link
           href={`/producto/${product.slug}`}
-          className="mt-2 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#0053a6] hover:text-comet-fuchsia"
+          className="mt-2 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-zinc-100 hover:text-comet-fuchsia"
         >
           {product.nombre}
         </Link>
@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: Product }) {
           <button
             onClick={() => addItem(product)}
             disabled={disabled}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-500 transition hover:bg-comet-fuchsia hover:text-white disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-comet-panel text-zinc-400 transition hover:bg-comet-fuchsia hover:text-white disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600"
             aria-label={product.preventa ? "Reservar" : "Comprar"}
             title={product.preventa ? "Reservar" : "Comprar"}
           >

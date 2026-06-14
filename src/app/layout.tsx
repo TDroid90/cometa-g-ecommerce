@@ -22,7 +22,7 @@ export default async function RootLayout({
   const footerSections = sections.filter((section) => section.area === "footer");
 
   return (
-    <html lang="es" data-theme="light" suppressHydrationWarning>
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>
           <CartProvider>

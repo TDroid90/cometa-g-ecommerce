@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
-  --background: #f3f4f6;
-  --foreground: #1f2933;
+  color-scheme: dark;
+  --background: #07070a;
+  --foreground: #f7f7fb;
   --font-inter: Inter, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
 }
 
 [data-theme="light"] {
-  color-scheme: light;
-  --background: #f3f4f6;
-  --foreground: #1f2933;
+  color-scheme: dark;
+  --background: #07070a;
+  --foreground: #f7f7fb;
 }
 
 [data-theme="dark"] {

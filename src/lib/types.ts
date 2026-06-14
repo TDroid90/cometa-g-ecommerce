@@ -2,6 +2,7 @@ export type LayoutArea = "header" | "body" | "footer";
 
 export type SectionType =
   | "navbar"
+  | "category_nav"
   | "main_banner"
   | "carousel"
   | "product_grid"

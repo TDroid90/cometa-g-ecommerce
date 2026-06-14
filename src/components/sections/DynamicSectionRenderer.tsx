@@ -12,7 +12,7 @@ export function DynamicSectionRenderer({
   products: Product[];
 }) {
   return (
-    <div className="bg-[#f3f4f6]">
+    <div className="bg-comet-black">
       {sections.map((section) => (
         <Section key={section.section_id} section={section} products={products} />
       ))}
@@ -48,11 +48,11 @@ function SectionHeader({ section }: { section: LayoutSection }) {
   if (!section.title && !section.subtitle) return null;
 
   return (
-    <div className="mb-5 flex flex-col gap-2 border-b border-zinc-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-2 border-b border-comet-border pb-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        {section.title && <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">{section.title}</h2>}
+        {section.title && <h2 className="text-2xl font-extrabold tracking-tight text-white">{section.title}</h2>}
         <div className="mt-2 h-1 w-24 rounded-full comet-gradient" />
-        {section.subtitle && <p className="mt-2 text-sm font-medium text-zinc-500">{section.subtitle}</p>}
+        {section.subtitle && <p className="mt-2 text-sm font-medium text-zinc-400">{section.subtitle}</p>}
       </div>
       {section.link_url && section.button_text && (
         <Link href={section.link_url} className="text-sm font-black text-comet-fuchsia hover:text-comet-red">
@@ -72,8 +72,8 @@ function parseItems(text?: string): string[][] {
 
 function MainBanner({ section }: { section: LayoutSection }) {
   return (
-    <section className="bg-[#f3f4f6] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="relative mx-auto min-h-[500px] max-w-7xl overflow-hidden rounded-xl bg-comet-black shadow-lg">
+    <section className="bg-comet-black px-4 py-6 sm:px-6 lg:px-8">
+      <div className="relative mx-auto min-h-[500px] max-w-7xl overflow-hidden rounded-xl border border-comet-border bg-comet-black shadow-lg">
         <div className="absolute inset-y-0 right-0 hidden w-[64%] opacity-95 md:block">
           {section.image_url && (
             <Image
@@ -137,13 +137,13 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
   const items = parseItems(section.text);
 
   return (
-    <section className="bg-[#f3f4f6] px-4 py-4 sm:px-6 lg:px-8">
+    <section className="bg-comet-black px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-2 lg:grid-cols-4">
         {items.map(([title, subtitle, image, href, button], index) => (
           <Link
             key={`${title}-${index}`}
             href={href || "/productos"}
-            className="grid min-h-32 grid-cols-[42%_1fr] items-center gap-3 rounded-md bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="grid min-h-32 grid-cols-[42%_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
           >
             <div className="relative h-24">
               {image && (
@@ -151,8 +151,8 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium uppercase leading-5 text-zinc-600">{title}</p>
-              {subtitle && <p className="text-lg font-black uppercase leading-5 text-zinc-900">{subtitle}</p>}
+              <p className="text-sm font-medium uppercase leading-5 text-zinc-400">{title}</p>
+              {subtitle && <p className="text-lg font-black uppercase leading-5 text-white">{subtitle}</p>}
               {button && <p className="mt-3 text-sm font-black text-comet-fuchsia">{button}</p>}
             </div>
           </Link>
@@ -166,19 +166,19 @@ function ServiceStrip({ section }: { section: LayoutSection }) {
   const items = parseItems(section.text);
 
   return (
-    <section className="bg-[#f3f4f6] px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-zinc-200 bg-white md:grid-cols-5">
+    <section className="bg-comet-black px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-comet-border bg-comet-card md:grid-cols-5">
         {items.map(([title, subtitle], index) => (
           <div
             key={`${title}-${index}`}
-            className="flex items-center justify-center gap-4 border-b border-zinc-200 p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+            className="flex items-center justify-center gap-4 border-b border-comet-border p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
           >
             <div className="grid h-10 w-10 place-items-center rounded-full border border-comet-fuchsia/30 text-sm font-black text-comet-fuchsia">
               {index + 1}
             </div>
             <div>
-              <p className="text-sm font-black text-zinc-900">{title}</p>
-              {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
+              <p className="text-sm font-black text-white">{title}</p>
+              {subtitle && <p className="text-sm text-zinc-400">{subtitle}</p>}
             </div>
           </div>
         ))}
@@ -189,24 +189,26 @@ function ServiceStrip({ section }: { section: LayoutSection }) {
 
 function ProductTabs({ section, products }: { section: LayoutSection; products: Product[] }) {
   const tabs = parseItems(section.text);
-  const activeLabel = tabs[0]?.[0] || section.title || "Featured Products";
+  const activeIndex = Math.max(0, tabs.findIndex((tab) => tab[2]?.toLowerCase() === "active"));
+  const activeTab = tabs[activeIndex] || tabs[0];
+  const activeLabel = activeTab?.[0] || section.title || "Featured Products";
   const scopedProducts = sectionProducts(
-    { ...section, taxonomies_filter: tabs[0]?.[1] || section.taxonomies_filter || "destacado" },
+    { ...section, taxonomies_filter: activeTab?.[1] || section.taxonomies_filter || "destacado" },
     products
   );
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-7 border-b border-zinc-200">
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-7 border-b border-comet-border">
         {(tabs.length ? tabs : [[activeLabel, "destacado"]]).map(([label], index) => (
           <span
             key={label}
             className={`relative pb-4 text-lg ${
-              index === 0 ? "font-black text-zinc-900" : "font-medium text-zinc-500"
+              index === activeIndex ? "font-black text-white" : "font-medium text-zinc-400"
             }`}
           >
             {label}
-            {index === 0 && (
+            {index === activeIndex && (
               <>
                 <span className="absolute bottom-0 left-0 h-0.5 w-full comet-gradient" />
                 <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-comet-fuchsia" />
@@ -222,11 +224,11 @@ function ProductTabs({ section, products }: { section: LayoutSection; products: 
 
 function PromoStrip({ section }: { section: LayoutSection }) {
   return (
-    <section className="bg-[#f3f4f6] px-4 py-3 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 rounded-lg border border-zinc-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <section className="bg-comet-black px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 rounded-lg border border-comet-border bg-comet-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-black text-zinc-900">{section.title}</p>
-          {section.text && <p className="mt-1 text-sm text-zinc-500">{section.text}</p>}
+          <p className="text-sm font-black text-white">{section.title}</p>
+          {section.text && <p className="mt-1 text-sm text-zinc-400">{section.text}</p>}
         </div>
         {section.link_url && section.button_text && (
           <Link href={section.link_url} className="text-sm font-black text-comet-fuchsia hover:text-comet-red">
@@ -249,10 +251,10 @@ function CategoryGrid({ section, products }: { section: LayoutSection; products:
           <Link
             key={category}
             href={`/productos?categoria=${encodeURIComponent(category)}`}
-            className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-comet-fuchsia/40 hover:shadow-md"
+            className="rounded-lg border border-comet-border bg-comet-card p-4 shadow-sm transition hover:border-comet-fuchsia/40 hover:shadow-md"
           >
-            <p className="text-sm font-black text-zinc-900">{category}</p>
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="text-sm font-black text-white">{category}</p>
+            <p className="mt-2 text-xs text-zinc-400">
               {products.filter((product) => product.categoria === category).length} productos
             </p>
           </Link>
@@ -280,9 +282,9 @@ function ProductSection({ section, products }: { section: LayoutSection; product
 function TextBlock({ section }: { section: LayoutSection }) {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="max-w-3xl rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        {section.title && <h2 className="text-2xl font-black text-zinc-900">{section.title}</h2>}
-        {section.text && <p className="mt-3 text-sm leading-7 text-zinc-500">{section.text}</p>}
+      <div className="max-w-3xl rounded-lg border border-comet-border bg-comet-card p-6 shadow-sm">
+        {section.title && <h2 className="text-2xl font-black text-white">{section.title}</h2>}
+        {section.text && <p className="mt-3 text-sm leading-7 text-zinc-400">{section.text}</p>}
       </div>
     </section>
   );
