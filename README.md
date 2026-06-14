@@ -1,19 +1,6 @@
 # COMETA G - Computación Gamer
 
-Tienda online básica, rápida y escalable para una marca gamer, construida con Next.js, React, Tailwind CSS y Google Sheets como panel inicial.
-
-## Qué incluye
-
-- Home dinámica desde la hoja `LAYOUT`.
-- Catálogo desde la hoja `PRODUCTOS`.
-- Página individual de producto.
-- Buscador y filtros por categoría, marca, precio máximo y disponibilidad.
-- Carrito con `localStorage`, totales y aviso de preventa.
-- Wishlist con `localStorage`.
-- Login y registro básicos preparados para ampliar.
-- API routes en `/api/layout` y `/api/productos`.
-- Modo oscuro nativo y modo claro secundario.
-- Datos de ejemplo si todavía no conectaste Google Sheets.
+Tienda online gamer con Next.js, Tailwind CSS y Google Sheets como panel inicial.
 
 ## Ejecutar en local
 
@@ -22,70 +9,81 @@ npm install
 npm run dev
 ```
 
-Abrí `http://localhost:3000`.
+Para producción:
 
-## Conectar Google Sheets
+```bash
+npm run build
+npm run start
+```
 
-1. Creá una Google Sheet con dos pestañas: `LAYOUT` y `PRODUCTOS`.
-2. En Google Sheets, usá `Archivo > Compartir > Publicar en la web` o compartí la hoja para lectura pública.
-3. Copiá `.env.example` como `.env.local`.
-4. Configurá una de estas opciones:
+## Google Sheets
 
-### Opción A: ID de la planilla
+La app lee primero `LAYOUT_SIMPLE`. Si esa hoja no existe o está vacía, usa `LAYOUT` como respaldo.
+
+### LAYOUT_SIMPLE
+
+Columnas:
+
+```txt
+id, zona, tipo, titulo, subtitulo, texto, items, imagen, enlace, boton, orden, visible, columnas_desktop, columnas_mobile, carousel, autoplay, filtro, categoria, marca, variante
+```
+
+Tipos simples soportados:
+
+```txt
+nav, menu, banner, promociones, beneficios, tabs_productos, grilla_productos, categorias, texto, links_footer, contacto_footer
+```
+
+Ejemplo de menú del header:
+
+```txt
+Inicio|/,Productos|/productos,Placas de video|/productos?categoria=Placas%20de%20video
+```
+
+Ejemplo de pestañas con una activa:
+
+```txt
+Featured Products|destacado|active;Latest Products|;Sale Products|oferta
+```
+
+## PRODUCTOS
+
+Columnas:
+
+```txt
+id, sku, nombre, slug, descripcion_corta, descripcion_larga, precio, precio_oferta, stock, stock_status, categoria, subcategoria, marca, tags, imagen_principal, imagenes_extra, atributos, variables, color, garantia, destacado, preventa, fecha_lanzamiento, visible, orden
+```
+
+### Agregar más líneas en descripción/atributos
+
+En `atributos` usá pares separados por `|`:
+
+```txt
+Memoria:12GB GDDR6X|Uso:Gaming 1440p|Consumo:220W|Fuente recomendada:650W|Conectores:2x HDMI, 3x DisplayPort
+```
+
+Cada par se muestra como una línea/recuadro en la página de producto.
+
+### Agregar más fotos
+
+En `imagenes_extra`, pegá URLs separadas por `|`:
+
+```txt
+https://imagen-1.jpg|https://imagen-2.jpg|https://imagen-3.jpg
+```
+
+La primera imagen sale de `imagen_principal`; las demás aparecen como miniaturas.
+
+### Relacionados
+
+En la página de producto se muestran hasta 5 productos de la misma `categoria`, ordenados por `orden` descendente. Es decir: los últimos cargados aparecen primero.
+
+## Variables de entorno
 
 ```env
 GOOGLE_SHEETS_ID=tu_spreadsheet_id
-GOOGLE_SHEETS_LAYOUT_NAME=LAYOUT
-GOOGLE_SHEETS_PRODUCTOS_NAME=PRODUCTOS
+GOOGLE_SERVICE_ACCOUNT_JSON={...}
+GOOGLE_SHEETS_REVALIDATE_SECONDS=60
 ```
 
-### Opción B: URLs CSV publicadas
-
-```env
-GOOGLE_SHEETS_LAYOUT_URL=https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv
-GOOGLE_SHEETS_PRODUCTOS_URL=https://docs.google.com/spreadsheets/d/e/.../pub?gid=123&single=true&output=csv
-```
-
-Si no hay variables configuradas, la app usa datos de respaldo en `src/lib/seedData.ts`.
-
-## Columnas esperadas
-
-### LAYOUT
-
-`section_id`, `area`, `section_type`, `title`, `subtitle`, `text`, `image_url`, `link_url`, `button_text`, `order`, `visible`, `background_color`, `text_color`, `accent_color`, `layout_variant`, `desktop_columns`, `mobile_columns`, `carousel_enabled`, `autoplay`, `taxonomies_filter`, `category_filter`, `brand_filter`
-
-Sectores soportados en esta primera versión:
-
-- `navbar`
-- `main_banner`
-- `carousel`
-- `product_grid`
-- `category_grid`
-- `promo_strip`
-- `text_block`
-- `footer_links`
-- `footer_contact`
-
-Reglas:
-
-- `visible = FALSE` oculta el sector.
-- `order` define el orden visual.
-- `area` define si se renderiza en `header`, `body` o `footer`.
-- `taxonomies_filter = destacado` muestra productos destacados.
-- `taxonomies_filter = preventa` muestra productos en preventa.
-- `category_filter` y `brand_filter` filtran grillas de productos.
-
-### PRODUCTOS
-
-`id`, `sku`, `nombre`, `slug`, `descripcion_corta`, `descripcion_larga`, `precio`, `precio_oferta`, `stock`, `stock_status`, `categoria`, `subcategoria`, `marca`, `tags`, `imagen_principal`, `imagenes_extra`, `atributos`, `variables`, `color`, `garantia`, `destacado`, `preventa`, `fecha_lanzamiento`, `visible`, `orden`
-
-Notas:
-
-- `tags` e `imagenes_extra` aceptan valores separados por coma o `|`.
-- `atributos` acepta JSON (`{"RAM":"16GB"}`) o formato simple (`RAM:16GB|SSD:1TB`).
-- `variables` acepta JSON o formato simple (`Color:Negro,Blanco|Memoria:16GB,32GB`).
-- Si `preventa = TRUE`, el estado pasa a `preventa`, el botón dice `Reservar` y el carrito marca el producto como preventa.
-
-## Preparado para crecer
-
-La integración de pago queda concentrada en el resumen del carrito. Desde ahí se puede conectar Mercado Pago, Stripe, transferencia bancaria o una reserva manual. La autenticación está aislada en `src/components/auth/AuthForm.tsx` para reemplazar el flujo simulado por un proveedor real sin tocar el catálogo.
+También se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.

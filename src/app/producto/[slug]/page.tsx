@@ -1,8 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { ProductActions } from "@/components/products/ProductActions";
+import { ProductGallery } from "@/components/products/ProductGallery";
+import { ProductGrid } from "@/components/products/ProductGrid";
 import { formatPrice, getProductBySlug, getProducts, productPrice } from "@/lib/data";
 
 export async function generateStaticParams() {
@@ -14,29 +15,25 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
+  const products = await getProducts();
+  const relatedProducts = products
+    .filter((item) => item.id !== product.id && item.categoria === product.categoria)
+    .sort((a, b) => b.orden - a.orden)
+    .slice(0, 5);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link href="/productos" className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
         <ChevronLeft size={17} />
-        Volver al catalogo
+        Volver al catálogo
       </Link>
 
       <div className="grid gap-8 md:grid-cols-[1fr_.9fr]">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
-          {product.imagen_principal ? (
-            <Image
-              src={product.imagen_principal}
-              alt={product.nombre}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              priority
-              className="object-cover"
-            />
-          ) : (
-            <div className="grid h-full place-items-center text-zinc-500">Sin imagen</div>
-          )}
-        </div>
+        <ProductGallery
+          name={product.nombre}
+          mainImage={product.imagen_principal}
+          extraImages={product.imagenes_extra}
+        />
 
         <section>
           <div className="flex flex-wrap gap-2">
@@ -58,7 +55,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {product.precio_oferta && (
               <p className="text-sm text-zinc-500 line-through">{formatPrice(product.precio)}</p>
             )}
-            <p className="text-3xl font-black text-white">{formatPrice(productPrice(product))}</p>
+            <p className={`text-3xl font-black ${product.precio_oferta ? "text-emerald-400" : "text-white"}`}>
+              {formatPrice(productPrice(product))}
+            </p>
           </div>
 
           {product.preventa && (
@@ -75,14 +74,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <ProductActions product={product} />
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {product.garantia && (
-              <div className="rounded-lg border border-comet-border bg-comet-panel p-4">
-                <p className="text-xs uppercase text-zinc-500">Garantia</p>
-                <p className="mt-1 text-sm font-bold text-white">{product.garantia}</p>
-              </div>
-            )}
+            <div className="rounded-md border border-comet-border bg-comet-panel p-3">
+              <p className="text-xs uppercase text-zinc-500">Stock</p>
+              <p className="mt-1 text-sm font-bold text-white">
+                {product.preventa
+                  ? `Preventa${product.stock > 0 ? ` - ${product.stock} disponibles` : ""}`
+                  : product.stock > 0
+                    ? `${product.stock} unidades`
+                    : "Sin stock"}
+              </p>
+            </div>
             {product.marca && (
-              <div className="rounded-lg border border-comet-border bg-comet-panel p-4">
+              <div className="rounded-md border border-comet-border bg-comet-panel p-3">
                 <p className="text-xs uppercase text-zinc-500">Marca</p>
                 <p className="mt-1 text-sm font-bold text-white">{product.marca}</p>
               </div>
@@ -91,16 +94,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </section>
       </div>
 
-      <section className="mt-10 rounded-lg border border-comet-border bg-comet-panel p-6">
-        <h2 className="text-xl font-black text-white">Descripcion</h2>
+      <section className="mt-10 rounded-lg border border-comet-border bg-comet-panel p-4 sm:p-5">
+        <h2 className="text-xl font-black text-white">Descripción</h2>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
           {product.descripcion_larga || product.descripcion_corta}
         </p>
 
         {product.atributos && (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {Object.entries(product.atributos).map(([key, value]) => (
-              <div key={key} className="rounded-md border border-comet-border bg-comet-black p-3">
+              <div key={key} className="rounded-md border border-comet-border bg-comet-black px-3 py-2.5">
                 <p className="text-xs text-zinc-500">{key}</p>
                 <p className="mt-1 text-sm font-bold text-zinc-100">{value}</p>
               </div>
@@ -108,6 +111,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         )}
       </section>
+
+      {relatedProducts.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-5 border-b border-comet-border pb-3">
+            <h2 className="text-xl font-black text-white">Productos relacionados</h2>
+            <p className="mt-1 text-sm text-zinc-400">Últimos cargados en {product.categoria}</p>
+          </div>
+          <ProductGrid products={relatedProducts} desktopColumns={5} mobileColumns={2} />
+        </section>
+      )}
     </div>
   );
 }

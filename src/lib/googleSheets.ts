@@ -333,6 +333,40 @@ async function fetchSheetRows(
 }
 
 export async function readLayoutFromGoogleSheets(): Promise<LayoutSection[] | null> {
+  const simpleRows = await fetchSheetRows("", "", "LAYOUT_SIMPLE").catch(() => null);
+  if (simpleRows?.length) {
+    return simpleRows
+      .map((row) => {
+        const text = clean(row.items) || clean(row.texto) || clean(row.text);
+        return {
+          section_id: clean(row.id) || clean(row.section_id),
+          area: normalizeLayoutArea(clean(row.zona) || clean(row.area)),
+          section_type: normalizeSectionType(clean(row.tipo) || clean(row.section_type)),
+          title: clean(row.titulo) || clean(row.title),
+          subtitle: clean(row.subtitulo) || clean(row.subtitle),
+          text,
+          image_url: clean(row.imagen) || clean(row.image_url),
+          link_url: clean(row.enlace) || clean(row.link_url),
+          button_text: clean(row.boton) || clean(row.button_text),
+          order: toNumber(row.orden || row.order, 0),
+          visible: toBool(row.visible, true),
+          background_color: clean(row.fondo) || clean(row.background_color),
+          text_color: clean(row.color_texto) || clean(row.text_color),
+          accent_color: clean(row.acento) || clean(row.accent_color),
+          layout_variant: clean(row.variante) || clean(row.layout_variant),
+          desktop_columns: toNumber(row.columnas_desktop || row.desktop_columns, 4),
+          mobile_columns: toNumber(row.columnas_mobile || row.mobile_columns, 2),
+          carousel_enabled: toBool(row.carousel),
+          autoplay: toBool(row.autoplay),
+          taxonomies_filter: clean(row.filtro) || clean(row.taxonomies_filter),
+          category_filter: clean(row.categoria) || clean(row.category_filter),
+          brand_filter: clean(row.marca) || clean(row.brand_filter)
+        };
+      })
+      .filter((section) => section.section_id && section.section_type)
+      .sort((a, b) => a.order - b.order);
+  }
+
   const rows = await fetchSheetRows(
     "GOOGLE_SHEETS_LAYOUT_NAME",
     "GOOGLE_SHEETS_LAYOUT_URL",
@@ -368,6 +402,37 @@ export async function readLayoutFromGoogleSheets(): Promise<LayoutSection[] | nu
     }))
     .filter((section) => section.section_id && section.section_type)
     .sort((a, b) => a.order - b.order);
+}
+
+function normalizeLayoutArea(value: string): LayoutSection["area"] {
+  const raw = value.toLowerCase();
+  if (raw === "header" || raw === "encabezado") return "header";
+  if (raw === "footer" || raw === "pie") return "footer";
+  return "body";
+}
+
+function normalizeSectionType(value: string): LayoutSection["section_type"] {
+  const raw = value.toLowerCase();
+  const aliases: Record<string, LayoutSection["section_type"]> = {
+    nav: "navbar",
+    menu: "category_nav",
+    categorias_header: "category_nav",
+    banner: "main_banner",
+    hero: "main_banner",
+    promociones: "promo_tile_grid",
+    tarjetas_promo: "promo_tile_grid",
+    beneficios: "service_strip",
+    servicios: "service_strip",
+    tabs_productos: "product_tabs",
+    productos_tabs: "product_tabs",
+    grilla_productos: "product_grid",
+    categorias: "category_grid",
+    texto: "text_block",
+    links_footer: "footer_links",
+    contacto_footer: "footer_contact"
+  };
+
+  return aliases[raw] || (raw as LayoutSection["section_type"]);
 }
 
 export async function readProductsFromGoogleSheets(): Promise<Product[] | null> {

@@ -69,7 +69,9 @@ export function ProductCard({ product }: { product: Product }) {
             {product.precio_oferta && (
               <p className="text-xs text-zinc-400 line-through">{formatPrice(product.precio)}</p>
             )}
-            <p className="text-lg font-black text-comet-red">{formatPrice(productPrice(product))}</p>
+            <p className={clsx("text-lg font-black", product.precio_oferta ? "text-emerald-400" : "text-white")}>
+              {formatPrice(productPrice(product))}
+            </p>
           </div>
           <button
             onClick={() => addItem(product)}
