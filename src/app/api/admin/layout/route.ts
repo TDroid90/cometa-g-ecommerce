@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { appendSheetRow, ensureSheetHeader, readSheetRows, updateSheetRow } from "@/lib/googleSheets";
+import { appendSheetRow, clearSheetRow, ensureSheetHeader, readSheetRows, updateSheetRow } from "@/lib/googleSheets";
 import {
   headerTemplateRows,
   LAYOUT_SIMPLE_COLUMNS,
@@ -75,4 +75,18 @@ export async function PATCH(request: NextRequest) {
 
   await appendSheetRow(SHEET_NAME, values);
   return NextResponse.json({ ok: true, mode: "created" });
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!isAuthorized(request)) return unauthorized();
+
+  const payload = (await request.json()) as { rowNumber?: number };
+  const rowNumber = Number(payload.rowNumber);
+
+  if (rowNumber <= 1) {
+    return NextResponse.json({ ok: false, error: "missing_row" }, { status: 400 });
+  }
+
+  await clearSheetRow(SHEET_NAME, rowNumber);
+  return NextResponse.json({ ok: true, mode: "deleted" });
 }

@@ -5,8 +5,12 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  Box,
+  Columns3,
+  Grid3X3,
   Eye,
   EyeOff,
+  Image,
   LayoutDashboard,
   Loader2,
   Monitor,
@@ -19,6 +23,7 @@ import {
   Settings,
   Smartphone,
   Tablet,
+  Type,
   Trash2
 } from "lucide-react";
 import {
@@ -46,6 +51,35 @@ const previewModes: Array<{ id: PreviewMode; label: string; icon: typeof Monitor
   { id: "desktop", label: "Desktop", icon: Monitor },
   { id: "tablet", label: "Tablet", icon: Tablet },
   { id: "mobile", label: "Celular", icon: Smartphone }
+];
+
+const fontWeightLabels: Record<string, string> = {
+  "300": "Light",
+  "400": "Regular",
+  "500": "Medium",
+  "600": "Semi Bold",
+  "700": "Bold",
+  "800": "Ultra Bold",
+  "900": "Black"
+};
+
+const blockTemplates: Array<{
+  label: string;
+  icon: typeof Box;
+  row: Partial<Record<LayoutSimpleColumn, string>>;
+}> = [
+  { label: "Container", icon: Box, row: { tipo: "container", titulo: "Contenedor", columnas_desktop: "1", columnas_mobile: "1", padding: "24", border: "none" } },
+  { label: "Grid", icon: Grid3X3, row: { tipo: "grid", titulo: "Grilla", columnas_desktop: "3", columnas_mobile: "1", padding: "24", border: "none" } },
+  { label: "Heading", icon: Type, row: { tipo: "text_block", titulo: "Titulo nuevo", font_size: "32", font_weight: "900" } },
+  { label: "Text Editor", icon: AlignLeft, row: { tipo: "text_block", titulo: "Texto", texto: "Contenido nuevo", font_size: "16", font_weight: "400" } },
+  { label: "Image", icon: Image, row: { tipo: "image", titulo: "Imagen", imagen: "", padding: "0" } },
+  { label: "Button", icon: Box, row: { tipo: "button", titulo: "Boton", boton: "Comprar", enlace: "#" } },
+  { label: "Divider", icon: Columns3, row: { tipo: "divider", titulo: "Separador", border: "bottom" } },
+  { label: "Tabs", icon: LayoutDashboard, row: { tipo: "tabs_productos", titulo: "Tabs", items: "Featured Products|destacado|active;Latest Products||;Sale Products|oferta|" } },
+  { label: "Banner", icon: Image, row: { tipo: "banner", titulo: "Banner nuevo", subtitulo: "COMETA G", texto: "Descripcion del banner", boton: "Ver mas", padding: "48" } },
+  { label: "Productos", icon: Grid3X3, row: { tipo: "grilla_productos", titulo: "Productos destacados", filtro: "destacado", columnas_desktop: "5", columnas_mobile: "1" } },
+  { label: "Beneficios", icon: Columns3, row: { tipo: "beneficios", titulo: "Beneficios", items: "Envios|A todo el pais;Garantia|Compra segura;Soporte|Solo mensajes" } },
+  { label: "Newsletter", icon: Type, row: { zona: "footer", tipo: "text_block", variante: "footer_newsletter", titulo: "Newsletter", texto: "Ofertas y novedades gamer.", boton: "Enviar" } }
 ];
 
 const editableFields: Array<{
@@ -604,6 +638,13 @@ export default function AdminLayoutPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeArea, setActiveArea] = useState<LayoutAreaFilter>("header");
   const [previewMode, setPreviewMode] = useState<PreviewMode>("desktop");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newLayoutDirection, setNewLayoutDirection] = useState<"vertical" | "horizontal">("vertical");
+  const [newRows, setNewRows] = useState("1");
+  const [newColumns, setNewColumns] = useState("1");
+  const [newPadding, setNewPadding] = useState("24");
+  const [newBorder, setNewBorder] = useState("none");
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) || rows[0],
@@ -659,6 +700,10 @@ export default function AdminLayoutPage() {
 
   async function saveSelected() {
     if (!selected) return;
+    await saveRow(selected);
+  }
+
+  async function saveRow(rowToSave: LayoutAdminRow) {
     setSaving(true);
     setMessage(null);
     try {
@@ -668,7 +713,7 @@ export default function AdminLayoutPage() {
           "Content-Type": "application/json",
           "x-admin-secret": secret
         },
-        body: JSON.stringify({ rowNumber: selected.rowNumber, row: selected })
+        body: JSON.stringify({ rowNumber: rowToSave.rowNumber, row: rowToSave })
       });
       const data = (await response.json()) as { ok: boolean; mode?: string };
       if (!response.ok || !data.ok) throw new Error("No se pudo guardar.");
@@ -681,16 +726,65 @@ export default function AdminLayoutPage() {
     }
   }
 
-  function addBlock() {
-    const row = { ...emptyRow(), zona: activeArea };
+  function addBlock(template = blockTemplates[0]) {
+    const row = {
+      ...emptyRow(),
+      ...template.row,
+      id: `custom_${template.label.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`,
+      zona: (template.row.zona as LayoutAreaFilter) || activeArea,
+      visible: "TRUE",
+      label: template.label,
+      description: `${template.row.tipo || "bloque"} / ${newLayoutDirection}`,
+      columnas_desktop: template.row.columnas_desktop || newColumns,
+      columnas_mobile: template.row.columnas_mobile || "1",
+      padding: template.row.padding || newPadding,
+      border: template.row.border || newBorder,
+      texto: template.row.texto || `Layout ${newRows} fila(s) x ${newColumns} columna(s)`
+    };
     setRows((current) => [row, ...current]);
     setSelectedId(row.id);
+    setActiveArea(row.zona as LayoutAreaFilter);
+    setAddOpen(false);
   }
 
   function chooseArea(area: LayoutAreaFilter) {
     setActiveArea(area);
     const next = sortedRows.find((row) => row.zona === area);
     if (next) setSelectedId(next.id);
+  }
+
+  async function toggleVisible(row: LayoutAdminRow) {
+    const nextRow = { ...row, visible: row.visible === "FALSE" ? "TRUE" : "FALSE" };
+    setRows((current) => current.map((item) => (item.id === row.id ? nextRow : item)));
+    setMessage(nextRow.visible === "FALSE" ? "Seccion ocultada. Guardando..." : "Seccion visible. Guardando...");
+    await saveRow(nextRow);
+  }
+
+  async function deleteSelected() {
+    if (!selected) return;
+    if (selected.rowNumber <= 1) {
+      setRows((current) => current.filter((row) => row.id !== selected.id));
+      setSelectedId(visibleRows.find((row) => row.id !== selected.id)?.id || "");
+      setMessage("Bloque nuevo eliminado.");
+      return;
+    }
+
+    const response = await fetch("/api/admin/layout", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-secret": secret
+      },
+      body: JSON.stringify({ rowNumber: selected.rowNumber })
+    });
+
+    if (!response.ok) {
+      setMessage("No pude eliminar la seccion.");
+      return;
+    }
+
+    setMessage("Seccion eliminada de LAYOUT_SIMPLE.");
+    await loadRows(secret);
   }
 
   return (
@@ -760,19 +854,18 @@ export default function AdminLayoutPage() {
             </div>
           )}
 
-          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_420px]">
+          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
             <section className="rounded-md border border-comet-border bg-comet-panel">
               <div className="flex items-center justify-between border-b border-comet-border px-4 py-3">
                 <h2 className="text-sm font-black text-white">Bloques</h2>
-                <button onClick={addBlock} className="rounded-md border border-comet-border px-3 py-1.5 text-xs font-bold">
+                <button onClick={() => setAddOpen(true)} className="rounded-md border border-comet-border px-3 py-1.5 text-xs font-bold">
                   Nuevo
                 </button>
               </div>
               <div className="max-h-[720px] overflow-auto p-2">
                 {visibleRows.map((row) => (
-                  <button
+                  <div
                     key={`${row.id}-${row.rowNumber}`}
-                    onClick={() => setSelectedId(row.id)}
                     className={`mb-2 w-full rounded-md border p-3 text-left transition ${
                       selectedId === row.id
                         ? "border-comet-fuchsia bg-comet-fuchsia/10"
@@ -780,13 +873,21 @@ export default function AdminLayoutPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <button onClick={() => setSelectedId(row.id)} className="min-w-0 flex-1 text-left">
                         <p className="text-sm font-black text-white">{row.label}</p>
                         <p className="mt-1 text-xs text-zinc-500">{row.description}</p>
-                      </div>
-                      {row.visible === "FALSE" ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                      <button
+                        onClick={() => toggleVisible(row)}
+                        className={`grid h-8 w-8 place-items-center rounded-md border ${
+                          row.visible === "FALSE" ? "border-zinc-700 text-zinc-600" : "border-comet-border text-zinc-300"
+                        }`}
+                        title={row.visible === "FALSE" ? "Mostrar seccion" : "Ocultar seccion"}
+                      >
+                        {row.visible === "FALSE" ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </section>
@@ -799,9 +900,31 @@ export default function AdminLayoutPage() {
 
               {selected && (
                 <div className="grid gap-4 p-5 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">Edicion visual</p>
+                  </div>
+
                   {["hero", "grid"].includes(structuredKind(selected) || "") && (
                     <VisualBlockEditor row={selected} onFieldChange={updateSelected} />
                   )}
+
+                  {["promo", "benefit", "tab", "link"].includes(structuredKind(selected) || "") && (
+                    <StructuredItemsEditor
+                      row={selected}
+                      onChange={(value) => updateSelected("items", value)}
+                    />
+                  )}
+
+                  {!structuredKind(selected) && (
+                    <div className="md:col-span-2 rounded-md border border-comet-border bg-comet-black p-4">
+                      <p className="text-sm font-black text-white">{selected.titulo || selected.label}</p>
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">{selected.texto || "Bloque simple. Usa la configuracion avanzada para editarlo."}</p>
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2 border-t border-comet-border pt-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Configuracion avanzada</p>
+                  </div>
 
                   {editableFields
                     .filter((field) => {
@@ -831,8 +954,8 @@ export default function AdminLayoutPage() {
                         >
                           <option value="">Sin definir</option>
                           {field.options?.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
+                            <option key={option} value={option} style={field.key === "font_weight" ? { fontWeight: Number(option) } : undefined}>
+                              {field.key === "font_weight" ? fontWeightLabels[option] || option : option}
                             </option>
                           ))}
                         </select>
@@ -845,13 +968,6 @@ export default function AdminLayoutPage() {
                       )}
                     </label>
                   ))}
-
-                  {["promo", "benefit", "tab", "link"].includes(structuredKind(selected) || "") && (
-                    <StructuredItemsEditor
-                      row={selected}
-                      onChange={(value) => updateSelected("items", value)}
-                    />
-                  )}
 
                   <div className="md:col-span-2 flex flex-wrap gap-2 border-t border-comet-border pt-4">
                     {[
@@ -871,6 +987,22 @@ export default function AdminLayoutPage() {
                       </button>
                     ))}
                     <button
+                      onClick={() => toggleVisible(selected)}
+                      disabled={saving}
+                      className="inline-flex h-10 items-center gap-2 rounded-md border border-comet-border px-4 text-sm font-black text-white disabled:opacity-60"
+                    >
+                      {selected.visible === "FALSE" ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {selected.visible === "FALSE" ? "Oculta" : "Visible"}
+                    </button>
+                    <button
+                      onClick={deleteSelected}
+                      disabled={saving}
+                      className="inline-flex h-10 items-center gap-2 rounded-md border border-red-500/40 px-4 text-sm font-black text-red-200 disabled:opacity-60"
+                    >
+                      <Trash2 size={16} />
+                      Eliminar
+                    </button>
+                    <button
                       onClick={saveSelected}
                       disabled={saving}
                       className="ml-auto inline-flex h-10 items-center gap-2 rounded-md comet-gradient px-4 text-sm font-black text-white disabled:opacity-60"
@@ -883,41 +1015,141 @@ export default function AdminLayoutPage() {
               )}
             </section>
 
-            <section className="rounded-md border border-comet-border bg-comet-panel">
-              <div className="flex items-center justify-between border-b border-comet-border px-5 py-4">
-                <div>
-                  <h2 className="text-lg font-black text-white">Preview</h2>
-                  <p className="text-sm text-zinc-500">
-                    {activeArea.charAt(0).toUpperCase() + activeArea.slice(1)} {previewMode}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  {previewModes.map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => setPreviewMode(id)}
-                      title={label}
-                      className={`grid h-9 w-9 place-items-center rounded-md border ${
-                        previewMode === id ? "border-comet-fuchsia text-white" : "border-comet-border text-zinc-500"
-                      }`}
-                    >
-                      <Icon size={17} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="overflow-auto p-5">
-                <div className={`${modeWidth(previewMode)} mx-auto max-w-full`}>
-                  <PreviewSelectedBlock row={selected} rows={rows} mode={previewMode} />
-                </div>
-                <p className="mt-4 text-xs leading-5 text-zinc-500">
-                  El preview es orientativo. Al guardar se actualiza `LAYOUT_SIMPLE`; la web toma los cambios desde Google Sheets.
-                </p>
-              </div>
-            </section>
           </div>
         </main>
       </div>
+
+      <div className="fixed right-3 top-1/2 z-40 grid -translate-y-1/2 gap-1 rounded-full border border-comet-border bg-comet-black/95 p-2 shadow-2xl">
+        {previewModes.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => {
+              setPreviewMode(id);
+              setPreviewOpen(true);
+            }}
+            title={`Preview ${label}`}
+            className={`grid h-10 w-10 place-items-center rounded-full border ${
+              previewMode === id && previewOpen ? "border-comet-fuchsia text-white" : "border-comet-border text-zinc-400"
+            }`}
+          >
+            <Icon size={18} />
+          </button>
+        ))}
+      </div>
+
+      {addOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 p-3 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto flex max-h-full max-w-6xl flex-col overflow-hidden rounded-md border border-comet-border bg-comet-panel">
+            <div className="flex items-center justify-between border-b border-comet-border px-5 py-4">
+              <div>
+                <h2 className="text-xl font-black text-white">Agregar seccion</h2>
+                <p className="text-sm text-zinc-500">Elegi el bloque y la estructura base. Despues lo editas visualmente.</p>
+              </div>
+              <button onClick={() => setAddOpen(false)} className="h-10 rounded-md border border-comet-border px-4 text-sm font-black">
+                Cerrar
+              </button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 gap-5 overflow-auto p-5 lg:grid-cols-[280px_1fr]">
+              <div className="rounded-md border border-comet-border bg-comet-black p-4">
+                <p className="text-sm font-black text-white">Layout inicial</p>
+                <div className="mt-4 grid gap-3">
+                  <label>
+                    <span className="mb-1 block text-xs font-black uppercase text-zinc-500">Direccion</span>
+                    <select
+                      value={newLayoutDirection}
+                      onChange={(event) => setNewLayoutDirection(event.target.value as "vertical" | "horizontal")}
+                      className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm"
+                    >
+                      <option value="vertical">Vertical</option>
+                      <option value="horizontal">Horizontal</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-black uppercase text-zinc-500">Filas</span>
+                    <input value={newRows} onChange={(event) => setNewRows(event.target.value)} className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm" />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-black uppercase text-zinc-500">Columnas</span>
+                    <input value={newColumns} onChange={(event) => setNewColumns(event.target.value)} className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm" />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-black uppercase text-zinc-500">Padding</span>
+                    <input value={newPadding} onChange={(event) => setNewPadding(event.target.value)} className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm" />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-black uppercase text-zinc-500">Borde / bisel</span>
+                    <select value={newBorder} onChange={(event) => setNewBorder(event.target.value)} className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm">
+                      <option value="none">Sin borde</option>
+                      <option value="all">Borde completo</option>
+                      <option value="top">Arriba</option>
+                      <option value="bottom">Abajo</option>
+                      <option value="soft">Bisel suave</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {blockTemplates.map((template) => {
+                  const Icon = template.icon;
+                  return (
+                    <button
+                      key={template.label}
+                      onClick={() => addBlock(template)}
+                      className="group min-h-32 rounded-md border border-comet-border bg-comet-black p-4 text-center hover:border-comet-fuchsia hover:bg-comet-fuchsia/10"
+                    >
+                      <Icon className="mx-auto text-zinc-500 group-hover:text-comet-fuchsia" size={30} />
+                      <span className="mt-3 block text-sm font-black text-white">{template.label}</span>
+                      <span className="mt-1 block text-xs text-zinc-500">{template.row.tipo}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 p-3 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-md border border-comet-border bg-comet-panel">
+            <div className="flex items-center justify-between border-b border-comet-border px-5 py-4">
+              <div>
+                <h2 className="text-lg font-black text-white">Preview</h2>
+                <p className="text-sm text-zinc-500">
+                  {activeArea.charAt(0).toUpperCase() + activeArea.slice(1)} {previewMode}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {previewModes.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPreviewMode(id)}
+                    title={label}
+                    className={`grid h-10 w-10 place-items-center rounded-md border ${
+                      previewMode === id ? "border-comet-fuchsia text-white" : "border-comet-border text-zinc-500"
+                    }`}
+                  >
+                    <Icon size={18} />
+                  </button>
+                ))}
+                <button onClick={() => setPreviewOpen(false)} className="h-10 rounded-md border border-comet-border px-4 text-sm font-black text-white">
+                  Cerrar
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-5">
+              <div className={`${modeWidth(previewMode)} mx-auto min-h-[80vh] max-w-full rounded-md bg-comet-black p-4`}>
+                <PreviewSelectedBlock row={selected} rows={rows} mode={previewMode} />
+              </div>
+              <p className="mx-auto mt-4 max-w-3xl text-center text-xs leading-5 text-zinc-500">
+                El preview es orientativo. Al guardar se actualiza LAYOUT_SIMPLE; la web toma los cambios desde Google Sheets.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

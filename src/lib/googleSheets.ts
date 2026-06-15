@@ -359,6 +359,31 @@ export async function updateSheetRow(
   }
 }
 
+export async function clearSheetRow(sheetName: string, rowNumber: number): Promise<void> {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const accessToken = await getGoogleAccessToken();
+  if (!spreadsheetId || !accessToken) {
+    throw new Error(`No hay credenciales privadas para borrar ${sheetName}.`);
+  }
+
+  const encodedRange = encodeURIComponent(`${sheetName}!A${rowNumber}:ZZ${rowNumber}`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}:clear`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo borrar la fila ${rowNumber} en ${sheetName}.`);
+  }
+}
+
 async function fetchPrivateSheetRows(
   sheetNameEnv: string,
   fallbackName: string
