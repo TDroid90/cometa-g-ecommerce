@@ -15,8 +15,10 @@ import {
   PanelLeftOpen,
   Plus,
   Save,
+  Search,
   Settings,
   Smartphone,
+  Tablet,
   Trash2
 } from "lucide-react";
 import {
@@ -30,6 +32,21 @@ type ApiResponse = {
   ok: boolean;
   rows: LayoutAdminRow[];
 };
+
+type LayoutAreaFilter = "header" | "body" | "footer";
+type PreviewMode = "desktop" | "tablet" | "mobile";
+
+const areaTabs: Array<{ id: LayoutAreaFilter; label: string; icon: typeof LayoutDashboard }> = [
+  { id: "header", label: "Header", icon: LayoutDashboard },
+  { id: "body", label: "Body", icon: Paintbrush },
+  { id: "footer", label: "Footer", icon: Settings }
+];
+
+const previewModes: Array<{ id: PreviewMode; label: string; icon: typeof Monitor }> = [
+  { id: "desktop", label: "Desktop", icon: Monitor },
+  { id: "tablet", label: "Tablet", icon: Tablet },
+  { id: "mobile", label: "Celular", icon: Smartphone }
+];
 
 const editableFields: Array<{
   key: LayoutSimpleColumn;
@@ -102,11 +119,19 @@ function visualRank(row: LayoutAdminRow) {
 
 function structuredKind(row?: LayoutAdminRow) {
   if (!row) return null;
+  if (row.tipo === "banner" || row.tipo === "main_banner") return "hero";
+  if (row.tipo === "grilla_productos" || row.tipo === "product_grid" || row.tipo === "category_grid") return "grid";
   if (row.tipo === "promociones" || row.tipo === "promo_tile_grid") return "promo";
   if (row.tipo === "beneficios" || row.tipo === "service_strip") return "benefit";
   if (row.tipo === "tabs_productos" || row.tipo === "product_tabs") return "tab";
   if (row.variante?.startsWith("footer_") || row.tipo === "links_footer") return "link";
   return null;
+}
+
+function modeWidth(mode: PreviewMode) {
+  if (mode === "mobile") return "w-[390px]";
+  if (mode === "tablet") return "w-[768px]";
+  return "w-full";
 }
 
 function splitStructuredItems(value: string, minParts: number) {
@@ -120,6 +145,99 @@ function splitStructuredItems(value: string, minParts: number) {
     .filter((parts) => parts.some(Boolean));
 }
 
+function VisualBlockEditor({
+  row,
+  onFieldChange
+}: {
+  row: LayoutAdminRow;
+  onFieldChange: (key: LayoutSimpleColumn, value: string) => void;
+}) {
+  const kind = structuredKind(row);
+
+  if (kind === "hero") {
+    return (
+      <div className="md:col-span-2 rounded-md border border-comet-border bg-comet-black p-4">
+        <div className="mb-4 grid gap-4 rounded-md border border-comet-border bg-comet-card p-4 lg:grid-cols-[1fr_44%]">
+          <div className="flex min-h-56 flex-col justify-center">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">
+              {row.subtitulo || "Subtitulo"}
+            </p>
+            <h3 className="mt-3 text-4xl font-black leading-tight text-white">{row.titulo || "Titulo del banner"}</h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-300">{row.texto || "Texto descriptivo del banner."}</p>
+            <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">
+              {row.boton || "Boton"}
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black">
+            {row.imagen ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={row.imagen} alt="" className="h-full min-h-56 w-full object-cover" />
+            ) : (
+              <div className="grid min-h-56 place-items-center text-sm text-zinc-600">Imagen principal</div>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {[
+            ["subtitulo", "Texto superior"],
+            ["titulo", "Titulo"],
+            ["texto", "Descripcion"],
+            ["imagen", "Imagen URL"],
+            ["enlace", "Link"],
+            ["boton", "Boton"]
+          ].map(([key, label]) => (
+            <label key={key} className={key === "texto" ? "md:col-span-2" : ""}>
+              <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-zinc-500">{label}</span>
+              <input
+                value={fieldValue(row, key as LayoutSimpleColumn)}
+                onChange={(event) => onFieldChange(key as LayoutSimpleColumn, event.target.value)}
+                className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-xs text-white outline-none focus:border-comet-fuchsia"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "grid") {
+    return (
+      <div className="md:col-span-2 rounded-md border border-comet-border bg-comet-black p-4">
+        <div className="mb-4 rounded-md border border-comet-border bg-comet-card p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.tipo}</p>
+          <h3 className="mt-2 text-2xl font-black text-white">{row.titulo || "Grilla de productos"}</h3>
+          <p className="mt-1 text-sm text-zinc-400">
+            Filtro: {row.filtro || "sin filtro"} · Categoria: {row.categoria || "todas"} · Marca: {row.marca || "todas"}
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            ["titulo", "Titulo"],
+            ["subtitulo", "Subtitulo"],
+            ["filtro", "Filtro"],
+            ["categoria", "Categoria"],
+            ["marca", "Marca"],
+            ["columnas_desktop", "Columnas desktop"],
+            ["columnas_mobile", "Columnas mobile"],
+            ["carousel", "Carousel"]
+          ].map(([key, label]) => (
+            <label key={key}>
+              <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-zinc-500">{label}</span>
+              <input
+                value={fieldValue(row, key as LayoutSimpleColumn)}
+                onChange={(event) => onFieldChange(key as LayoutSimpleColumn, event.target.value)}
+                className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-xs text-white outline-none focus:border-comet-fuchsia"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function StructuredItemsEditor({
   row,
   onChange
@@ -128,8 +246,10 @@ function StructuredItemsEditor({
   onChange: (value: string) => void;
 }) {
   const kind = structuredKind(row);
+  if (kind !== "promo" && kind !== "benefit" && kind !== "tab" && kind !== "link") return null;
+
   const source = row.items || row.texto;
-  const config = {
+  const configMap = {
     promo: {
       title: "Promociones visuales",
       minParts: 5,
@@ -150,9 +270,8 @@ function StructuredItemsEditor({
       minParts: 2,
       labels: ["Texto", "Link"]
     }
-  }[kind || "link"];
-
-  if (!kind) return null;
+  };
+  const config = configMap[kind];
 
   const items = splitStructuredItems(source, config.minParts);
 
@@ -228,7 +347,7 @@ function StructuredItemsEditor({
   );
 }
 
-function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
+function PreviewHeader({ rows, mode }: { rows: LayoutAdminRow[]; mode: PreviewMode }) {
   const rowById = Object.fromEntries(rows.map((row) => [row.id, row]));
   const topLeft = rowById.header_top_left;
   const topRight = rowById.header_top_right;
@@ -237,18 +356,63 @@ function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
   const nav = rowById["header-categorias"];
   const navItems = parseItems(nav?.items || nav?.texto || "");
 
+  if (mode === "mobile") {
+    return (
+      <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black text-white">
+        <div className="border-b border-comet-border bg-[#18040d] px-3 py-2 text-[11px] text-zinc-300">
+          {topLeft?.texto}
+        </div>
+        <div className="grid gap-3 px-3 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-md comet-gradient font-black">G</span>
+              <span>
+                <span className="block text-lg font-black leading-none">{brand?.titulo || "COMETA G"}</span>
+                <span className="text-xs text-zinc-400">{brand?.subtitulo || "Computacion Gamer"}</span>
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {["U", "W", "C"].map((item) => (
+                <span key={item} className="grid h-9 w-9 place-items-center rounded-md border border-comet-border text-xs">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex h-10 overflow-hidden rounded-md border border-comet-fuchsia/70 bg-comet-panel">
+            <div className="flex-1 px-3 py-2 text-xs text-zinc-500">{search?.texto || "Buscar..."}</div>
+            <div className="grid w-10 place-items-center comet-gradient">
+              <Search size={16} />
+            </div>
+          </div>
+        </div>
+        <div className="flex overflow-x-auto bg-gradient-to-r from-comet-red via-comet-fuchsia to-comet-violet">
+          <span className="shrink-0 border-r border-white/15 px-4 py-3 text-sm font-black">{nav?.boton || "Categorias"}</span>
+          {navItems.map((item) => (
+            <span key={item.label} className="shrink-0 border-r border-white/15 px-4 py-3 text-sm font-black">
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const topGrid = mode === "tablet" ? "grid-cols-[1fr_1fr]" : "grid-cols-3";
+  const brandGrid = mode === "tablet" ? "grid-cols-[1fr_1.4fr]" : "grid-cols-[1fr_2fr_1fr]";
+
   return (
     <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black text-white">
-      <div className="grid grid-cols-3 border-b border-comet-border bg-[#18040d] px-4 py-2 text-[11px] text-zinc-300">
+      <div className={`grid ${topGrid} border-b border-comet-border bg-[#18040d] px-4 py-2 text-[11px] text-zinc-300`}>
         <div>{topLeft?.texto}</div>
-        <div />
+        {mode === "desktop" && <div />}
         <div className="flex justify-end gap-4">
           {parseItems(topRight?.items || "").map((item) => (
             <span key={item.label}>{item.label}</span>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_2fr_1fr] items-center gap-5 px-4 py-5">
+      <div className={`grid ${brandGrid} items-center gap-5 px-4 py-5`}>
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-md comet-gradient font-black">G</span>
           <span>
@@ -259,15 +423,19 @@ function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
         <div className="flex h-11 overflow-hidden rounded-md border border-comet-fuchsia/70 bg-comet-panel">
           <div className="flex-1 px-4 py-3 text-sm text-zinc-500">{search?.texto || "Buscar..."}</div>
           <div className="border-l border-comet-border px-4 py-3 text-sm text-zinc-300">Todas</div>
-          <div className="grid w-12 place-items-center comet-gradient">⌕</div>
+          <div className="grid w-12 place-items-center comet-gradient">
+            <Search size={17} />
+          </div>
         </div>
-        <div className="flex justify-end gap-2">
-          {["U", "W", "C"].map((item) => (
-            <span key={item} className="grid h-10 w-10 place-items-center rounded-md border border-comet-border text-xs">
-              {item}
-            </span>
-          ))}
-        </div>
+        {mode === "desktop" && (
+          <div className="flex justify-end gap-2">
+            {["U", "W", "C"].map((item) => (
+              <span key={item} className="grid h-10 w-10 place-items-center rounded-md border border-comet-border text-xs">
+                {item}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex bg-gradient-to-r from-comet-red via-comet-fuchsia to-comet-violet px-4">
         <span className="border-x border-white/15 px-4 py-3 text-sm font-black">{nav?.boton || "Categorias"}</span>
@@ -281,15 +449,65 @@ function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
   );
 }
 
-function PreviewSelectedBlock({ row, rows }: { row?: LayoutAdminRow; rows: LayoutAdminRow[] }) {
-  if (!row) return <PreviewHeader rows={rows} />;
+function PreviewSelectedBlock({ row, rows, mode }: { row?: LayoutAdminRow; rows: LayoutAdminRow[]; mode: PreviewMode }) {
+  if (!row) return <PreviewHeader rows={rows} mode={mode} />;
 
   const kind = structuredKind(row);
   const items = splitStructuredItems(row.items || row.texto, kind === "promo" ? 5 : 3);
 
-  if (kind === "promo") {
+  if (kind === "hero") {
+    const heroGrid = mode === "mobile" ? "grid-cols-1" : "grid-cols-[1fr_44%]";
     return (
-      <div className="grid gap-3">
+      <div className={`grid gap-5 rounded-md border border-comet-border bg-comet-card p-5 ${heroGrid}`}>
+        <div className="flex min-h-52 flex-col justify-center">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.subtitulo}</p>
+          <h3 className={`${mode === "mobile" ? "text-3xl" : "text-5xl"} mt-3 font-black leading-tight text-white`}>
+            {row.titulo || row.id}
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-zinc-300">{row.texto}</p>
+          {row.boton && <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">{row.boton}</span>}
+        </div>
+        <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black">
+          {row.imagen ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={row.imagen} alt="" className="h-full min-h-52 w-full object-cover" />
+          ) : (
+            <div className="grid min-h-52 place-items-center text-xs text-zinc-600">Imagen</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "grid") {
+    const columns = mode === "mobile" ? "grid-cols-1" : mode === "tablet" ? "grid-cols-3" : "grid-cols-5";
+    return (
+      <div className="rounded-md border border-comet-border bg-comet-card p-4">
+        <div className="mb-4 flex items-end justify-between border-b border-comet-border pb-3">
+          <div>
+            <h3 className="text-xl font-black text-white">{row.titulo || "Productos"}</h3>
+            {row.subtitulo && <p className="text-sm text-zinc-400">{row.subtitulo}</p>}
+          </div>
+          <span className="text-xs font-black uppercase text-comet-fuchsia">{row.filtro || row.categoria || "dinamico"}</span>
+        </div>
+        <div className={`grid gap-3 ${columns}`}>
+          {Array.from({ length: mode === "mobile" ? 3 : 5 }).map((_, index) => (
+            <div key={index} className="rounded-md border border-comet-border bg-comet-black p-3">
+              <div className="mb-3 h-20 rounded bg-white/5" />
+              <p className="text-xs text-zinc-500">Producto</p>
+              <p className="mt-1 text-sm font-black text-white">Item destacado</p>
+              <p className="mt-3 text-sm font-black text-white">$ 000.000</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "promo") {
+    const promoGrid = mode === "mobile" ? "grid-cols-1" : mode === "tablet" ? "grid-cols-2" : "grid-cols-2";
+    return (
+      <div className={`grid gap-3 ${promoGrid}`}>
         {items.map((item, index) => (
           <div key={index} className="grid min-h-28 grid-cols-[42%_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3">
             <div className="overflow-hidden rounded bg-comet-black">
@@ -312,8 +530,9 @@ function PreviewSelectedBlock({ row, rows }: { row?: LayoutAdminRow; rows: Layou
   }
 
   if (kind === "benefit") {
+    const benefitGrid = mode === "mobile" ? "grid-cols-1" : mode === "tablet" ? "grid-cols-2" : "grid-cols-5";
     return (
-      <div className="grid overflow-hidden rounded-md border border-comet-border bg-comet-card sm:grid-cols-2">
+      <div className={`grid overflow-hidden rounded-md border border-comet-border bg-comet-card ${benefitGrid}`}>
         {items.map((item, index) => (
           <div key={index} className="grid grid-cols-[36px_1fr] items-center gap-3 border-b border-comet-border p-4 sm:border-r">
             <span className="grid h-9 w-9 place-items-center rounded-full border border-comet-fuchsia/40 text-xs font-black text-comet-fuchsia">
@@ -342,7 +561,28 @@ function PreviewSelectedBlock({ row, rows }: { row?: LayoutAdminRow; rows: Layou
     );
   }
 
-  if (row.zona === "header") return <PreviewHeader rows={rows} />;
+  if (kind === "link") {
+    const linkItems = splitStructuredItems(row.items || row.texto, 2);
+    const columns = mode === "mobile" ? "grid-cols-1" : "grid-cols-2";
+    return (
+      <div className={`grid gap-4 rounded-md border border-comet-border bg-comet-card p-5 ${columns}`}>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.variante || row.tipo}</p>
+          <h3 className="mt-2 text-xl font-black text-white">{row.titulo || row.label}</h3>
+          {row.texto && <p className="mt-2 text-sm leading-6 text-zinc-400">{row.texto}</p>}
+        </div>
+        <div className="flex flex-wrap content-start gap-2">
+          {linkItems.map((item, index) => (
+            <span key={`${item[0]}-${index}`} className="rounded-md border border-comet-border bg-comet-black px-3 py-2 text-xs font-black text-white">
+              {item[0]}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (row.zona === "header") return <PreviewHeader rows={rows} mode={mode} />;
 
   return (
     <div className="rounded-md border border-comet-border bg-comet-card p-5">
@@ -362,6 +602,8 @@ export default function AdminLayoutPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeArea, setActiveArea] = useState<LayoutAreaFilter>("header");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("desktop");
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) || rows[0],
@@ -370,6 +612,10 @@ export default function AdminLayoutPage() {
   const sortedRows = useMemo(
     () => [...rows].sort((a, b) => visualRank(a).localeCompare(visualRank(b))),
     [rows]
+  );
+  const visibleRows = useMemo(
+    () => sortedRows.filter((row) => row.zona === activeArea),
+    [activeArea, sortedRows]
   );
 
   useEffect(() => {
@@ -387,7 +633,7 @@ export default function AdminLayoutPage() {
       const data = (await response.json()) as ApiResponse;
       if (!response.ok || !data.ok) throw new Error("No se pudo cargar el layout.");
       setRows(data.rows);
-      setSelectedId((current) => data.rows.find((row) => row.id === current)?.id || data.rows[0]?.id || "");
+      setSelectedId((current) => data.rows.find((row) => row.id === current)?.id || data.rows.find((row) => row.zona === activeArea)?.id || data.rows[0]?.id || "");
       window.localStorage.setItem("cometag-admin-secret", currentSecret);
     } catch {
       setRows(headerTemplateRows.map((row, index) => ({ ...row, rowNumber: 0 - index })));
@@ -436,9 +682,15 @@ export default function AdminLayoutPage() {
   }
 
   function addBlock() {
-    const row = emptyRow();
+    const row = { ...emptyRow(), zona: activeArea };
     setRows((current) => [row, ...current]);
     setSelectedId(row.id);
+  }
+
+  function chooseArea(area: LayoutAreaFilter) {
+    setActiveArea(area);
+    const next = sortedRows.find((row) => row.zona === area);
+    if (next) setSelectedId(next.id);
   }
 
   return (
@@ -463,16 +715,15 @@ export default function AdminLayoutPage() {
               {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
               {!sidebarCollapsed && "Plegar"}
             </button>
-            {[
-              ["Header", LayoutDashboard],
-              ["Diseno", Paintbrush],
-              ["Ajustes", Settings]
-            ].map(([label, Icon]) => (
+            {areaTabs.map(({ id, label, icon: Icon }) => (
               <button
-                key={String(label)}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5"
+                key={id}
+                onClick={() => chooseArea(id)}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold ${
+                  activeArea === id ? "bg-comet-fuchsia/15 text-white" : "text-zinc-300 hover:bg-white/5"
+                }`}
               >
-                <Icon size={18} /> {!sidebarCollapsed && String(label)}
+                <Icon size={18} /> {!sidebarCollapsed && label}
               </button>
             ))}
           </nav>
@@ -518,7 +769,7 @@ export default function AdminLayoutPage() {
                 </button>
               </div>
               <div className="max-h-[720px] overflow-auto p-2">
-                {sortedRows.map((row) => (
+                {visibleRows.map((row) => (
                   <button
                     key={`${row.id}-${row.rowNumber}`}
                     onClick={() => setSelectedId(row.id)}
@@ -548,8 +799,18 @@ export default function AdminLayoutPage() {
 
               {selected && (
                 <div className="grid gap-4 p-5 md:grid-cols-2">
+                  {["hero", "grid"].includes(structuredKind(selected) || "") && (
+                    <VisualBlockEditor row={selected} onFieldChange={updateSelected} />
+                  )}
+
                   {editableFields
-                    .filter((field) => !(structuredKind(selected) && field.key === "items"))
+                    .filter((field) => {
+                      const kind = structuredKind(selected);
+                      if (kind && field.key === "items") return false;
+                      if (kind === "hero" && ["titulo", "subtitulo", "texto", "imagen", "enlace", "boton"].includes(field.key)) return false;
+                      if (kind === "grid" && ["titulo", "subtitulo", "filtro", "categoria", "marca", "columnas_desktop", "columnas_mobile", "carousel"].includes(field.key)) return false;
+                      return true;
+                    })
                     .map((field) => (
                     <label key={field.key} className={field.type === "textarea" ? "md:col-span-2" : ""}>
                       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-zinc-500">
@@ -585,7 +846,7 @@ export default function AdminLayoutPage() {
                     </label>
                   ))}
 
-                  {structuredKind(selected) && (
+                  {["promo", "benefit", "tab", "link"].includes(structuredKind(selected) || "") && (
                     <StructuredItemsEditor
                       row={selected}
                       onChange={(value) => updateSelected("items", value)}
@@ -626,15 +887,29 @@ export default function AdminLayoutPage() {
               <div className="flex items-center justify-between border-b border-comet-border px-5 py-4">
                 <div>
                   <h2 className="text-lg font-black text-white">Preview</h2>
-                  <p className="text-sm text-zinc-500">Header desktop</p>
+                  <p className="text-sm text-zinc-500">
+                    {activeArea.charAt(0).toUpperCase() + activeArea.slice(1)} {previewMode}
+                  </p>
                 </div>
-                <div className="flex gap-2 text-zinc-500">
-                  <Monitor size={18} />
-                  <Smartphone size={18} />
+                <div className="flex gap-1">
+                  {previewModes.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setPreviewMode(id)}
+                      title={label}
+                      className={`grid h-9 w-9 place-items-center rounded-md border ${
+                        previewMode === id ? "border-comet-fuchsia text-white" : "border-comet-border text-zinc-500"
+                      }`}
+                    >
+                      <Icon size={17} />
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="p-5">
-                <PreviewSelectedBlock row={selected} rows={rows} />
+              <div className="overflow-auto p-5">
+                <div className={`${modeWidth(previewMode)} mx-auto max-w-full`}>
+                  <PreviewSelectedBlock row={selected} rows={rows} mode={previewMode} />
+                </div>
                 <p className="mt-4 text-xs leading-5 text-zinc-500">
                   El preview es orientativo. Al guardar se actualiza `LAYOUT_SIMPLE`; la web toma los cambios desde Google Sheets.
                 </p>
