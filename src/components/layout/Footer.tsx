@@ -143,7 +143,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         <div>
           <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(["cabal", "visa", "master", "amex", "mipyme", "cripto"] as const).map((method) => (
+            {(["cabal", "visa", "master", "mipyme", "cripto", "amex"] as const).map((method) => (
               <span
                 key={method}
                 className="inline-flex h-10 min-w-[74px] items-center justify-center rounded-md border border-comet-border bg-white px-3"
