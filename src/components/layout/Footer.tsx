@@ -32,7 +32,7 @@ function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "m
           <span className="absolute left-0 top-0 h-5 w-5 rounded-full bg-[#eb001b]" />
           <span className="absolute right-0 top-0 h-5 w-5 rounded-full bg-[#f79e1b] mix-blend-screen" />
         </span>
-        <span className="text-[11px] font-black text-zinc-900">Mastercard</span>
+        <span className="text-[11px] font-black text-zinc-900">Master</span>
       </span>
     );
   }
@@ -142,7 +142,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
 
         <div>
           <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid max-w-[340px] grid-cols-3 gap-2">
             {(["cabal", "visa", "master", "mipyme", "cripto", "amex"] as const).map((method) => (
               <span
                 key={method}
