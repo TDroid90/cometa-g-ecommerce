@@ -1,0 +1,271 @@
+import { LayoutArea, SectionType } from "@/lib/types";
+
+export const LAYOUT_SIMPLE_COLUMNS = [
+  "id",
+  "zona",
+  "tipo",
+  "titulo",
+  "subtitulo",
+  "texto",
+  "items",
+  "imagen",
+  "enlace",
+  "boton",
+  "orden",
+  "visible",
+  "columnas_desktop",
+  "columnas_mobile",
+  "carousel",
+  "autoplay",
+  "filtro",
+  "categoria",
+  "marca",
+  "variante",
+  "fondo",
+  "color_texto",
+  "acento",
+  "font_size",
+  "font_weight",
+  "align",
+  "justify",
+  "padding",
+  "border"
+] as const;
+
+export type LayoutSimpleColumn = (typeof LAYOUT_SIMPLE_COLUMNS)[number];
+
+export type LayoutAdminRow = Record<LayoutSimpleColumn, string> & {
+  rowNumber: number;
+  label: string;
+  description: string;
+};
+
+export const headerTemplateRows: Array<Record<LayoutSimpleColumn, string> & { label: string; description: string }> = [
+  {
+    id: "header_top_left",
+    zona: "header",
+    tipo: "text_block",
+    titulo: "Texto superior",
+    subtitulo: "",
+    texto: "Hardware gamer, preventas y componentes seleccionados para tu setup",
+    items: "",
+    imagen: "",
+    enlace: "",
+    boton: "",
+    orden: "1",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "header_top_left",
+    fondo: "#18040d",
+    color_texto: "#d4d4d8",
+    acento: "#ec4899",
+    font_size: "12",
+    font_weight: "400",
+    align: "left",
+    justify: "start",
+    padding: "",
+    border: "bottom",
+    label: "Header fila 1 izquierda",
+    description: "Texto fino superior."
+  },
+  {
+    id: "header_top_right",
+    zona: "header",
+    tipo: "text_block",
+    titulo: "Menu superior",
+    subtitulo: "",
+    texto: "",
+    items: "Store locator|#,Seguir pedido|#,Mi cuenta|/perfil",
+    imagen: "",
+    enlace: "",
+    boton: "",
+    orden: "2",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "header_top_right",
+    fondo: "#18040d",
+    color_texto: "#d4d4d8",
+    acento: "#ec4899",
+    font_size: "12",
+    font_weight: "500",
+    align: "right",
+    justify: "end",
+    padding: "",
+    border: "bottom",
+    label: "Header fila 1 derecha",
+    description: "Links chicos superiores."
+  },
+  {
+    id: "nav-principal",
+    zona: "header",
+    tipo: "nav",
+    titulo: "COMETA G",
+    subtitulo: "Computacion Gamer",
+    texto: "",
+    items: "",
+    imagen: "",
+    enlace: "/",
+    boton: "",
+    orden: "3",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "brand",
+    fondo: "#09090d",
+    color_texto: "#ffffff",
+    acento: "#ec4899",
+    font_size: "24",
+    font_weight: "900",
+    align: "left",
+    justify: "start",
+    padding: "",
+    border: "none",
+    label: "Logo y marca",
+    description: "Marca, subtitulo y enlace del logo."
+  },
+  {
+    id: "header_search",
+    zona: "header",
+    tipo: "text_block",
+    titulo: "Buscador",
+    subtitulo: "",
+    texto: "Buscar productos, marcas o SKU...",
+    items: "Todas,Placas de video,Procesadores,Monitores,Perifericos",
+    imagen: "",
+    enlace: "/productos",
+    boton: "",
+    orden: "4",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "header_search",
+    fondo: "#09090d",
+    color_texto: "#ffffff",
+    acento: "#ec4899",
+    font_size: "14",
+    font_weight: "400",
+    align: "left",
+    justify: "center",
+    padding: "",
+    border: "none",
+    label: "Buscador",
+    description: "Placeholder y categorias del selector."
+  },
+  {
+    id: "header_icons",
+    zona: "header",
+    tipo: "text_block",
+    titulo: "Iconos",
+    subtitulo: "",
+    texto: "",
+    items: "usuario|/perfil,wishlist|/wishlist,carrito|/carrito",
+    imagen: "",
+    enlace: "",
+    boton: "",
+    orden: "5",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "header_icons",
+    fondo: "#09090d",
+    color_texto: "#d4d4d8",
+    acento: "#ec4899",
+    font_size: "14",
+    font_weight: "500",
+    align: "right",
+    justify: "end",
+    padding: "",
+    border: "none",
+    label: "Iconos de accion",
+    description: "Usuario, wishlist y carrito."
+  },
+  {
+    id: "header-categorias",
+    zona: "header",
+    tipo: "menu",
+    titulo: "Menu principal",
+    subtitulo: "",
+    texto: "",
+    items: "Inicio|/,Productos|/productos,Placas de video|/productos?categoria=Placas%20de%20video,Procesadores|/productos?categoria=Procesadores,Monitores|/productos?categoria=Monitores,Preventa|/productos?disponibilidad=preventa",
+    imagen: "",
+    enlace: "",
+    boton: "Categorias",
+    orden: "6",
+    visible: "TRUE",
+    columnas_desktop: "",
+    columnas_mobile: "",
+    carousel: "",
+    autoplay: "",
+    filtro: "",
+    categoria: "",
+    marca: "",
+    variante: "header_nav",
+    fondo: "gradient",
+    color_texto: "#ffffff",
+    acento: "#ec4899",
+    font_size: "14",
+    font_weight: "800",
+    align: "left",
+    justify: "start",
+    padding: "",
+    border: "none",
+    label: "Menu principal",
+    description: "Tercera linea del header."
+  }
+];
+
+export function rowToValues(row: Partial<Record<LayoutSimpleColumn, unknown>>) {
+  return LAYOUT_SIMPLE_COLUMNS.map((column) => String(row[column] ?? ""));
+}
+
+export function normalizeAdminRow(
+  row: Record<string, string>,
+  rowNumber: number,
+  fallback?: (typeof headerTemplateRows)[number]
+): LayoutAdminRow {
+  const normalized = Object.fromEntries(
+    LAYOUT_SIMPLE_COLUMNS.map((column) => [column, String(row[column] ?? fallback?.[column] ?? "")])
+  ) as Record<LayoutSimpleColumn, string>;
+
+  return {
+    ...normalized,
+    rowNumber,
+    label: fallback?.label || normalized.titulo || normalized.id,
+    description: fallback?.description || `${normalized.zona} / ${normalized.tipo}`
+  };
+}
+
+export function isLayoutArea(value: string): value is LayoutArea {
+  return ["header", "body", "footer"].includes(value);
+}
+
+export function isSectionType(value: string): value is SectionType {
+  return Boolean(value);
+}

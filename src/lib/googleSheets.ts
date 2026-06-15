@@ -119,6 +119,19 @@ function rowsFromValues(values: unknown[][]): SheetRow[] {
     );
 }
 
+function columnName(index: number): string {
+  let name = "";
+  let current = index + 1;
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    name = String.fromCharCode("A".charCodeAt(0) + remainder) + name;
+    current = Math.floor((current - 1) / 26);
+  }
+
+  return name;
+}
+
 function parseCsv(csv: string): SheetRow[] {
   const rows: string[][] = [];
   let field = "";
@@ -266,6 +279,49 @@ export async function appendSheetRow(sheetName: string, values: unknown[]): Prom
   }
 }
 
+export async function ensureSheetHeader(sheetName: string, headers: readonly string[]): Promise<void> {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const accessToken = await getGoogleAccessToken();
+  if (!spreadsheetId || !accessToken) {
+    throw new Error(`No hay credenciales privadas para preparar ${sheetName}.`);
+  }
+
+  async function writeHeader() {
+    const lastColumn = columnName(headers.length - 1);
+    const encodedRange = encodeURIComponent(`${sheetName}!A1:${lastColumn}1`);
+    return fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?valueInputOption=USER_ENTERED`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [headers] })
+      }
+    );
+  }
+
+  let response = await writeHeader();
+  if (response.ok) return;
+
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      requests: [{ addSheet: { properties: { title: sheetName } } }]
+    })
+  });
+
+  response = await writeHeader();
+  if (!response.ok) {
+    throw new Error(`No se pudo preparar ${sheetName}.`);
+  }
+}
+
 export async function appendProductRow(product: Record<string, unknown>): Promise<void> {
   await appendSheetRow(
     process.env.GOOGLE_SHEETS_PRODUCTOS_NAME || "PRODUCTOS",
@@ -284,7 +340,7 @@ export async function updateSheetRow(
     throw new Error(`No hay credenciales privadas para actualizar ${sheetName}.`);
   }
 
-  const lastColumn = String.fromCharCode("A".charCodeAt(0) + values.length - 1);
+  const lastColumn = columnName(values.length - 1);
   const encodedRange = encodeURIComponent(`${sheetName}!A${rowNumber}:${lastColumn}${rowNumber}`);
   const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?valueInputOption=USER_ENTERED`,
@@ -395,7 +451,13 @@ export async function readLayoutFromGoogleSheets(): Promise<LayoutSection[] | nu
           autoplay: toBool(row.autoplay),
           taxonomies_filter: clean(row.filtro) || clean(row.taxonomies_filter),
           category_filter: clean(row.categoria) || clean(row.category_filter),
-          brand_filter: clean(row.marca) || clean(row.brand_filter)
+          brand_filter: clean(row.marca) || clean(row.brand_filter),
+          font_size: clean(row.font_size),
+          font_weight: clean(row.font_weight),
+          align: clean(row.align),
+          justify: clean(row.justify),
+          padding: clean(row.padding),
+          border: clean(row.border)
         };
       })
       .filter((section) => section.section_id && section.section_type)
@@ -433,7 +495,13 @@ export async function readLayoutFromGoogleSheets(): Promise<LayoutSection[] | nu
       autoplay: toBool(row.autoplay),
       taxonomies_filter: clean(row.taxonomies_filter),
       category_filter: clean(row.category_filter),
-      brand_filter: clean(row.brand_filter)
+      brand_filter: clean(row.brand_filter),
+      font_size: clean(row.font_size),
+      font_weight: clean(row.font_weight),
+      align: clean(row.align),
+      justify: clean(row.justify),
+      padding: clean(row.padding),
+      border: clean(row.border)
     }))
     .filter((section) => section.section_id && section.section_type)
     .sort((a, b) => a.order - b.order);

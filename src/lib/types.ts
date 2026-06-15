@@ -40,6 +40,12 @@ export type LayoutSection = {
   taxonomies_filter?: string;
   category_filter?: string;
   brand_filter?: string;
+  font_size?: string;
+  font_weight?: string;
+  align?: string;
+  justify?: string;
+  padding?: string;
+  border?: string;
 };
 
 export type Product = {
