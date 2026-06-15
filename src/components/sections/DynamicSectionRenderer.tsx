@@ -167,16 +167,16 @@ function ServiceStrip({ section }: { section: LayoutSection }) {
 
   return (
     <section className="bg-comet-black px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-comet-border bg-comet-card md:grid-cols-5">
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-comet-border bg-comet-card sm:grid-cols-2 lg:grid-cols-5">
         {items.map(([title, subtitle], index) => (
           <div
             key={`${title}-${index}`}
-            className="flex items-center justify-center gap-4 border-b border-comet-border p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+            className="grid min-h-24 grid-cols-[40px_1fr] items-center gap-4 border-b border-comet-border p-5 last:border-b-0 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:border-b-0 lg:[&:nth-child(2n)]:border-r lg:last:border-r-0"
           >
             <div className="grid h-10 w-10 place-items-center rounded-full border border-comet-fuchsia/30 text-sm font-black text-comet-fuchsia">
               {index + 1}
             </div>
-            <div>
+            <div className="min-w-0 text-left">
               <p className="text-sm font-black text-white">{title}</p>
               {subtitle && <p className="text-sm text-zinc-400">{subtitle}</p>}
             </div>

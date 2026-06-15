@@ -65,8 +65,16 @@ function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "m
 export function Footer({ sections }: { sections: LayoutSection[] }) {
   const linksSection = sections.find((section) => section.section_type === "footer_links");
   const contactSection = sections.find((section) => section.section_type === "footer_contact");
+  const newsletterSection = sections.find((section) => section.layout_variant === "footer_newsletter" && section.visible);
+  const socialSection = sections.find((section) => section.layout_variant === "footer_social" && section.visible);
+  const paymentsSection = sections.find((section) => section.layout_variant === "footer_payments" && section.visible);
   const links = parseLinks(linksSection?.text);
   const usefulLinks = links.length ? links.slice(0, 3) : defaultUsefulLinks;
+  const socialLinks = parseLinks(socialSection?.text);
+  const paymentMethods = (paymentsSection?.text || "cabal,visa,master,mipyme,cripto,amex")
+    .split(",")
+    .map((method) => method.trim().toLowerCase())
+    .filter(Boolean) as Array<"visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto">;
 
   return (
     <footer className="border-t border-comet-border bg-comet-black text-zinc-300">
@@ -75,8 +83,8 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           <div className="flex flex-1 items-center gap-3 text-white">
             <Send size={24} />
             <div>
-              <p className="text-lg font-black">Suscribite al newsletter</p>
-              <p className="text-sm text-white/80">Ofertas, preventas y novedades gamer sin ruido.</p>
+              <p className="text-lg font-black">{newsletterSection?.title || "Suscribite al newsletter"}</p>
+              <p className="text-sm text-white/80">{newsletterSection?.text || "Ofertas, preventas y novedades gamer sin ruido."}</p>
             </div>
           </div>
           <form className="flex w-full overflow-hidden rounded-md border border-white/20 bg-white/10 md:max-w-xl">
@@ -86,7 +94,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
               className="min-w-0 flex-1 bg-white px-4 py-3 text-sm text-zinc-950 outline-none placeholder:text-zinc-500"
             />
             <button className="bg-comet-panel px-5 text-sm font-black text-white transition hover:bg-comet-black">
-              Enviar
+              {newsletterSection?.button_text || "Enviar"}
             </button>
           </form>
         </div>
@@ -117,13 +125,13 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           </a>
 
           <div className="mt-6 flex gap-3">
-            <a href="#" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook" title="Facebook">
+            <a href={socialLinks[0]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook" title="Facebook">
               <span className="text-sm font-black">FB</span>
             </a>
-            <a href="#" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-sm font-black hover:border-comet-fuchsia" aria-label="TikTok" title="TikTok">
+            <a href={socialLinks[1]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-sm font-black hover:border-comet-fuchsia" aria-label="TikTok" title="TikTok">
               TK
             </a>
-            <a href="#" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Instagram" title="Instagram">
+            <a href={socialLinks[2]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Instagram" title="Instagram">
               <Instagram size={18} />
             </a>
           </div>
@@ -143,7 +151,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         <div>
           <h3 className="text-sm font-black uppercase tracking-wide text-white">Métodos de pago</h3>
           <div className="mt-4 grid max-w-[340px] grid-cols-3 gap-2">
-            {(["cabal", "visa", "master", "mipyme", "cripto", "amex"] as const).map((method) => (
+            {paymentMethods.map((method) => (
               <span
                 key={method}
                 className="inline-flex h-10 min-w-[74px] items-center justify-center rounded-md border border-comet-border bg-white px-3"

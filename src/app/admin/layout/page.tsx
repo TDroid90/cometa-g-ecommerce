@@ -11,9 +11,13 @@ import {
   Loader2,
   Monitor,
   Paintbrush,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
   Save,
   Settings,
-  Smartphone
+  Smartphone,
+  Trash2
 } from "lucide-react";
 import {
   headerTemplateRows,
@@ -82,6 +86,148 @@ function fieldValue(row: LayoutAdminRow, key: LayoutSimpleColumn) {
   return row[key] ?? "";
 }
 
+function visualRank(row: LayoutAdminRow) {
+  const areaRank: Record<string, number> = { header: 0, body: 1, footer: 2 };
+  const headerRank: Record<string, number> = {
+    header_top_left: 1,
+    header_top_right: 2,
+    brand: 3,
+    header_search: 4,
+    header_icons: 5,
+    header_nav: 6
+  };
+
+  return `${areaRank[row.zona] ?? 9}-${String(headerRank[row.variante] ?? Number(row.orden || 999)).padStart(4, "0")}`;
+}
+
+function structuredKind(row?: LayoutAdminRow) {
+  if (!row) return null;
+  if (row.tipo === "promociones" || row.tipo === "promo_tile_grid") return "promo";
+  if (row.tipo === "beneficios" || row.tipo === "service_strip") return "benefit";
+  if (row.tipo === "tabs_productos" || row.tipo === "product_tabs") return "tab";
+  if (row.variante?.startsWith("footer_") || row.tipo === "links_footer") return "link";
+  return null;
+}
+
+function splitStructuredItems(value: string, minParts: number) {
+  return (value || "")
+    .split(";")
+    .map((item) => {
+      const parts = item.split("|").map((part) => part.trim());
+      while (parts.length < minParts) parts.push("");
+      return parts;
+    })
+    .filter((parts) => parts.some(Boolean));
+}
+
+function StructuredItemsEditor({
+  row,
+  onChange
+}: {
+  row: LayoutAdminRow;
+  onChange: (value: string) => void;
+}) {
+  const kind = structuredKind(row);
+  const source = row.items || row.texto;
+  const config = {
+    promo: {
+      title: "Promociones visuales",
+      minParts: 5,
+      labels: ["Arriba", "Titulo fuerte", "Imagen URL", "Link", "Boton"]
+    },
+    benefit: {
+      title: "Beneficios",
+      minParts: 2,
+      labels: ["Titulo", "Subtitulo"]
+    },
+    tab: {
+      title: "Tabs de productos",
+      minParts: 3,
+      labels: ["Nombre", "Filtro", "Estado"]
+    },
+    link: {
+      title: "Links visuales",
+      minParts: 2,
+      labels: ["Texto", "Link"]
+    }
+  }[kind || "link"];
+
+  if (!kind) return null;
+
+  const items = splitStructuredItems(source, config.minParts);
+
+  function commit(next: string[][]) {
+    onChange(next.map((item) => item.join("|")).join(";"));
+  }
+
+  function updateItem(index: number, partIndex: number, value: string) {
+    const next = items.map((item) => [...item]);
+    next[index][partIndex] = value;
+    commit(next);
+  }
+
+  function addItem() {
+    commit([...items, Array.from({ length: config.minParts }, () => "")]);
+  }
+
+  function removeItem(index: number) {
+    commit(items.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  return (
+    <div className="md:col-span-2 rounded-md border border-comet-border bg-comet-black p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-black text-white">{config.title}</p>
+          <p className="text-xs text-zinc-500">Edita cada pieza sin tocar separadores raros.</p>
+        </div>
+        <button onClick={addItem} className="inline-flex h-9 items-center gap-2 rounded-md border border-comet-border px-3 text-xs font-black">
+          <Plus size={15} /> Agregar
+        </button>
+      </div>
+
+      <div className={kind === "promo" ? "grid gap-3 lg:grid-cols-2" : "grid gap-3"}>
+        {items.map((item, index) => (
+          <div key={index} className="rounded-md border border-comet-border bg-comet-panel p-3">
+            {kind === "promo" && (
+              <div className="mb-3 grid min-h-28 grid-cols-[42%_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3">
+                <div className="overflow-hidden rounded bg-comet-black">
+                  {item[2] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item[2]} alt="" className="h-20 w-full object-cover" />
+                  ) : (
+                    <div className="grid h-20 place-items-center text-xs text-zinc-600">Imagen</div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs uppercase text-zinc-400">{item[0] || "CATCH BIG"}</p>
+                  <p className="text-sm font-black uppercase leading-4 text-white">{item[1] || "HOT DEALS"}</p>
+                  <p className="mt-2 text-xs font-black text-comet-fuchsia">{item[4] || "Shop now"}</p>
+                </div>
+              </div>
+            )}
+            <div className="grid gap-2">
+              {config.labels.map((label, partIndex) => (
+                <label key={label}>
+                  <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-zinc-500">{label}</span>
+                  <input
+                    value={item[partIndex] || ""}
+                    onChange={(event) => updateItem(index, partIndex, event.target.value)}
+                    className="h-9 w-full rounded-md border border-comet-border bg-comet-black px-2 text-xs text-white outline-none focus:border-comet-fuchsia"
+                  />
+                </label>
+              ))}
+            </div>
+            <button onClick={() => removeItem(index)} className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-comet-fuchsia">
+              <Trash2 size={14} /> Quitar
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
   const rowById = Object.fromEntries(rows.map((row) => [row.id, row]));
   const topLeft = rowById.header_top_left;
@@ -135,6 +281,79 @@ function PreviewHeader({ rows }: { rows: LayoutAdminRow[] }) {
   );
 }
 
+function PreviewSelectedBlock({ row, rows }: { row?: LayoutAdminRow; rows: LayoutAdminRow[] }) {
+  if (!row) return <PreviewHeader rows={rows} />;
+
+  const kind = structuredKind(row);
+  const items = splitStructuredItems(row.items || row.texto, kind === "promo" ? 5 : 3);
+
+  if (kind === "promo") {
+    return (
+      <div className="grid gap-3">
+        {items.map((item, index) => (
+          <div key={index} className="grid min-h-28 grid-cols-[42%_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3">
+            <div className="overflow-hidden rounded bg-comet-black">
+              {item[2] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item[2]} alt="" className="h-20 w-full object-cover" />
+              ) : (
+                <div className="grid h-20 place-items-center text-xs text-zinc-600">Imagen</div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs uppercase text-zinc-400">{item[0]}</p>
+              <p className="text-lg font-black uppercase leading-5 text-white">{item[1]}</p>
+              <p className="mt-2 text-sm font-black text-comet-fuchsia">{item[4]}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (kind === "benefit") {
+    return (
+      <div className="grid overflow-hidden rounded-md border border-comet-border bg-comet-card sm:grid-cols-2">
+        {items.map((item, index) => (
+          <div key={index} className="grid grid-cols-[36px_1fr] items-center gap-3 border-b border-comet-border p-4 sm:border-r">
+            <span className="grid h-9 w-9 place-items-center rounded-full border border-comet-fuchsia/40 text-xs font-black text-comet-fuchsia">
+              {index + 1}
+            </span>
+            <span>
+              <span className="block text-sm font-black text-white">{item[0]}</span>
+              <span className="text-xs text-zinc-400">{item[1]}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (kind === "tab") {
+    return (
+      <div className="flex flex-wrap justify-center gap-6 border-b border-comet-border">
+        {items.map((item, index) => (
+          <span key={index} className={`relative pb-4 text-lg ${index === 0 ? "font-black text-white" : "text-zinc-400"}`}>
+            {item[0]}
+            {index === 0 && <span className="absolute bottom-0 left-0 h-0.5 w-full comet-gradient" />}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (row.zona === "header") return <PreviewHeader rows={rows} />;
+
+  return (
+    <div className="rounded-md border border-comet-border bg-comet-card p-5">
+      <p className="text-xs uppercase tracking-wide text-comet-fuchsia">{row.zona}</p>
+      <h3 className="mt-2 text-xl font-black text-white">{row.titulo || row.id}</h3>
+      {row.subtitulo && <p className="mt-1 text-sm text-zinc-400">{row.subtitulo}</p>}
+      {row.texto && <p className="mt-4 text-sm leading-6 text-zinc-300">{row.texto}</p>}
+    </div>
+  );
+}
+
 export default function AdminLayoutPage() {
   const [secret, setSecret] = useState("");
   const [rows, setRows] = useState<LayoutAdminRow[]>([]);
@@ -142,10 +361,15 @@ export default function AdminLayoutPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) || rows[0],
     [rows, selectedId]
+  );
+  const sortedRows = useMemo(
+    () => [...rows].sort((a, b) => visualRank(a).localeCompare(visualRank(b))),
+    [rows]
   );
 
   useEffect(() => {
@@ -219,18 +443,26 @@ export default function AdminLayoutPage() {
 
   return (
     <div className="min-h-screen bg-[#0f0f13] text-zinc-100">
-      <div className="grid min-h-screen lg:grid-cols-[260px_1fr]">
+      <div className={`grid min-h-screen ${sidebarCollapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[260px_1fr]"}`}>
         <aside className="border-r border-comet-border bg-[#111118]">
           <div className="border-b border-comet-border px-5 py-5">
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-md comet-gradient font-black">G</span>
-              <div>
+              {!sidebarCollapsed && <div>
                 <p className="text-sm font-black">COMETA G CMS</p>
                 <p className="text-xs text-zinc-500">Layout visual</p>
-              </div>
+              </div>}
             </div>
           </div>
           <nav className="p-3">
+            <button
+              onClick={() => setSidebarCollapsed((current) => !current)}
+              className="mb-3 flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5"
+              title={sidebarCollapsed ? "Expandir" : "Plegar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {!sidebarCollapsed && "Plegar"}
+            </button>
             {[
               ["Header", LayoutDashboard],
               ["Diseno", Paintbrush],
@@ -240,7 +472,7 @@ export default function AdminLayoutPage() {
                 key={String(label)}
                 className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5"
               >
-                <Icon size={18} /> {String(label)}
+                <Icon size={18} /> {!sidebarCollapsed && String(label)}
               </button>
             ))}
           </nav>
@@ -286,7 +518,7 @@ export default function AdminLayoutPage() {
                 </button>
               </div>
               <div className="max-h-[720px] overflow-auto p-2">
-                {rows.map((row) => (
+                {sortedRows.map((row) => (
                   <button
                     key={`${row.id}-${row.rowNumber}`}
                     onClick={() => setSelectedId(row.id)}
@@ -316,7 +548,9 @@ export default function AdminLayoutPage() {
 
               {selected && (
                 <div className="grid gap-4 p-5 md:grid-cols-2">
-                  {editableFields.map((field) => (
+                  {editableFields
+                    .filter((field) => !(structuredKind(selected) && field.key === "items"))
+                    .map((field) => (
                     <label key={field.key} className={field.type === "textarea" ? "md:col-span-2" : ""}>
                       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-zinc-500">
                         {field.label}
@@ -350,6 +584,13 @@ export default function AdminLayoutPage() {
                       )}
                     </label>
                   ))}
+
+                  {structuredKind(selected) && (
+                    <StructuredItemsEditor
+                      row={selected}
+                      onChange={(value) => updateSelected("items", value)}
+                    />
+                  )}
 
                   <div className="md:col-span-2 flex flex-wrap gap-2 border-t border-comet-border pt-4">
                     {[
@@ -393,7 +634,7 @@ export default function AdminLayoutPage() {
                 </div>
               </div>
               <div className="p-5">
-                <PreviewHeader rows={rows} />
+                <PreviewSelectedBlock row={selected} rows={rows} />
                 <p className="mt-4 text-xs leading-5 text-zinc-500">
                   El preview es orientativo. Al guardar se actualiza `LAYOUT_SIMPLE`; la web toma los cambios desde Google Sheets.
                 </p>
