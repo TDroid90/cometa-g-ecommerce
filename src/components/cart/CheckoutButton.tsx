@@ -49,7 +49,7 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
         disabled={loading}
         className="h-12 w-full rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
       >
-        {loading ? "Creando checkout..." : "Pagar con Payway"}
+        {loading ? "Creando checkout..." : "Pagar"}
       </button>
       {message && <p className="mt-3 text-xs leading-5 text-comet-fuchsia">{message}</p>}
     </div>
