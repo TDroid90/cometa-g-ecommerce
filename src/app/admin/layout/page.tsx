@@ -66,20 +66,34 @@ const fontWeightLabels: Record<string, string> = {
 const blockTemplates: Array<{
   label: string;
   icon: typeof Box;
+  preview: string;
   row: Partial<Record<LayoutSimpleColumn, string>>;
 }> = [
-  { label: "Container", icon: Box, row: { tipo: "container", titulo: "Contenedor", columnas_desktop: "1", columnas_mobile: "1", padding: "24", border: "none" } },
-  { label: "Grid", icon: Grid3X3, row: { tipo: "grid", titulo: "Grilla", columnas_desktop: "3", columnas_mobile: "1", padding: "24", border: "none" } },
-  { label: "Heading", icon: Type, row: { tipo: "text_block", titulo: "Titulo nuevo", font_size: "32", font_weight: "900" } },
-  { label: "Text Editor", icon: AlignLeft, row: { tipo: "text_block", titulo: "Texto", texto: "Contenido nuevo", font_size: "16", font_weight: "400" } },
-  { label: "Image", icon: Image, row: { tipo: "image", titulo: "Imagen", imagen: "", padding: "0" } },
-  { label: "Button", icon: Box, row: { tipo: "button", titulo: "Boton", boton: "Comprar", enlace: "#" } },
-  { label: "Divider", icon: Columns3, row: { tipo: "divider", titulo: "Separador", border: "bottom" } },
-  { label: "Tabs", icon: LayoutDashboard, row: { tipo: "tabs_productos", titulo: "Tabs", items: "Featured Products|destacado|active;Latest Products||;Sale Products|oferta|" } },
-  { label: "Banner", icon: Image, row: { tipo: "banner", titulo: "Banner nuevo", subtitulo: "COMETA G", texto: "Descripcion del banner", boton: "Ver mas", padding: "48" } },
-  { label: "Productos", icon: Grid3X3, row: { tipo: "grilla_productos", titulo: "Productos destacados", filtro: "destacado", columnas_desktop: "5", columnas_mobile: "1" } },
-  { label: "Beneficios", icon: Columns3, row: { tipo: "beneficios", titulo: "Beneficios", items: "Envios|A todo el pais;Garantia|Compra segura;Soporte|Solo mensajes" } },
-  { label: "Newsletter", icon: Type, row: { zona: "footer", tipo: "text_block", variante: "footer_newsletter", titulo: "Newsletter", texto: "Ofertas y novedades gamer.", boton: "Enviar" } }
+  { label: "Container", icon: Box, preview: "Contenedor flexible para agrupar bloques.", row: { tipo: "container", titulo: "Contenedor", columnas_desktop: "1", columnas_mobile: "1", padding: "24", border: "none" } },
+  { label: "Grid", icon: Grid3X3, preview: "Grilla con filas y columnas editables.", row: { tipo: "grid", titulo: "Grilla", columnas_desktop: "3", columnas_mobile: "1", padding: "24", border: "none" } },
+  { label: "Heading", icon: Type, preview: "Titulo grande con peso y alineacion.", row: { tipo: "text_block", titulo: "Titulo nuevo", font_size: "32", font_weight: "900" } },
+  { label: "Text Editor", icon: AlignLeft, preview: "Texto libre para parrafos o bajadas.", row: { tipo: "text_block", titulo: "Texto", texto: "Contenido nuevo", font_size: "16", font_weight: "400" } },
+  { label: "Image", icon: Image, preview: "Imagen simple con URL o asset.", row: { tipo: "image", titulo: "Imagen", imagen: "", padding: "0" } },
+  { label: "Button", icon: Box, preview: "Boton con texto y enlace.", row: { tipo: "button", titulo: "Boton", boton: "Comprar", enlace: "#" } },
+  { label: "Divider", icon: Columns3, preview: "Linea separadora entre secciones.", row: { tipo: "divider", titulo: "Separador", border: "bottom" } },
+  { label: "Tabs", icon: LayoutDashboard, preview: "Solapas para productos destacados, nuevos u ofertas.", row: { tipo: "tabs_productos", titulo: "Tabs", items: "Featured Products|destacado|active;Latest Products||;Sale Products|oferta|" } },
+  { label: "Banner", icon: Image, preview: "Hero con columnas, imagen, texto y carousel.", row: { tipo: "banner", titulo: "Banner nuevo", subtitulo: "COMETA G", texto: "Descripcion del banner", boton: "Ver mas", padding: "48", columnas_desktop: "2", columnas_mobile: "1" } },
+  { label: "Carousel", icon: Columns3, preview: "Slider horizontal de banners o tarjetas.", row: { tipo: "banner", titulo: "Carousel nuevo", subtitulo: "COMETA G", texto: "Slide principal", boton: "Ver mas", carousel: "TRUE", autoplay: "TRUE", columnas_desktop: "1", columnas_mobile: "1" } },
+  { label: "Productos", icon: Grid3X3, preview: "Listado dinamico desde PRODUCTOS.", row: { tipo: "grilla_productos", titulo: "Productos destacados", filtro: "destacado", columnas_desktop: "5", columnas_mobile: "1" } },
+  { label: "Categorias", icon: Grid3X3, preview: "Grilla visual de categorias.", row: { tipo: "category_grid", titulo: "Categorias", columnas_desktop: "4", columnas_mobile: "2" } },
+  { label: "Beneficios", icon: Columns3, preview: "Tira de beneficios con icono y texto.", row: { tipo: "beneficios", titulo: "Beneficios", items: "Envios|A todo el pais;Garantia|Compra segura;Soporte|Solo mensajes" } },
+  { label: "Promo Cards", icon: Image, preview: "Tarjetas promocionales con imagen y link.", row: { tipo: "promociones", titulo: "Promociones", items: "Catch big|Hot deals|/logo-image-campus.png|/productos|Ver mas" } },
+  { label: "Icon List", icon: Columns3, preview: "Lista compacta de iconos y textos.", row: { tipo: "beneficios", titulo: "Lista de iconos", items: "Stock|Actualizado;Pagos|Multiples medios;Envios|Todo el pais" } },
+  { label: "Spacer", icon: Columns3, preview: "Espacio vertical configurable.", row: { tipo: "spacer", titulo: "Espaciador", padding: "32" } },
+  { label: "Accordion", icon: LayoutDashboard, preview: "Bloque desplegable para FAQs.", row: { tipo: "accordion", titulo: "Preguntas frecuentes", items: "Pregunta 1|Respuesta 1;Pregunta 2|Respuesta 2" } },
+  { label: "Social Icons", icon: Box, preview: "Redes sociales en fila.", row: { zona: "footer", tipo: "text_block", variante: "footer_social", titulo: "Redes", items: "Facebook|#,TikTok|#,Instagram|#" } },
+  { label: "Newsletter", icon: Type, preview: "Formulario de email para footer o home.", row: { zona: "footer", tipo: "text_block", variante: "footer_newsletter", titulo: "Newsletter", texto: "Ofertas y novedades gamer.", boton: "Enviar" } },
+  { label: "Login", icon: Box, preview: "Acceso de usuario.", row: { tipo: "button", titulo: "Login", boton: "Mi cuenta", enlace: "/login" } },
+  { label: "Cart", icon: Box, preview: "Acceso al carrito.", row: { tipo: "button", titulo: "Carrito", boton: "Carrito", enlace: "/carrito" } },
+  { label: "Checkout", icon: Box, preview: "Boton o link hacia checkout.", row: { tipo: "button", titulo: "Checkout", boton: "Pagar", enlace: "/carrito" } },
+  { label: "Breadcrumbs", icon: Columns3, preview: "Ruta de navegacion.", row: { tipo: "text_block", titulo: "Breadcrumbs", texto: "Inicio > Categoria > Producto" } },
+  { label: "Search", icon: Search, preview: "Buscador visual.", row: { tipo: "text_block", variante: "header_search", titulo: "Buscador", texto: "Buscar productos, marcas o SKU..." } },
+  { label: "Menu", icon: LayoutDashboard, preview: "Menu de navegacion.", row: { tipo: "menu", titulo: "Menu", items: "Inicio|/,Productos|/productos,Preventa|/productos?disponibilidad=preventa" } }
 ];
 
 const editableFields: Array<{
@@ -179,6 +193,36 @@ function splitStructuredItems(value: string, minParts: number) {
     .filter((parts) => parts.some(Boolean));
 }
 
+function numberFrom(value: string, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function gridColumnsClass(columns: number) {
+  if (columns <= 1) return "grid-cols-1";
+  if (columns === 2) return "grid-cols-2";
+  if (columns === 3) return "grid-cols-3";
+  if (columns === 4) return "grid-cols-4";
+  return "grid-cols-5";
+}
+
+function heroColumns(row: LayoutAdminRow) {
+  const expected = numberFrom(row.columnas_desktop, 2);
+  const existing = splitStructuredItems(row.items, 6);
+  const base = existing.length
+    ? existing
+    : [
+        ["text", row.titulo || "Banner nuevo", row.texto || "Descripcion del banner", "", row.boton || "Ver mas", row.enlace || ""],
+        ["image", "Imagen", "", row.imagen || "/logo-image-campus.png", "", ""]
+      ];
+
+  while (base.length < expected) {
+    base.push(["empty", `Columna ${base.length + 1}`, "", "", "", ""]);
+  }
+
+  return base.slice(0, Math.max(expected, base.length));
+}
+
 function VisualBlockEditor({
   row,
   onFieldChange
@@ -189,36 +233,67 @@ function VisualBlockEditor({
   const kind = structuredKind(row);
 
   if (kind === "hero") {
+    const columns = heroColumns(row);
+    const desktopColumns = numberFrom(row.columnas_desktop, 2);
+    const columnClass = gridColumnsClass(Math.min(desktopColumns, 4));
+
+    function commitColumns(next: string[][]) {
+      onFieldChange("items", next.map((item) => item.join("|")).join(";"));
+      const firstText = next.find((item) => item[0] === "text") || next[0];
+      const firstImage = next.find((item) => item[0] === "image" && item[3]);
+      if (firstText) {
+        onFieldChange("titulo", firstText[1] || row.titulo);
+        onFieldChange("texto", firstText[2] || row.texto);
+        onFieldChange("boton", firstText[4] || row.boton);
+        onFieldChange("enlace", firstText[5] || row.enlace);
+      }
+      if (firstImage?.[3]) onFieldChange("imagen", firstImage[3]);
+    }
+
+    function updateColumn(index: number, partIndex: number, value: string) {
+      const next = columns.map((item) => [...item]);
+      next[index][partIndex] = value;
+      commitColumns(next);
+    }
+
     return (
       <div className="md:col-span-2 rounded-md border border-comet-border bg-comet-black p-4">
-        <div className="mb-4 grid gap-4 rounded-md border border-comet-border bg-comet-card p-4 lg:grid-cols-[1fr_44%]">
-          <div className="flex min-h-56 flex-col justify-center">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">
-              {row.subtitulo || "Subtitulo"}
-            </p>
-            <h3 className="mt-3 text-4xl font-black leading-tight text-white">{row.titulo || "Titulo del banner"}</h3>
-            <p className="mt-3 text-sm leading-6 text-zinc-300">{row.texto || "Texto descriptivo del banner."}</p>
-            <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">
-              {row.boton || "Boton"}
-            </span>
-          </div>
-          <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black">
-            {row.imagen ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={row.imagen} alt="" className="h-full min-h-56 w-full object-cover" />
-            ) : (
-              <div className="grid min-h-56 place-items-center text-sm text-zinc-600">Imagen principal</div>
-            )}
-          </div>
+        <div
+          className="mb-4 grid gap-4 rounded-md border border-comet-border bg-comet-card p-4"
+          style={{ gridTemplateColumns: `repeat(${Math.min(desktopColumns, 4)}, minmax(0, 1fr))` }}
+        >
+          {columns.map((column, index) => (
+            <div key={index} className="flex min-h-52 flex-col justify-center overflow-hidden rounded-md border border-comet-border bg-comet-black p-4">
+              {column[0] === "image" ? (
+                column[3] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={column[3]} alt="" className="h-full min-h-44 w-full object-contain" />
+                ) : (
+                  <div className="grid min-h-44 place-items-center text-sm text-zinc-600">Imagen columna {index + 1}</div>
+                )
+              ) : column[0] === "empty" ? (
+                <div className="grid min-h-44 place-items-center rounded border border-dashed border-zinc-700 text-sm text-zinc-600">
+                  Columna vacia {index + 1}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.subtitulo || "COMETA G"}</p>
+                  <h3 className="mt-3 text-3xl font-black leading-tight text-white">{column[1] || "Titulo"}</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-300">{column[2] || "Descripcion"}</p>
+                  {column[4] && <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">{column[4]}</span>}
+                </>
+              )}
+            </div>
+          ))}
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+
+        <div className="mb-4 grid gap-3 md:grid-cols-4">
           {[
+            ["columnas_desktop", "Columnas desktop"],
+            ["columnas_mobile", "Columnas mobile"],
+            ["carousel", "Carousel TRUE/FALSE"],
+            ["autoplay", "Autoplay TRUE/FALSE"],
             ["subtitulo", "Texto superior"],
-            ["titulo", "Titulo"],
-            ["texto", "Descripcion"],
-            ["imagen", "Imagen URL"],
-            ["enlace", "Link"],
-            ["boton", "Boton"]
           ].map(([key, label]) => (
             <label key={key} className={key === "texto" ? "md:col-span-2" : ""}>
               <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-zinc-500">{label}</span>
@@ -228,6 +303,38 @@ function VisualBlockEditor({
                 className="h-10 w-full rounded-md border border-comet-border bg-comet-black px-3 text-xs text-white outline-none focus:border-comet-fuchsia"
               />
             </label>
+          ))}
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          {columns.map((column, index) => (
+            <div key={index} className="rounded-md border border-comet-border bg-comet-panel p-3">
+              <p className="mb-3 text-sm font-black text-white">Columna {index + 1}</p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {["Tipo", "Titulo", "Texto", "Imagen URL", "Boton", "Link"].map((label, partIndex) => (
+                  <label key={label} className={partIndex === 2 || partIndex === 3 ? "md:col-span-2" : ""}>
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-zinc-500">{label}</span>
+                    {partIndex === 0 ? (
+                      <select
+                        value={column[partIndex] || "text"}
+                        onChange={(event) => updateColumn(index, partIndex, event.target.value)}
+                        className="h-9 w-full rounded-md border border-comet-border bg-comet-black px-2 text-xs text-white outline-none focus:border-comet-fuchsia"
+                      >
+                        <option value="text">Texto</option>
+                        <option value="image">Imagen</option>
+                        <option value="empty">Vacia</option>
+                      </select>
+                    ) : (
+                      <input
+                        value={column[partIndex] || ""}
+                        onChange={(event) => updateColumn(index, partIndex, event.target.value)}
+                        className="h-9 w-full rounded-md border border-comet-border bg-comet-black px-2 text-xs text-white outline-none focus:border-comet-fuchsia"
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -490,24 +597,50 @@ function PreviewSelectedBlock({ row, rows, mode }: { row?: LayoutAdminRow; rows:
   const items = splitStructuredItems(row.items || row.texto, kind === "promo" ? 5 : 3);
 
   if (kind === "hero") {
-    const heroGrid = mode === "mobile" ? "grid-cols-1" : "grid-cols-[1fr_44%]";
+    const columns = heroColumns(row);
+    const desktopColumns = row.carousel === "TRUE" ? 1 : numberFrom(row.columnas_desktop, 2);
+    const visibleColumns = row.carousel === "TRUE" ? columns.slice(0, 1) : columns;
     return (
-      <div className={`grid gap-5 rounded-md border border-comet-border bg-comet-card p-5 ${heroGrid}`}>
-        <div className="flex min-h-52 flex-col justify-center">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.subtitulo}</p>
-          <h3 className={`${mode === "mobile" ? "text-3xl" : "text-5xl"} mt-3 font-black leading-tight text-white`}>
-            {row.titulo || row.id}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-zinc-300">{row.texto}</p>
-          {row.boton && <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">{row.boton}</span>}
-        </div>
-        <div className="overflow-hidden rounded-md border border-comet-border bg-comet-black">
-          {row.imagen ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={row.imagen} alt="" className="h-full min-h-52 w-full object-cover" />
-          ) : (
-            <div className="grid min-h-52 place-items-center text-xs text-zinc-600">Imagen</div>
-          )}
+      <div className="rounded-md border border-comet-border bg-comet-card p-5">
+        {row.carousel === "TRUE" && (
+          <div className="mb-3 flex items-center justify-between text-xs font-black uppercase tracking-wide text-comet-fuchsia">
+            <span>Carousel activo</span>
+            <span>{row.autoplay === "TRUE" ? "Autoplay" : "Manual"}</span>
+          </div>
+        )}
+        <div
+          className="grid gap-5"
+          style={{ gridTemplateColumns: mode === "mobile" ? "1fr" : `repeat(${Math.min(desktopColumns, 4)}, minmax(0, 1fr))` }}
+        >
+          {visibleColumns.map((column, index) => (
+            <div key={index} className="flex min-h-52 flex-col justify-center overflow-hidden rounded-md bg-comet-black p-4">
+              {column[0] === "image" ? (
+                column[3] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={column[3]} alt="" className="h-full min-h-52 w-full object-contain" />
+                ) : (
+                  <div className="grid min-h-52 place-items-center text-xs text-zinc-600">Imagen</div>
+                )
+              ) : column[0] === "empty" ? (
+                <div className="grid min-h-52 place-items-center rounded border border-dashed border-zinc-700 text-xs text-zinc-600">
+                  Columna vacia
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">{row.subtitulo}</p>
+                  <h3 className={`${mode === "mobile" ? "text-3xl" : "text-5xl"} mt-3 font-black leading-tight text-white`}>
+                    {column[1] || row.titulo || row.id}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-300">{column[2] || row.texto}</p>
+                  {(column[4] || row.boton) && (
+                    <span className="mt-5 inline-flex w-fit rounded-md comet-gradient px-4 py-2 text-sm font-black text-white">
+                      {column[4] || row.boton}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1097,11 +1230,40 @@ export default function AdminLayoutPage() {
                     <button
                       key={template.label}
                       onClick={() => addBlock(template)}
-                      className="group min-h-32 rounded-md border border-comet-border bg-comet-black p-4 text-center hover:border-comet-fuchsia hover:bg-comet-fuchsia/10"
+                      className="group relative min-h-32 rounded-md border border-comet-border bg-comet-black p-4 text-center hover:border-comet-fuchsia hover:bg-comet-fuchsia/10"
                     >
                       <Icon className="mx-auto text-zinc-500 group-hover:text-comet-fuchsia" size={30} />
                       <span className="mt-3 block text-sm font-black text-white">{template.label}</span>
                       <span className="mt-1 block text-xs text-zinc-500">{template.row.tipo}</span>
+                      <span className="pointer-events-none absolute left-1/2 top-3 z-20 hidden w-64 -translate-x-1/2 -translate-y-full rounded-md border border-comet-fuchsia/50 bg-[#09090d] p-3 text-left shadow-2xl group-hover:block">
+                        <span className="mb-3 grid h-24 overflow-hidden rounded border border-comet-border bg-comet-card p-2">
+                          {template.label === "Banner" || template.label === "Carousel" ? (
+                            <span className="grid grid-cols-[1fr_1fr] gap-2">
+                              <span className="flex flex-col justify-center">
+                                <span className="h-2 w-16 rounded bg-comet-fuchsia" />
+                                <span className="mt-2 h-4 w-24 rounded bg-white/80" />
+                                <span className="mt-2 h-2 w-20 rounded bg-white/25" />
+                                <span className="mt-3 h-5 w-16 rounded comet-gradient" />
+                              </span>
+                              <span className="grid place-items-center rounded bg-comet-black text-lg font-black text-white/80">G</span>
+                            </span>
+                          ) : template.label === "Grid" || template.label === "Productos" || template.label === "Categorias" ? (
+                            <span className="grid grid-cols-3 gap-2">
+                              {Array.from({ length: 6 }).map((_, index) => <span key={index} className="rounded bg-white/10" />)}
+                            </span>
+                          ) : template.label === "Image" ? (
+                            <span className="grid place-items-center rounded bg-comet-black text-2xl font-black text-white/80">G</span>
+                          ) : (
+                            <span className="flex flex-col justify-center gap-2">
+                              <span className="h-3 w-28 rounded bg-white/70" />
+                              <span className="h-2 w-40 rounded bg-white/20" />
+                              <span className="h-2 w-32 rounded bg-white/20" />
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-xs font-black text-white">{template.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-zinc-400">{template.preview}</span>
+                      </span>
                     </button>
                   );
                 })}
