@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
-import { getProducts } from "@/lib/data";
+import { NextRequest, NextResponse } from "next/server";
+import { filterProducts, getProducts } from "@/lib/data";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const products = await getProducts();
-  return NextResponse.json({ data: products });
+  const { searchParams } = request.nextUrl;
+  const query = searchParams.get("q") || "";
+  const categoria = searchParams.get("categoria") || "";
+  const limit = Number(searchParams.get("limit") || 0);
+  const filtered = filterProducts(products, { query, categoria });
+
+  return NextResponse.json({ data: limit > 0 ? filtered.slice(0, limit) : filtered });
 }

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { Heart, LocateFixed, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
-import { useState } from "react";
-import { LayoutSection } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { LayoutSection, Product } from "@/lib/types";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 
@@ -55,8 +55,20 @@ function sectionByVariant(sections: LayoutSection[], variant: string) {
   return sections.find((section) => section.layout_variant === variant && section.visible);
 }
 
+function formatQuickPrice(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 export function Header({ sections }: { sections: LayoutSection[] }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
   const { itemCount } = useCart();
   const { wishlist } = useWishlist();
   const nav = sections.find((section) => section.section_type === "navbar");
@@ -80,6 +92,38 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
   const showIcons = iconsSection?.visible !== false;
   const title = nav?.title || "COMETA G";
   const subtitle = nav?.subtitle || "Computacion Gamer";
+
+  useEffect(() => {
+    const cleaned = query.trim();
+    if (cleaned.length < 3) {
+      setSuggestions([]);
+      setSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const params = new URLSearchParams({ q: cleaned, limit: "6" });
+        if (selectedCategory) params.set("categoria", selectedCategory);
+        const response = await fetch(`/api/productos?${params.toString()}`, {
+          signal: controller.signal
+        });
+        const payload = (await response.json()) as { data?: Product[] };
+        setSuggestions(payload.data || []);
+      } catch (error) {
+        if (!controller.signal.aborted) setSuggestions([]);
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 220);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [query, selectedCategory]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-comet-border bg-comet-black/95 font-sans backdrop-blur">
@@ -118,29 +162,74 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
           </span>
         </Link>
 
-        <form action="/productos" className="order-3 col-span-2 flex h-12 overflow-hidden rounded-md border border-comet-fuchsia/70 bg-comet-panel lg:order-none lg:col-span-1">
-          <input
-            name="q"
-            placeholder={placeholder}
-            className="min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-zinc-500"
-          />
-          <select
-            name="categoria"
-            className="hidden border-l border-comet-border bg-comet-panel px-3 text-sm text-zinc-300 outline-none md:block"
-            defaultValue=""
-            aria-label="Categoria"
-          >
-            <option value="">Todas</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <button className="grid h-12 w-14 place-items-center comet-gradient text-white" aria-label="Buscar" title="Buscar">
-            <Search size={20} />
-          </button>
-        </form>
+        <div className="relative order-3 col-span-2 lg:order-none lg:col-span-1">
+          <form action="/productos" className="flex h-12 overflow-hidden rounded-md border border-comet-fuchsia/70 bg-comet-panel">
+            <input
+              name="q"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={placeholder}
+              autoComplete="off"
+              className="min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-zinc-500"
+            />
+            <select
+              name="categoria"
+              className="hidden border-l border-comet-border bg-comet-panel px-3 text-sm text-zinc-300 outline-none md:block"
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              aria-label="Categoria"
+            >
+              <option value="">Todas</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <button className="grid h-12 w-14 place-items-center comet-gradient text-white" aria-label="Buscar" title="Buscar">
+              <Search size={20} />
+            </button>
+          </form>
+
+          {query.trim().length >= 3 && (
+            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-md border border-comet-border bg-[#09090d] shadow-2xl">
+              {searching && <div className="px-4 py-3 text-sm text-zinc-400">Buscando...</div>}
+              {!searching && suggestions.length === 0 && (
+                <div className="px-4 py-3 text-sm text-zinc-400">Sin resultados para "{query.trim()}".</div>
+              )}
+              {!searching &&
+                suggestions.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/producto/${product.slug}`}
+                    onClick={() => {
+                      setQuery("");
+                      setSuggestions([]);
+                    }}
+                    className="grid grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-comet-border px-3 py-3 last:border-b-0 hover:bg-white/5"
+                  >
+                    <span className="overflow-hidden rounded bg-comet-panel">
+                      {product.imagen_principal ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={product.imagen_principal} alt="" className="h-12 w-12 object-cover" />
+                      ) : (
+                        <span className="grid h-12 w-12 place-items-center text-xs font-black text-comet-fuchsia">G</span>
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black text-white">{product.nombre}</span>
+                      <span className="block truncate text-xs text-zinc-500">
+                        {product.marca} {product.sku ? `- ${product.sku}` : ""}
+                      </span>
+                    </span>
+                    <span className="text-sm font-black text-white">
+                      {formatQuickPrice(product.precio_oferta ?? product.precio)}
+                    </span>
+                  </Link>
+                ))}
+            </div>
+          )}
+        </div>
 
         {showIcons && (
           <div className="flex items-center justify-end gap-2">
