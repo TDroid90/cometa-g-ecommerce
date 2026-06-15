@@ -32,6 +32,7 @@ function findCheckoutId(result: Record<string, unknown>) {
   const nested = result.data && typeof result.data === "object" ? (result.data as Record<string, unknown>) : {};
   return (
     result.payment_id ||
+    result.payment_link ||
     result.id ||
     result.hash ||
     nested.payment_id ||
@@ -42,7 +43,8 @@ function findCheckoutId(result: Record<string, unknown>) {
 
 function findCheckoutUrl(result: Record<string, unknown>, environment: string) {
   const nested = result.data && typeof result.data === "object" ? (result.data as Record<string, unknown>) : {};
-  const directUrl = result.url || result.link || nested.url || nested.link;
+  const directUrl =
+    result.url || result.link || result.payment_link || nested.url || nested.link || nested.payment_link;
 
   if (typeof directUrl === "string" && directUrl.startsWith("http")) return directUrl;
 
@@ -169,7 +171,6 @@ export async function POST(request: NextRequest) {
     total_price: totalPrice,
     site,
     success_url: `${origin}/checkout/exito`,
-    redirect_url: `${origin}/checkout/estado`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
