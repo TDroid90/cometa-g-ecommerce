@@ -55,9 +55,9 @@ function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "m
   }
 
   return (
-    <span className="inline-flex flex-col leading-none">
+    <span className="inline-flex items-center gap-1.5 leading-none">
       <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f7931a] text-[13px] font-black text-white">B</span>
-      <span className="mt-1 text-[11px] font-black text-zinc-900">CRIPTO</span>
+      <span className="text-[11px] font-black text-zinc-900">CRIPTO</span>
     </span>
   );
 }
