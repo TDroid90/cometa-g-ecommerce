@@ -81,6 +81,41 @@ function xSourceHeader(company: string, user: string) {
   ).toString("base64");
 }
 
+function hasMissingCheckoutFields(result: Record<string, unknown>) {
+  const validationErrors = Array.isArray(result.validation_errors) ? result.validation_errors : [];
+  return validationErrors.some((error) => {
+    if (!error || typeof error !== "object") return false;
+    const param = String((error as Record<string, unknown>).param || "");
+    return param === "total_price" || param === "products[].value";
+  });
+}
+
+function appendFormValue(params: URLSearchParams, key: string, value: unknown) {
+  if (value === undefined || value === null || value === "") return;
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        Object.entries(entry).forEach(([childKey, childValue]) => {
+          appendFormValue(params, `${key}[${index}][${childKey}]`, childValue);
+        });
+        return;
+      }
+
+      appendFormValue(params, `${key}[]`, entry);
+    });
+    return;
+  }
+
+  params.append(key, String(value));
+}
+
+function toFormBody(args: Record<string, unknown>) {
+  const params = new URLSearchParams();
+  Object.entries(args).forEach(([key, value]) => appendFormValue(params, key, value));
+  return params;
+}
+
 async function paywayCheckout(args: Record<string, unknown>) {
   const environment = (process.env.PAYWAY_ENVIRONMENT || "developer") as
     | "developer"
@@ -104,17 +139,37 @@ async function paywayCheckout(args: Record<string, unknown>) {
     });
   }
 
-  const response = await fetch(checkoutEndpoint(environment), {
+  const baseHeaders = {
+    apikey: privateKey,
+    "X-Source": xSourceHeader(company, user)
+  };
+  const endpoint = checkoutEndpoint(environment);
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
-      apikey: privateKey,
+      ...baseHeaders,
       "Content-Type": "application/json",
-      "X-Source": xSourceHeader(company, user)
     },
     body: JSON.stringify(args)
   });
 
-  const result = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  let result = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  let paywayStatus = response.status;
+
+  if (!response.ok && hasMissingCheckoutFields(result)) {
+    const formResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: toFormBody(args)
+    });
+
+    result = (await formResponse.json().catch(() => ({}))) as Record<string, unknown>;
+    paywayStatus = formResponse.status;
+  }
+
   const checkoutUrl = findCheckoutUrl(result, environment);
 
   return {
@@ -124,7 +179,7 @@ async function paywayCheckout(args: Record<string, unknown>) {
       ok: Boolean(checkoutUrl),
       checkoutUrl,
       payway: result,
-      paywayStatus: response.status
+      paywayStatus
     }
   };
 }
