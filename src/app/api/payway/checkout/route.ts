@@ -235,7 +235,6 @@ export async function POST(request: NextRequest) {
     total_price: totalPrice,
     site,
     success_url: `${origin}/checkout/exito`,
-    redirect_url: `${origin}/checkout/exito`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
