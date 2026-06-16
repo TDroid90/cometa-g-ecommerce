@@ -116,6 +116,16 @@ function toFormBody(args: Record<string, unknown>) {
   return params;
 }
 
+function paymentDescription(args: Record<string, unknown>) {
+  const products = Array.isArray(args.products) ? args.products : [];
+  const productCount = products.reduce((total, item) => {
+    if (!item || typeof item !== "object") return total;
+    return total + (Number((item as Record<string, unknown>).quantity) || 1);
+  }, 0);
+
+  return `Compra COMETA G${productCount ? ` - ${productCount} producto${productCount === 1 ? "" : "s"}` : ""}`;
+}
+
 async function paywayCheckout(args: Record<string, unknown>) {
   const environment = (process.env.PAYWAY_ENVIRONMENT || "developer") as
     | "developer"
@@ -157,6 +167,25 @@ async function paywayCheckout(args: Record<string, unknown>) {
   let paywayStatus = response.status;
 
   if (!response.ok && hasMissingCheckoutFields(result)) {
+    const simpleArgs = {
+      ...args,
+      products: undefined,
+      payment_description: paymentDescription(args)
+    };
+    const simpleResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(simpleArgs)
+    });
+
+    result = (await simpleResponse.json().catch(() => ({}))) as Record<string, unknown>;
+    paywayStatus = simpleResponse.status;
+  }
+
+  if (paywayStatus === 400 && hasMissingCheckoutFields(result)) {
     const formResponse = await fetch(endpoint, {
       method: "POST",
       headers: {
