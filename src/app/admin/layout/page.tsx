@@ -41,6 +41,10 @@ type ApiResponse = {
 type LayoutAreaFilter = "header" | "body" | "footer";
 type PreviewMode = "desktop" | "tablet" | "mobile";
 
+const ADMIN_SESSION_KEY = "cometag-admin-session";
+const LEGACY_SECRET_KEY = "cometag-admin-secret";
+const ADMIN_SESSION_MS = 5 * 60 * 1000;
+
 const areaTabs: Array<{ id: LayoutAreaFilter; label: string; icon: typeof LayoutDashboard }> = [
   { id: "header", label: "Header", icon: LayoutDashboard },
   { id: "body", label: "Body", icon: Paintbrush },
@@ -778,6 +782,7 @@ export default function AdminLayoutPage() {
   const [newColumns, setNewColumns] = useState("1");
   const [newPadding, setNewPadding] = useState("24");
   const [newBorder, setNewBorder] = useState("none");
+  const [sessionExpiresAt, setSessionExpiresAt] = useState(0);
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) || rows[0],
@@ -792,12 +797,75 @@ export default function AdminLayoutPage() {
     [activeArea, sortedRows]
   );
 
+  function renewAdminSession(currentSecret = secret) {
+    if (!currentSecret) return;
+    const expiresAt = Date.now() + ADMIN_SESSION_MS;
+    setSessionExpiresAt(expiresAt);
+    window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ secret: currentSecret, expiresAt }));
+    window.localStorage.removeItem(LEGACY_SECRET_KEY);
+  }
+
+  function expireAdminSession() {
+    setSecret("");
+    setRows([]);
+    setSessionExpiresAt(0);
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    window.localStorage.removeItem(LEGACY_SECRET_KEY);
+    setMessage("La sesion admin vencio por inactividad. Volve a cargar con la clave.");
+  }
+
+  function isAdminSessionExpired() {
+    return Boolean(secret && sessionExpiresAt && Date.now() > sessionExpiresAt);
+  }
+
   useEffect(() => {
-    const saved = window.localStorage.getItem("cometag-admin-secret");
-    if (saved) setSecret(saved);
+    const savedSession = window.localStorage.getItem(ADMIN_SESSION_KEY);
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession) as { secret?: string; expiresAt?: number };
+        if (parsed.secret && parsed.expiresAt && parsed.expiresAt > Date.now()) {
+          setSecret(parsed.secret);
+          setSessionExpiresAt(parsed.expiresAt);
+          return;
+        }
+      } catch {
+        // Ignore invalid local admin session.
+      }
+    }
+
+    const legacySecret = window.localStorage.getItem(LEGACY_SECRET_KEY);
+    if (legacySecret) {
+      setSecret(legacySecret);
+      const expiresAt = Date.now() + ADMIN_SESSION_MS;
+      setSessionExpiresAt(expiresAt);
+      window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ secret: legacySecret, expiresAt }));
+      window.localStorage.removeItem(LEGACY_SECRET_KEY);
+    }
   }, []);
 
+  useEffect(() => {
+    if (!secret) return;
+
+    const resetEvents = ["click", "keydown", "input", "change", "pointerdown"];
+    const onActivity = () => renewAdminSession(secret);
+    resetEvents.forEach((eventName) => window.addEventListener(eventName, onActivity, { passive: true }));
+
+    const interval = window.setInterval(() => {
+      if (sessionExpiresAt && Date.now() > sessionExpiresAt) expireAdminSession();
+    }, 10000);
+
+    return () => {
+      resetEvents.forEach((eventName) => window.removeEventListener(eventName, onActivity));
+      window.clearInterval(interval);
+    };
+  }, [secret, sessionExpiresAt]);
+
   async function loadRows(currentSecret = secret) {
+    if (currentSecret === secret && isAdminSessionExpired()) {
+      expireAdminSession();
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
     try {
@@ -808,7 +876,7 @@ export default function AdminLayoutPage() {
       if (!response.ok || !data.ok) throw new Error("No se pudo cargar el layout.");
       setRows(data.rows);
       setSelectedId((current) => data.rows.find((row) => row.id === current)?.id || data.rows.find((row) => row.zona === activeArea)?.id || data.rows[0]?.id || "");
-      window.localStorage.setItem("cometag-admin-secret", currentSecret);
+      renewAdminSession(currentSecret);
     } catch {
       setRows(headerTemplateRows.map((row, index) => ({ ...row, rowNumber: 0 - index })));
       setMessage("No pude leer la Sheet. Te muestro la plantilla base para crearla.");
@@ -837,6 +905,11 @@ export default function AdminLayoutPage() {
   }
 
   async function saveRow(rowToSave: LayoutAdminRow) {
+    if (isAdminSessionExpired()) {
+      expireAdminSession();
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
     try {
@@ -895,6 +968,11 @@ export default function AdminLayoutPage() {
 
   async function deleteSelected() {
     if (!selected) return;
+    if (isAdminSessionExpired()) {
+      expireAdminSession();
+      return;
+    }
+
     if (selected.rowNumber <= 1) {
       setRows((current) => current.filter((row) => row.id !== selected.id));
       setSelectedId(visibleRows.find((row) => row.id !== selected.id)?.id || "");
@@ -961,6 +1039,9 @@ export default function AdminLayoutPage() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">Administrador</p>
               <h1 className="mt-2 text-3xl font-black text-white">Editor de layout</h1>
+              {sessionExpiresAt > Date.now() && (
+                <p className="mt-1 text-xs text-zinc-500">Sesion activa: se renueva con clicks o cambios.</p>
+              )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
