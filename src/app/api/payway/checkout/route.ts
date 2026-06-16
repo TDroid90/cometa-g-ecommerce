@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sdk as PaywaySdk } from "sdk-node-payway";
 import { getProducts, productPrice } from "@/lib/data";
 
 export const runtime = "nodejs";
@@ -64,7 +63,25 @@ function findCheckoutUrl(result: Record<string, unknown>, environment: string) {
   return `${base}/${checkoutId}`;
 }
 
-function paywayCheckout(args: Record<string, unknown>) {
+function checkoutEndpoint(environment: string) {
+  if (environment === "production") {
+    return "https://ventasonline.payway.com.ar/api/v1/checkout-payment-button/link";
+  }
+
+  return "https://developers.decidir.com/api/v1/checkout-payment-button/link";
+}
+
+function xSourceHeader(company: string, user: string) {
+  return Buffer.from(
+    JSON.stringify({
+      service: "SDK-NODE",
+      grouper: company,
+      developer: user
+    })
+  ).toString("base64");
+}
+
+async function paywayCheckout(args: Record<string, unknown>) {
   const environment = (process.env.PAYWAY_ENVIRONMENT || "developer") as
     | "developer"
     | "production"
@@ -87,31 +104,29 @@ function paywayCheckout(args: Record<string, unknown>) {
     });
   }
 
-  const sdk = new PaywaySdk(environment, publicKey, privateKey, company, user);
-
-  return new Promise<{ ok: boolean; status: number; body: Record<string, unknown> }>((resolve) => {
-    sdk.checkout(args, (result, error) => {
-      if (error) {
-        resolve({
-          ok: false,
-          status: 502,
-          body: { ok: false, error: "payway_error", detail: error }
-        });
-        return;
-      }
-
-      const checkoutUrl = findCheckoutUrl(result, environment);
-      resolve({
-        ok: Boolean(checkoutUrl),
-        status: checkoutUrl ? 200 : 502,
-        body: {
-          ok: Boolean(checkoutUrl),
-          checkoutUrl,
-          payway: result
-        }
-      });
-    });
+  const response = await fetch(checkoutEndpoint(environment), {
+    method: "POST",
+    headers: {
+      apikey: privateKey,
+      "Content-Type": "application/json",
+      "X-Source": xSourceHeader(company, user)
+    },
+    body: JSON.stringify(args)
   });
+
+  const result = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const checkoutUrl = findCheckoutUrl(result, environment);
+
+  return {
+    ok: Boolean(checkoutUrl),
+    status: checkoutUrl ? 200 : 502,
+    body: {
+      ok: Boolean(checkoutUrl),
+      checkoutUrl,
+      payway: result,
+      paywayStatus: response.status
+    }
+  };
 }
 
 export async function POST(request: NextRequest) {
