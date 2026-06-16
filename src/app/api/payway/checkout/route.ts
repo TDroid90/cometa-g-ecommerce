@@ -90,32 +90,6 @@ function hasMissingCheckoutFields(result: Record<string, unknown>) {
   });
 }
 
-function appendFormValue(params: URLSearchParams, key: string, value: unknown) {
-  if (value === undefined || value === null || value === "") return;
-
-  if (Array.isArray(value)) {
-    value.forEach((entry, index) => {
-      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-        Object.entries(entry).forEach(([childKey, childValue]) => {
-          appendFormValue(params, `${key}[${index}][${childKey}]`, childValue);
-        });
-        return;
-      }
-
-      appendFormValue(params, `${key}[]`, entry);
-    });
-    return;
-  }
-
-  params.append(key, String(value));
-}
-
-function toFormBody(args: Record<string, unknown>) {
-  const params = new URLSearchParams();
-  Object.entries(args).forEach(([key, value]) => appendFormValue(params, key, value));
-  return params;
-}
-
 function paymentDescription(args: Record<string, unknown>) {
   const products = Array.isArray(args.products) ? args.products : [];
   const productCount = products.reduce((total, item) => {
@@ -185,20 +159,6 @@ async function paywayCheckout(args: Record<string, unknown>) {
     paywayStatus = simpleResponse.status;
   }
 
-  if (paywayStatus === 400 && hasMissingCheckoutFields(result)) {
-    const formResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        ...baseHeaders,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: toFormBody(args)
-    });
-
-    result = (await formResponse.json().catch(() => ({}))) as Record<string, unknown>;
-    paywayStatus = formResponse.status;
-  }
-
   const checkoutUrl = findCheckoutUrl(result, environment);
 
   return {
@@ -249,20 +209,20 @@ export async function POST(request: NextRequest) {
       const value = productPrice(product);
       return {
         id: productNumericId(product.id, index + 1),
-        value,
+        value: value.toFixed(2),
         description: product.nombre.slice(0, 120),
         quantity: item.quantity
       };
     })
-    .filter(Boolean) as Array<{ id: number; value: number; description: string; quantity: number }>;
+    .filter(Boolean) as Array<{ id: number; value: string; description: string; quantity: number }>;
 
   if (!lines.length) {
     return NextResponse.json({ ok: false, error: "products_not_found" }, { status: 400 });
   }
 
   const totalPrice = Number(
-    lines.reduce((total, item) => total + item.value * item.quantity, 0).toFixed(2)
-  );
+    lines.reduce((total, item) => total + Number(item.value) * item.quantity, 0).toFixed(2)
+  ).toFixed(2);
   const origin =
     request.headers.get("origin") ||
     process.env.NEXT_PUBLIC_SITE_URL ||
