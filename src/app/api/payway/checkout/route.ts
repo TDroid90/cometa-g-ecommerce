@@ -27,6 +27,14 @@ function optionalNumber(value?: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function paywayEnvironment() {
+  return (process.env.PAYWAY_ENVIRONMENT || "developer") as
+    | "developer"
+    | "production"
+    | "desarrollo"
+    | "qa";
+}
+
 function productNumericId(id: string, fallback: number) {
   const numeric = Number(id.replace(/\D/g, "").slice(-8));
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
@@ -101,11 +109,7 @@ function paymentDescription(args: Record<string, unknown>) {
 }
 
 async function paywayCheckout(args: Record<string, unknown>) {
-  const environment = (process.env.PAYWAY_ENVIRONMENT || "developer") as
-    | "developer"
-    | "production"
-    | "desarrollo"
-    | "qa";
+  const environment = paywayEnvironment();
   const publicKey = requiredEnv("PAYWAY_PUBLIC_KEY");
   const privateKey = requiredEnv("PAYWAY_PRIVATE_KEY");
   const company = process.env.PAYWAY_COMPANY || "COMETA G";
@@ -223,6 +227,18 @@ export async function POST(request: NextRequest) {
   const totalPrice = Number(
     lines.reduce((total, item) => total + Number(item.value) * item.quantity, 0).toFixed(2)
   );
+  const isSandbox = paywayEnvironment() !== "production";
+  const sandboxUnitPrice = optionalNumber(process.env.PAYWAY_SANDBOX_TEST_AMOUNT) || 100;
+  const paywayLines = isSandbox
+    ? lines.map((line) => ({ ...line, value: sandboxUnitPrice.toFixed(2) }))
+    : lines;
+  const paywayTotalPrice = isSandbox
+    ? Number(
+        paywayLines
+          .reduce((total, item) => total + Number(item.value) * item.quantity, 0)
+          .toFixed(2)
+      )
+    : totalPrice;
   const origin =
     request.headers.get("origin") ||
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -231,8 +247,8 @@ export async function POST(request: NextRequest) {
   const args = {
     origin_platform: "SDK-Node",
     currency: "ARS",
-    products: lines,
-    total_price: totalPrice,
+    products: paywayLines,
+    total_price: paywayTotalPrice,
     site,
     success_url: `${origin}/checkout/exito`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
