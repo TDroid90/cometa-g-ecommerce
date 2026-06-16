@@ -1,4 +1,5 @@
 import { readLayoutFromGoogleSheets, readProductsFromGoogleSheets } from "@/lib/googleSheets";
+import { generateDemoProducts } from "@/lib/demoProducts";
 import { seedLayout, seedProducts } from "@/lib/seedData";
 import { LayoutSection, Product, ProductFilters } from "@/lib/types";
 
@@ -17,12 +18,25 @@ export async function getLayoutSections(): Promise<LayoutSection[]> {
 export async function getProducts(): Promise<Product[]> {
   try {
     const sheetProducts = await readProductsFromGoogleSheets();
-    return (sheetProducts?.length ? sheetProducts : seedProducts)
+    const baseProducts = sheetProducts?.length ? sheetProducts : seedProducts;
+    const visibleProducts = baseProducts
       .filter((product) => product.visible)
       .sort((a, b) => a.orden - b.orden);
+
+    if (visibleProducts.length >= 100) return visibleProducts;
+
+    return [...visibleProducts, ...generateDemoProducts(visibleProducts, 100)].sort(
+      (a, b) => a.orden - b.orden
+    );
   } catch (error) {
     console.error(error);
-    return seedProducts.filter((product) => product.visible).sort((a, b) => a.orden - b.orden);
+    const visibleProducts = seedProducts
+      .filter((product) => product.visible)
+      .sort((a, b) => a.orden - b.orden);
+
+    return [...visibleProducts, ...generateDemoProducts(visibleProducts, 100)].sort(
+      (a, b) => a.orden - b.orden
+    );
   }
 }
 
