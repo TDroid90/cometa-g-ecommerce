@@ -59,9 +59,10 @@ function findCheckoutUrl(result: Record<string, unknown>, environment: string) {
   const directUrl =
     result.url || result.link || result.payment_link || nested.url || nested.link || nested.payment_link;
 
-  if (typeof directUrl === "string" && directUrl.startsWith("http")) return directUrl;
-
-  const checkoutId = findCheckoutId(result);
+  const checkoutId =
+    typeof directUrl === "string" && directUrl.startsWith("http")
+      ? directUrl.match(/\/web\/checkout\/([^/?#]+)/i)?.[1] || findCheckoutId(result)
+      : findCheckoutId(result);
   if (!checkoutId) return null;
 
   const base =
