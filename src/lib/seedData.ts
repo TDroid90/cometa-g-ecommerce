@@ -81,7 +81,7 @@ export const seedLayout: LayoutSection[] = [
     area: "body",
     section_type: "product_tabs",
     title: "Productos destacados",
-    text: "Featured Products|destacado|active;Latest Products|;Sale Products|oferta",
+    text: "Featured Products|destacado|active;Latest Products|nuevo|;Sale Products|oferta",
     order: 40,
     visible: true,
     desktop_columns: 5,

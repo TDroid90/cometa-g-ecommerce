@@ -129,6 +129,8 @@ export function generateDemoProducts(existingProducts: Product[], targetTotal = 
         color: ["Negro", "Blanco", "Gris", "Azul"][order % 4],
         garantia: order % 3 === 0 ? "36 meses" : "12 meses",
         destacado: order % 7 === 0,
+        nuevo: order > targetTotal - 16,
+        oferta: offer,
         preventa,
         fecha_lanzamiento: preventa ? "2026-08-15" : undefined,
         visible: true,

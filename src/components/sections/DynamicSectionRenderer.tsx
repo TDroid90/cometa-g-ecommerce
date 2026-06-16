@@ -192,8 +192,13 @@ function ProductTabs({ section, products }: { section: LayoutSection; products: 
   const activeIndex = Math.max(0, tabs.findIndex((tab) => tab[2]?.toLowerCase() === "active"));
   const activeTab = tabs[activeIndex] || tabs[0];
   const activeLabel = activeTab?.[0] || section.title || "Featured Products";
+  const inferredFilter = activeLabel.toLowerCase().includes("latest")
+    ? "nuevo"
+    : activeLabel.toLowerCase().includes("sale")
+      ? "oferta"
+      : "destacado";
   const scopedProducts = sectionProducts(
-    { ...section, taxonomies_filter: activeTab?.[1] || section.taxonomies_filter || "destacado" },
+    { ...section, taxonomies_filter: activeTab?.[1] || section.taxonomies_filter || inferredFilter },
     products
   );
 

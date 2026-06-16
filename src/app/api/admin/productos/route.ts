@@ -58,6 +58,8 @@ export async function POST(request: Request) {
       color: formData.get("color"),
       garantia: formData.get("garantia"),
       destacado: formData.get("destacado"),
+      nuevo: formData.get("nuevo"),
+      oferta: formData.get("oferta"),
       preventa: formData.get("preventa"),
       fecha_lanzamiento: formData.get("fecha_lanzamiento"),
       visible: formData.get("visible"),

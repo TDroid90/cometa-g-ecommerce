@@ -35,6 +35,8 @@ export function normalizeProductPayload(input: Record<string, FormDataEntryValue
     color: String(input.color || "").trim(),
     garantia: String(input.garantia || "").trim(),
     destacado: String(input.destacado || "FALSE").toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
+    nuevo: String(input.nuevo || "FALSE").toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
+    oferta: String(input.oferta || "FALSE").toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
     preventa: String(input.preventa || "FALSE").toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
     fecha_lanzamiento: String(input.fecha_lanzamiento || "").trim(),
     visible: String(input.visible || "TRUE").toUpperCase() === "FALSE" ? "FALSE" : "TRUE",

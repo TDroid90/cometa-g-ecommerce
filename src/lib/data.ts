@@ -97,6 +97,14 @@ export function sectionProducts(section: LayoutSection, products: Product[]): Pr
     scoped = scoped.filter((product) => product.destacado);
   }
 
+  if (section.taxonomies_filter === "nuevo" || section.taxonomies_filter === "latest") {
+    scoped = scoped.filter((product) => product.nuevo).sort((a, b) => b.orden - a.orden);
+  }
+
+  if (section.taxonomies_filter === "oferta" || section.taxonomies_filter === "sale") {
+    scoped = scoped.filter((product) => product.oferta || Boolean(product.precio_oferta));
+  }
+
   if (section.taxonomies_filter === "preventa") {
     scoped = scoped.filter((product) => product.preventa);
   }

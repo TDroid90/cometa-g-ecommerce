@@ -23,6 +23,11 @@ function parseInstallments(value?: string) {
   return installments.length ? installments : [1];
 }
 
+function optionalNumber(value?: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function productNumericId(id: string, fallback: number) {
   const numeric = Number(id.replace(/\D/g, "").slice(-8));
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
@@ -171,10 +176,12 @@ export async function POST(request: NextRequest) {
     total_price: totalPrice,
     site,
     success_url: `${origin}/checkout/exito`,
+    redirect_url: `${origin}/checkout/exito`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
     installments: parseInstallments(process.env.PAYWAY_INSTALLMENTS),
+    id_payment_method: optionalNumber(process.env.PAYWAY_PAYMENT_METHOD_ID),
     plan_gobierno: process.env.PAYWAY_PLAN_GOBIERNO === "true",
     public_apikey: publicKey,
     auth_3ds: process.env.PAYWAY_AUTH_3DS !== "false"

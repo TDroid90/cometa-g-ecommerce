@@ -70,6 +70,8 @@ export type Product = {
   color?: string;
   garantia?: string;
   destacado: boolean;
+  nuevo?: boolean;
+  oferta?: boolean;
   preventa: boolean;
   fecha_lanzamiento?: string;
   visible: boolean;

@@ -80,7 +80,7 @@ const blockTemplates: Array<{
   { label: "Image", icon: Image, preview: "Imagen simple con URL o asset.", row: { tipo: "image", titulo: "Imagen", imagen: "", padding: "0" } },
   { label: "Button", icon: Box, preview: "Boton con texto y enlace.", row: { tipo: "button", titulo: "Boton", boton: "Comprar", enlace: "#" } },
   { label: "Divider", icon: Columns3, preview: "Linea separadora entre secciones.", row: { tipo: "divider", titulo: "Separador", border: "bottom" } },
-  { label: "Tabs", icon: LayoutDashboard, preview: "Solapas para productos destacados, nuevos u ofertas.", row: { tipo: "tabs_productos", titulo: "Tabs", items: "Featured Products|destacado|active;Latest Products||;Sale Products|oferta|" } },
+  { label: "Tabs", icon: LayoutDashboard, preview: "Solapas para productos destacados, nuevos u ofertas.", row: { tipo: "tabs_productos", titulo: "Tabs", items: "Featured Products|destacado|active;Latest Products|nuevo|;Sale Products|oferta|" } },
   { label: "Banner", icon: Image, preview: "Hero con columnas, imagen, texto y carousel.", row: { tipo: "banner", titulo: "Banner nuevo", subtitulo: "COMETA G", texto: "Descripcion del banner", boton: "Ver mas", padding: "48", columnas_desktop: "2", columnas_mobile: "1" } },
   { label: "Carousel", icon: Columns3, preview: "Slider horizontal de banners o tarjetas.", row: { tipo: "banner", titulo: "Carousel nuevo", subtitulo: "COMETA G", texto: "Slide principal", boton: "Ver mas", carousel: "TRUE", autoplay: "TRUE", columnas_desktop: "1", columnas_mobile: "1" } },
   { label: "Productos", icon: Grid3X3, preview: "Listado dinamico desde PRODUCTOS.", row: { tipo: "grilla_productos", titulo: "Productos destacados", filtro: "destacado", columnas_desktop: "5", columnas_mobile: "1" } },
