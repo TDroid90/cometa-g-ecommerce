@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 
   const totalPrice = Number(
     lines.reduce((total, item) => total + Number(item.value) * item.quantity, 0).toFixed(2)
-  ).toFixed(2);
+  );
   const origin =
     request.headers.get("origin") ||
     process.env.NEXT_PUBLIC_SITE_URL ||
