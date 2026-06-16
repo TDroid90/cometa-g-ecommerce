@@ -247,8 +247,8 @@ async function getGoogleAccessToken(): Promise<string | null> {
   return cachedGoogleToken.accessToken;
 }
 
-export async function readSheetRows(sheetName: string): Promise<SheetRow[]> {
-  const rows = await fetchPrivateSheetRows("", sheetName);
+export async function readSheetRows(sheetName: string, spreadsheetIdOverride?: string): Promise<SheetRow[]> {
+  const rows = await fetchPrivateSheetRows("", sheetName, spreadsheetIdOverride);
   if (!rows) {
     throw new Error(`No hay credenciales privadas para leer ${sheetName}.`);
   }
@@ -256,8 +256,12 @@ export async function readSheetRows(sheetName: string): Promise<SheetRow[]> {
   return rows;
 }
 
-export async function appendSheetRow(sheetName: string, values: unknown[]): Promise<void> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+export async function appendSheetRow(
+  sheetName: string,
+  values: unknown[],
+  spreadsheetIdOverride?: string
+): Promise<void> {
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
   const accessToken = await getGoogleAccessToken();
   if (!spreadsheetId || !accessToken) {
     throw new Error(`No hay credenciales privadas para escribir ${sheetName}.`);
@@ -281,8 +285,12 @@ export async function appendSheetRow(sheetName: string, values: unknown[]): Prom
   }
 }
 
-export async function ensureSheetHeader(sheetName: string, headers: readonly string[]): Promise<void> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+export async function ensureSheetHeader(
+  sheetName: string,
+  headers: readonly string[],
+  spreadsheetIdOverride?: string
+): Promise<void> {
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
   const accessToken = await getGoogleAccessToken();
   if (!spreadsheetId || !accessToken) {
     throw new Error(`No hay credenciales privadas para preparar ${sheetName}.`);
@@ -334,9 +342,10 @@ export async function appendProductRow(product: Record<string, unknown>): Promis
 export async function updateSheetRow(
   sheetName: string,
   rowNumber: number,
-  values: unknown[]
+  values: unknown[],
+  spreadsheetIdOverride?: string
 ): Promise<void> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
   const accessToken = await getGoogleAccessToken();
   if (!spreadsheetId || !accessToken) {
     throw new Error(`No hay credenciales privadas para actualizar ${sheetName}.`);
@@ -388,9 +397,10 @@ export async function clearSheetRow(sheetName: string, rowNumber: number): Promi
 
 async function fetchPrivateSheetRows(
   sheetNameEnv: string,
-  fallbackName: string
+  fallbackName: string,
+  spreadsheetIdOverride?: string
 ): Promise<SheetRow[] | null> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
   if (!spreadsheetId) return null;
 
   const accessToken = await getGoogleAccessToken();

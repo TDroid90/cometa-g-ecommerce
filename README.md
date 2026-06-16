@@ -43,7 +43,7 @@ Inicio|/,Productos|/productos,Placas de video|/productos?categoria=Placas%20de%2
 Ejemplo de pestañas con una activa:
 
 ```txt
-Featured Products|destacado|active;Latest Products|;Sale Products|oferta
+Featured Products|destacado|active;Latest Products|nuevo|;Sale Products|oferta
 ```
 
 ## PRODUCTOS
@@ -51,7 +51,7 @@ Featured Products|destacado|active;Latest Products|;Sale Products|oferta
 Columnas:
 
 ```txt
-id, sku, nombre, slug, descripcion_corta, descripcion_larga, precio, precio_oferta, stock, stock_status, categoria, subcategoria, marca, tags, imagen_principal, imagenes_extra, atributos, variables, color, garantia, destacado, preventa, fecha_lanzamiento, visible, orden
+id, sku, nombre, slug, descripcion_corta, descripcion_larga, precio, precio_oferta, stock, stock_status, categoria, subcategoria, marca, tags, imagen_principal, imagenes_extra, atributos, variables, color, garantia, destacado, nuevo, oferta, preventa, fecha_lanzamiento, visible, orden
 ```
 
 ### Agregar más líneas en descripción/atributos
@@ -92,6 +92,7 @@ En la página de producto se muestran hasta 5 productos de la misma `categoria`,
 
 ```env
 GOOGLE_SHEETS_ID=tu_spreadsheet_id
+GOOGLE_SHEETS_VENTAS_ID=opcional_otra_planilla_para_ventas
 GOOGLE_SERVICE_ACCOUNT_JSON={...}
 GOOGLE_SHEETS_REVALIDATE_SECONDS=60
 BLOB_READ_WRITE_TOKEN=token_de_vercel_blob_opcional

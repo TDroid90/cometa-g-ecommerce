@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts, productPrice } from "@/lib/data";
+import { appendPendingSale, createOrderId, extractPaywayPaymentId } from "@/lib/sales";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -205,12 +206,29 @@ export async function POST(request: NextRequest) {
   }
 
   const products = await getProducts();
+  const saleProducts: Array<{
+    id: string;
+    sku?: string;
+    nombre: string;
+    precio: number;
+    quantity: number;
+    preventa?: boolean;
+  }> = [];
   const lines = requestedItems
     .map((item, index) => {
       const product = products.find((entry) => entry.id === item.id);
       if (!product) return null;
 
       const value = productPrice(product);
+      saleProducts.push({
+        id: product.id,
+        sku: product.sku,
+        nombre: product.nombre,
+        precio: value,
+        quantity: item.quantity,
+        preventa: product.preventa
+      });
+
       return {
         id: productNumericId(product.id, index + 1),
         value: value.toFixed(2),
@@ -239,6 +257,7 @@ export async function POST(request: NextRequest) {
           .toFixed(2)
       )
     : totalPrice;
+  const orderId = createOrderId();
   const origin =
     request.headers.get("origin") ||
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -250,7 +269,7 @@ export async function POST(request: NextRequest) {
     products: paywayLines,
     total_price: paywayTotalPrice,
     site,
-    success_url: `${origin}/checkout/exito`,
+    success_url: `${origin}/checkout/exito?orden=${orderId}`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
@@ -262,5 +281,31 @@ export async function POST(request: NextRequest) {
   };
 
   const response = await paywayCheckout(args);
-  return NextResponse.json(response.body, { status: response.status });
+  const checkoutBody = response.body as Record<string, unknown>;
+
+  if (response.ok && typeof checkoutBody.checkoutUrl === "string") {
+    await appendPendingSale({
+      orderId,
+      paymentId: extractPaywayPaymentId(checkoutBody.checkoutUrl),
+      checkoutUrl: checkoutBody.checkoutUrl,
+      status: "pendiente",
+      totalReal: totalPrice,
+      totalPayway: paywayTotalPrice,
+      currency: "ARS",
+      sandbox: isSandbox,
+      products: saleProducts,
+      paywayStatus: String(checkoutBody.paywayStatus || ""),
+      paywayPayload: checkoutBody.payway
+    }).catch((error) => {
+      console.error("No se pudo registrar la venta pendiente", error);
+    });
+  }
+
+  return NextResponse.json(
+    {
+      ...checkoutBody,
+      orderId
+    },
+    { status: response.status }
+  );
 }
