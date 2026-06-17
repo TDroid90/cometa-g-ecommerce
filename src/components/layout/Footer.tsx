@@ -20,7 +20,9 @@ const defaultUsefulLinks = [
   { label: "Mi cuenta", href: "/perfil" }
 ];
 
-function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto" }) {
+type PaymentLogoType = "visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto" | "naranja" | "qr";
+
+function PaymentLogo({ type }: { type: PaymentLogoType }) {
   if (type === "visa") {
     return <span className="text-[15px] font-black italic tracking-tight text-[#2147a8]">VISA</span>;
   }
@@ -54,10 +56,33 @@ function PaymentLogo({ type }: { type: "visa" | "master" | "cabal" | "amex" | "m
     );
   }
 
+  if (type === "cripto") {
+    return (
+      <span className="inline-flex items-center gap-1.5 leading-none">
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f7931a] text-[13px] font-black text-white">B</span>
+        <span className="text-[11px] font-black text-zinc-900">CRIPTO</span>
+      </span>
+    );
+  }
+
+  if (type === "naranja") {
+    return (
+      <span className="inline-flex items-center gap-1.5 leading-none">
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-[#ff6a00] text-[12px] font-black text-white">N</span>
+        <span className="text-[11px] font-black text-zinc-900">Naranja X</span>
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5 leading-none">
-      <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f7931a] text-[13px] font-black text-white">B</span>
-      <span className="text-[11px] font-black text-zinc-900">CRIPTO</span>
+      <span className="grid h-5 w-5 grid-cols-2 gap-[2px] rounded-sm border border-zinc-900 p-[3px]">
+        <span className="bg-zinc-900" />
+        <span className="bg-zinc-900" />
+        <span className="bg-zinc-900" />
+        <span className="bg-zinc-900" />
+      </span>
+      <span className="text-[11px] font-black text-zinc-900">QR</span>
     </span>
   );
 }
@@ -71,10 +96,10 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
   const links = parseLinks(linksSection?.text);
   const usefulLinks = links.length ? links.slice(0, 3) : defaultUsefulLinks;
   const socialLinks = parseLinks(socialSection?.text);
-  const paymentMethods = (paymentsSection?.text || "cabal,visa,master,mipyme,cripto,amex")
+  const paymentMethods = (paymentsSection?.text || "cabal,visa,master,naranja,mipyme,qr,cripto,amex")
     .split(",")
     .map((method) => method.trim().toLowerCase())
-    .filter(Boolean) as Array<"visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto">;
+    .filter(Boolean) as PaymentLogoType[];
 
   return (
     <footer className="border-t border-comet-border bg-comet-black text-zinc-300">

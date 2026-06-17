@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatPrice, productPrice } from "@/lib/data";
 import {
   CASHFLOW_RATE,
+  effectiveCoefficient,
   effectiveInterestRate,
   financedTotal,
   installmentAmount,
@@ -63,7 +64,12 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
         <p className="text-xs font-black uppercase tracking-[0.14em] text-comet-fuchsia">
           Financiacion
         </p>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-zinc-300">
+          <span className="rounded border border-comet-border px-2 py-1">Tarjetas de credito</span>
+          <span className="rounded border border-comet-border px-2 py-1">Naranja X</span>
+          <span className="rounded border border-comet-border px-2 py-1">Billeteras virtuales con QR</span>
+        </div>
+        <div className="mt-3 max-h-[430px] space-y-2 overflow-y-auto pr-1">
           {PAYMENT_PLANS.map((plan) => {
             const total = financedTotal(subtotal, plan);
             const installment = installmentAmount(subtotal, plan);
@@ -84,10 +90,10 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
                   <span>
                     <span className="block text-sm font-black text-white">{plan.label}</span>
                     <span className="mt-1 block text-xs text-zinc-400">
-                      Cuotas fijas de {formatPrice(installment)}. Interes {effectiveInterestRate(plan)}%
+                      Cuotas fijas de {formatPrice(installment)}. Interes total {effectiveInterestRate(plan)}%
                     </span>
                     <span className="mt-1 block text-[11px] text-zinc-500">
-                      {plan.note}. Incluye {CASHFLOW_RATE}% por pronto pago a 10 dias.
+                      {plan.note}. Coef. Payway con IVA {plan.coefficientWithVat.toFixed(4)} + {CASHFLOW_RATE}%.
                     </span>
                   </span>
                   <span className="text-right">
@@ -109,7 +115,7 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
           <strong className="text-white">{formatPrice(fixedInstallment)}</strong>. Total informado a
           Payway: <strong className="text-white">{formatPrice(finalTotal)}</strong>. Interes total{" "}
           <strong className="text-white">{effectiveInterestRate(selectedPlan)}%</strong>, incluyendo{" "}
-          {CASHFLOW_RATE}% por pronto pago.
+          tu {CASHFLOW_RATE}% por pronto pago a 10 dias.
         </div>
       </div>
       <button

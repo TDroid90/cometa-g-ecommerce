@@ -312,7 +312,7 @@ export const headerTemplateRows: Array<Record<LayoutSimpleColumn, string> & { la
     titulo: "Metodos de pago",
     subtitulo: "",
     texto: "Ventas online, reservas, stock actualizado y asesoramiento gamer.",
-    items: "cabal,visa,master,mipyme,cripto,amex",
+    items: "cabal,visa,master,naranja,mipyme,qr,cripto,amex",
     imagen: "",
     enlace: "",
     boton: "",
