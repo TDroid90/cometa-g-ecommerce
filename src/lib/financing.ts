@@ -93,6 +93,10 @@ export function getPaymentPlan(code?: string) {
 }
 
 export function effectiveCoefficient(plan: PaymentPlan) {
+  if (plan.installments === 1) {
+    return 1;
+  }
+
   return plan.coefficientWithVat + CASHFLOW_COEFFICIENT;
 }
 

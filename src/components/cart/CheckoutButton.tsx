@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { formatPrice, productPrice } from "@/lib/data";
 import {
-  CASHFLOW_RATE,
-  effectiveCoefficient,
   effectiveInterestRate,
   financedTotal,
   installmentAmount,
@@ -21,6 +19,7 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
   const selectedPlan = PAYMENT_PLANS.find((plan) => plan.code === paymentPlan) || PAYMENT_PLANS[0];
   const finalTotal = financedTotal(subtotal, selectedPlan);
   const fixedInstallment = installmentAmount(subtotal, selectedPlan);
+  const selectedInterest = effectiveInterestRate(selectedPlan);
 
   async function startCheckout() {
     setLoading(true);
@@ -69,53 +68,65 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
           <span className="rounded border border-comet-border px-2 py-1">Naranja X</span>
           <span className="rounded border border-comet-border px-2 py-1">Billeteras virtuales con QR</span>
         </div>
-        <div className="mt-3 max-h-[430px] space-y-2 overflow-y-auto pr-1">
+
+        <label className="mt-4 block text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500">
+          Elegi la forma de pago
+        </label>
+        <select
+          value={paymentPlan}
+          onChange={(event) => setPaymentPlan(event.target.value as PaymentPlanCode)}
+          className="mt-2 h-12 w-full rounded-md border border-comet-border bg-comet-black px-3 text-sm font-black text-white outline-none transition focus:border-comet-fuchsia"
+        >
           {PAYMENT_PLANS.map((plan) => {
-            const total = financedTotal(subtotal, plan);
-            const installment = installmentAmount(subtotal, plan);
-            const active = plan.code === paymentPlan;
+            const interest = effectiveInterestRate(plan);
+            const suffix = plan.planGobierno ? " - MiPyME" : "";
 
             return (
-              <button
-                key={plan.code}
-                type="button"
-                onClick={() => setPaymentPlan(plan.code)}
-                className={`w-full rounded-md border p-3 text-left transition ${
-                  active
-                    ? "border-comet-fuchsia bg-comet-fuchsia/10"
-                    : "border-comet-border bg-comet-black hover:border-comet-fuchsia/50"
-                }`}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block text-sm font-black text-white">{plan.label}</span>
-                    <span className="mt-1 block text-xs text-zinc-400">
-                      Cuotas fijas de {formatPrice(installment)}. Interes total {effectiveInterestRate(plan)}%
-                    </span>
-                    <span className="mt-1 block text-[11px] text-zinc-500">
-                      {plan.note}. Coef. Payway con IVA {plan.coefficientWithVat.toFixed(4)} + {CASHFLOW_RATE}%.
-                    </span>
-                  </span>
-                  <span className="text-right">
-                    <span className="block text-sm font-black text-white">
-                      {plan.installments} x {formatPrice(installment)}
-                    </span>
-                    <span className="mt-1 block text-xs text-zinc-400">
-                      Total {formatPrice(total)}
-                    </span>
-                  </span>
-                </span>
-              </button>
+              <option key={plan.code} value={plan.code}>
+                {plan.installments === 1
+                  ? `1 pago - Interes ${interest}%`
+                  : `${plan.installments} cuotas - Interes ${interest}%${suffix}`}
+              </option>
             );
           })}
+        </select>
+
+        <div
+          className={`mt-3 rounded-md border p-3 ${
+            selectedPlan.planGobierno
+              ? "border-comet-fuchsia bg-gradient-to-r from-comet-fuchsia/20 to-comet-violet/20"
+              : "border-comet-border bg-comet-panel"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-black text-white">
+                {selectedPlan.installments === 1
+                  ? "1 pago"
+                  : `${selectedPlan.installments} cuotas fijas`}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                Interes total {selectedInterest}%
+                {selectedPlan.planGobierno && (
+                  <strong className="ml-2 rounded bg-comet-fuchsia px-2 py-0.5 text-[10px] uppercase text-white">
+                    MiPyME
+                  </strong>
+                )}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-black text-white">
+                {selectedPlan.installments} x {formatPrice(fixedInstallment)}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">Total {formatPrice(finalTotal)}</p>
+            </div>
+          </div>
         </div>
-        <div className="mt-3 rounded border border-comet-border bg-comet-panel px-3 py-2 text-xs leading-5 text-zinc-300">
-          Vas a pagar {selectedPlan.installments} cuota{selectedPlan.installments === 1 ? "" : "s"} fija
-          {selectedPlan.planGobierno ? " bajo regimen MiPyME" : " comunes"} por{" "}
-          <strong className="text-white">{formatPrice(fixedInstallment)}</strong>. Total informado a
-          Payway: <strong className="text-white">{formatPrice(finalTotal)}</strong>. Interes total{" "}
-          <strong className="text-white">{effectiveInterestRate(selectedPlan)}%</strong>, incluyendo{" "}
-          tu {CASHFLOW_RATE}% por pronto pago a 10 dias.
+
+        <div className="mt-3 rounded border border-comet-border bg-black/20 px-3 py-2 text-xs leading-5 text-zinc-300">
+          Vas a pagar {selectedPlan.installments} cuota{selectedPlan.installments === 1 ? "" : "s"} de{" "}
+          <strong className="text-white">{formatPrice(fixedInstallment)}</strong>. Total:{" "}
+          <strong className="text-white">{formatPrice(finalTotal)}</strong>.
         </div>
       </div>
       <button
