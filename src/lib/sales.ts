@@ -11,6 +11,10 @@ export const SALES_COLUMNS = [
   "total_payway",
   "moneda",
   "sandbox",
+  "plan_pago",
+  "cuotas",
+  "interes",
+  "mipyme",
   "productos",
   "cantidades",
   "preventa",
@@ -43,6 +47,12 @@ type SaleInput = {
   totalPayway: number;
   currency: string;
   sandbox: boolean;
+  paymentPlan?: {
+    label: string;
+    installments: number;
+    interestRate: number;
+    planGobierno: boolean;
+  };
   products: Array<{
     id: string;
     sku?: string;
@@ -140,6 +150,10 @@ function saleToValues(sale: SaleInput, sheetDate = dateInBuenosAires()) {
     sale.totalPayway,
     sale.currency,
     sale.sandbox ? "TRUE" : "FALSE",
+    sale.paymentPlan?.label || "",
+    sale.paymentPlan?.installments || "",
+    sale.paymentPlan?.interestRate ?? "",
+    sale.paymentPlan?.planGobierno ? "TRUE" : "FALSE",
     productSummary(sale.products),
     quantitySummary(sale.products),
     hasPreorder(sale.products) ? "TRUE" : "FALSE",
@@ -238,6 +252,10 @@ export async function updateSaleStatus(update: SaleUpdate) {
       saleMatch.row.total_payway,
       saleMatch.row.moneda,
       saleMatch.row.sandbox,
+      saleMatch.row.plan_pago,
+      saleMatch.row.cuotas,
+      saleMatch.row.interes,
+      saleMatch.row.mipyme,
       saleMatch.row.productos,
       saleMatch.row.cantidades,
       saleMatch.row.preventa,
@@ -252,4 +270,3 @@ export async function updateSaleStatus(update: SaleUpdate) {
 
   return true;
 }
-

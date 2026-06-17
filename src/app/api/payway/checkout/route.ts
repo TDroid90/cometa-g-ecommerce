@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts, productPrice } from "@/lib/data";
+import { financedTotal, getPaymentPlan } from "@/lib/financing";
 import { appendPendingSale, createOrderId, extractPaywayPaymentId } from "@/lib/sales";
 
 export const runtime = "nodejs";
@@ -194,7 +195,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json()) as { items?: CheckoutItem[] };
+  const body = (await request.json()) as { items?: CheckoutItem[]; paymentPlan?: string };
+  const selectedPlan = getPaymentPlan(body.paymentPlan);
   const requestedItems = (body.items || [])
     .map((item) => ({
       id: String(item.id || ""),
@@ -247,17 +249,8 @@ export async function POST(request: NextRequest) {
     lines.reduce((total, item) => total + Number(item.value) * item.quantity, 0).toFixed(2)
   );
   const isSandbox = paywayEnvironment() !== "production";
-  const sandboxUnitPrice = optionalNumber(process.env.PAYWAY_SANDBOX_TEST_AMOUNT) || 100;
-  const paywayLines = isSandbox
-    ? lines.map((line) => ({ ...line, value: sandboxUnitPrice.toFixed(2) }))
-    : lines;
-  const paywayTotalPrice = isSandbox
-    ? Number(
-        paywayLines
-          .reduce((total, item) => total + Number(item.value) * item.quantity, 0)
-          .toFixed(2)
-      )
-    : totalPrice;
+  const paywayLines = lines;
+  const paywayTotalPrice = financedTotal(totalPrice, selectedPlan);
   const orderId = createOrderId();
   const origin =
     request.headers.get("origin") ||
@@ -267,16 +260,20 @@ export async function POST(request: NextRequest) {
   const args = {
     origin_platform: "SDK-Node",
     currency: "ARS",
-    products: paywayLines,
+    products: selectedPlan.interestRate > 0 ? undefined : paywayLines,
+    payment_description:
+      selectedPlan.interestRate > 0
+        ? `Compra COMETA G - ${selectedPlan.label}`
+        : undefined,
     total_price: paywayTotalPrice,
     site,
     success_url: `${origin}/checkout/exito?orden=${orderId}`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
-    installments: parseInstallments(process.env.PAYWAY_INSTALLMENTS),
+    installments: [selectedPlan.installments],
     id_payment_method: optionalNumber(process.env.PAYWAY_PAYMENT_METHOD_ID),
-    plan_gobierno: process.env.PAYWAY_PLAN_GOBIERNO === "true",
+    plan_gobierno: selectedPlan.planGobierno,
     public_apikey: publicKey,
     auth_3ds: process.env.PAYWAY_AUTH_3DS !== "false"
   };
@@ -294,6 +291,12 @@ export async function POST(request: NextRequest) {
       totalPayway: paywayTotalPrice,
       currency: "ARS",
       sandbox: isSandbox,
+      paymentPlan: {
+        label: selectedPlan.label,
+        installments: selectedPlan.installments,
+        interestRate: selectedPlan.interestRate,
+        planGobierno: selectedPlan.planGobierno
+      },
       products: saleProducts,
       paywayStatus: String(checkoutBody.paywayStatus || ""),
       paywayPayload: checkoutBody.payway
