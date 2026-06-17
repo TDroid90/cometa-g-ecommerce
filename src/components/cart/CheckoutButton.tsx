@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { CartItem } from "@/lib/types";
 import { formatPrice, productPrice } from "@/lib/data";
-import { financedTotal, installmentAmount, PAYMENT_PLANS, PaymentPlanCode } from "@/lib/financing";
+import {
+  CASHFLOW_RATE,
+  effectiveInterestRate,
+  financedTotal,
+  installmentAmount,
+  PAYMENT_PLANS,
+  PaymentPlanCode
+} from "@/lib/financing";
+import { CartItem } from "@/lib/types";
 
 export function CheckoutButton({ items }: { items: CartItem[] }) {
   const [loading, setLoading] = useState(false);
@@ -77,7 +84,10 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
                   <span>
                     <span className="block text-sm font-black text-white">{plan.label}</span>
                     <span className="mt-1 block text-xs text-zinc-400">
-                      {plan.note} · Interes {plan.interestRate}%
+                      Cuotas fijas de {formatPrice(installment)}. Interes {effectiveInterestRate(plan)}%
+                    </span>
+                    <span className="mt-1 block text-[11px] text-zinc-500">
+                      {plan.note}. Incluye {CASHFLOW_RATE}% por pronto pago a 10 dias.
                     </span>
                   </span>
                   <span className="text-right">
@@ -97,7 +107,9 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
           Vas a pagar {selectedPlan.installments} cuota{selectedPlan.installments === 1 ? "" : "s"} fija
           {selectedPlan.planGobierno ? " bajo regimen MiPyME" : " comunes"} por{" "}
           <strong className="text-white">{formatPrice(fixedInstallment)}</strong>. Total informado a
-          Payway: <strong className="text-white">{formatPrice(finalTotal)}</strong>.
+          Payway: <strong className="text-white">{formatPrice(finalTotal)}</strong>. Interes total{" "}
+          <strong className="text-white">{effectiveInterestRate(selectedPlan)}%</strong>, incluyendo{" "}
+          {CASHFLOW_RATE}% por pronto pago.
         </div>
       </div>
       <button

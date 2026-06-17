@@ -6,8 +6,11 @@ export type PaymentPlan = {
   installments: number;
   planGobierno: boolean;
   interestRate: number;
+  cashflowRate: number;
   note: string;
 };
+
+export const CASHFLOW_RATE = 2.5;
 
 export const PAYMENT_PLANS: PaymentPlan[] = [
   {
@@ -16,6 +19,7 @@ export const PAYMENT_PLANS: PaymentPlan[] = [
     installments: 1,
     planGobierno: false,
     interestRate: 0,
+    cashflowRate: CASHFLOW_RATE,
     note: "Pago comun"
   },
   {
@@ -24,6 +28,7 @@ export const PAYMENT_PLANS: PaymentPlan[] = [
     installments: 3,
     planGobierno: true,
     interestRate: 0,
+    cashflowRate: CASHFLOW_RATE,
     note: "Regimen MiPyME"
   },
   {
@@ -32,23 +37,26 @@ export const PAYMENT_PLANS: PaymentPlan[] = [
     installments: 6,
     planGobierno: true,
     interestRate: 0,
+    cashflowRate: CASHFLOW_RATE,
     note: "Regimen MiPyME"
   },
   {
     code: "common9",
-    label: "9 cuotas",
+    label: "9 cuotas MiPyME",
     installments: 9,
-    planGobierno: false,
+    planGobierno: true,
     interestRate: 35,
-    note: "Cuotas comunes"
+    cashflowRate: CASHFLOW_RATE,
+    note: "Regimen MiPyME"
   },
   {
     code: "common12",
-    label: "12 cuotas",
+    label: "12 cuotas MiPyME",
     installments: 12,
-    planGobierno: false,
+    planGobierno: true,
     interestRate: 55,
-    note: "Cuotas comunes"
+    cashflowRate: CASHFLOW_RATE,
+    note: "Regimen MiPyME"
   }
 ];
 
@@ -56,11 +64,14 @@ export function getPaymentPlan(code?: string) {
   return PAYMENT_PLANS.find((plan) => plan.code === code) || PAYMENT_PLANS[0];
 }
 
+export function effectiveInterestRate(plan: PaymentPlan) {
+  return plan.interestRate + plan.cashflowRate;
+}
+
 export function financedTotal(amount: number, plan: PaymentPlan) {
-  return Math.round(amount * (1 + plan.interestRate / 100));
+  return Math.round(amount * (1 + effectiveInterestRate(plan) / 100));
 }
 
 export function installmentAmount(amount: number, plan: PaymentPlan) {
   return Math.round(financedTotal(amount, plan) / plan.installments);
 }
-

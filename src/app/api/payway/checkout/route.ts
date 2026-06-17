@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts, productPrice } from "@/lib/data";
-import { financedTotal, getPaymentPlan } from "@/lib/financing";
+import { effectiveInterestRate, financedTotal, getPaymentPlan } from "@/lib/financing";
 import { appendPendingSale, createOrderId, extractPaywayPaymentId } from "@/lib/sales";
 
 export const runtime = "nodejs";
@@ -260,9 +260,9 @@ export async function POST(request: NextRequest) {
   const args = {
     origin_platform: "SDK-Node",
     currency: "ARS",
-    products: selectedPlan.interestRate > 0 ? undefined : paywayLines,
+    products: effectiveInterestRate(selectedPlan) > 0 ? undefined : paywayLines,
     payment_description:
-      selectedPlan.interestRate > 0
+      effectiveInterestRate(selectedPlan) > 0
         ? `Compra COMETA G - ${selectedPlan.label}`
         : undefined,
     total_price: paywayTotalPrice,
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
       paymentPlan: {
         label: selectedPlan.label,
         installments: selectedPlan.installments,
-        interestRate: selectedPlan.interestRate,
+        interestRate: effectiveInterestRate(selectedPlan),
         planGobierno: selectedPlan.planGobierno
       },
       products: saleProducts,
