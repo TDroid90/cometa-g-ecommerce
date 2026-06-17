@@ -46,7 +46,7 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
 }
 
 export function productPrice(product: Product): number {
-  return product.precio_oferta ?? product.precio;
+  return product.precio_oferta && product.precio_oferta > 0 ? product.precio_oferta : product.precio;
 }
 
 export function formatPrice(value: number): string {
@@ -102,7 +102,7 @@ export function sectionProducts(section: LayoutSection, products: Product[]): Pr
   }
 
   if (section.taxonomies_filter === "oferta" || section.taxonomies_filter === "sale") {
-    scoped = scoped.filter((product) => product.oferta || Boolean(product.precio_oferta));
+    scoped = scoped.filter((product) => product.oferta || Boolean(product.precio_oferta && product.precio_oferta > 0));
   }
 
   if (section.taxonomies_filter === "preventa") {

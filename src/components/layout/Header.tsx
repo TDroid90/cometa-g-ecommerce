@@ -223,7 +223,7 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
                       </span>
                     </span>
                     <span className="text-sm font-black text-white">
-                      {formatQuickPrice(product.precio_oferta ?? product.precio)}
+                      {formatQuickPrice(product.precio_oferta && product.precio_oferta > 0 ? product.precio_oferta : product.precio)}
                     </span>
                   </Link>
                 ))}
