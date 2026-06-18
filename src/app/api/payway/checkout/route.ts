@@ -258,6 +258,7 @@ export async function POST(request: NextRequest) {
     "https://www.cometag.store";
 
   const args = {
+    id: orderId,
     origin_platform: "SDK-Node",
     currency: "ARS",
     products: effectiveInterestRate(selectedPlan) > 0 ? undefined : paywayLines,
@@ -268,12 +269,15 @@ export async function POST(request: NextRequest) {
     total_price: paywayTotalPrice,
     site,
     success_url: `${origin}/checkout/exito?orden=${orderId}`,
+    redirect_url: `${origin}/checkout/estado?orden=${orderId}`,
     cancel_url: `${origin}/carrito?checkout=cancelado`,
     notifications_url: `${origin}/api/payway/notificaciones`,
     template_id: Number(process.env.PAYWAY_TEMPLATE_ID || "1"),
     installments: [selectedPlan.installments],
     id_payment_method: optionalNumber(process.env.PAYWAY_PAYMENT_METHOD_ID),
     plan_gobierno: selectedPlan.planGobierno,
+    establishment_number: optionalNumber(process.env.PAYWAY_ESTABLISHMENT_NUMBER || process.env.PAYWAY_TERMINAL_ID),
+    cuit: process.env.PAYWAY_CUIT?.trim() || undefined,
     public_apikey: publicKey,
     auth_3ds: process.env.PAYWAY_AUTH_3DS !== "false"
   };
