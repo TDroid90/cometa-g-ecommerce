@@ -18,7 +18,15 @@ export type PaymentPlan = {
 };
 
 export const CASHFLOW_RATE = 2.5;
-const CASHFLOW_COEFFICIENT = CASHFLOW_RATE / 100;
+const DISPLAY_INTEREST_RATES: Record<PaymentPlanCode, number> = {
+  one: 0,
+  common2: 20,
+  mipyme3: 15,
+  mipyme6: 25,
+  common9: 70,
+  common12: 95,
+  common18: 160
+};
 
 function commonPlan(installments: number, coefficientWithVat: number): PaymentPlan {
   return {
@@ -71,15 +79,11 @@ export function getPaymentPlan(code?: string) {
 }
 
 export function effectiveCoefficient(plan: PaymentPlan) {
-  if (plan.installments === 1) {
-    return 1;
-  }
-
-  return plan.coefficientWithVat + CASHFLOW_COEFFICIENT;
+  return 1 + effectiveInterestRate(plan) / 100;
 }
 
 export function effectiveInterestRate(plan: PaymentPlan) {
-  return Number(((effectiveCoefficient(plan) - 1) * 100).toFixed(2));
+  return DISPLAY_INTEREST_RATES[plan.code];
 }
 
 export function financedTotal(amount: number, plan: PaymentPlan) {
