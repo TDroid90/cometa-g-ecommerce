@@ -31,7 +31,7 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
     setMessage(null);
 
     try {
-      const checkoutPlan = paymentTab === "wallet" ? "one" : paymentPlan;
+      const checkoutPlan = paymentTab === "credit" ? paymentPlan : "one";
       const response = await fetch("/api/payway/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,16 +188,26 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
         )}
 
         {paymentTab === "debit" && (
-          <div className="mt-4 rounded-md border border-comet-fuchsia bg-gradient-to-r from-comet-fuchsia/20 to-comet-violet/20 p-4">
-            <p className="text-sm font-black text-white">Transferencia o debito</p>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Para transferencias, llamanos al{" "}
-              <a href={`tel:${transferPhone.replaceAll(" ", "")}`} className="font-black text-white">
-                {transferPhone}
-              </a>
-              . Te confirmamos stock y datos de pago.
-            </p>
-          </div>
+          <>
+            <div className="mt-4 rounded-md border border-comet-border bg-comet-panel p-4">
+              <p className="text-sm font-black text-white">Tarjeta de debito</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Pagas online en un solo pago. Total:{" "}
+                <strong className="text-white">{formatPrice(subtotal)}</strong>.
+              </p>
+            </div>
+
+            <div className="mt-3 rounded-md border border-comet-fuchsia bg-gradient-to-r from-comet-fuchsia/20 to-comet-violet/20 p-3">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-white">Transferencias</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Para transferencias, llamanos al{" "}
+                <a href={`tel:${transferPhone.replaceAll(" ", "")}`} className="font-black text-white">
+                  {transferPhone}
+                </a>
+                .
+              </p>
+            </div>
+          </>
         )}
 
         {paymentTab === "wallet" && (
@@ -211,22 +221,13 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
         )}
       </div>
 
-      {paymentTab === "debit" ? (
-        <a
-          href={`tel:${transferPhone.replaceAll(" ", "")}`}
-          className="grid h-12 w-full place-items-center rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110"
-        >
-          Llamar para transferir
-        </a>
-      ) : (
-        <button
-          onClick={startCheckout}
-          disabled={loading}
-          className="h-12 w-full rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
-        >
-          {loading ? "Creando checkout..." : "Pagar"}
-        </button>
-      )}
+      <button
+        onClick={startCheckout}
+        disabled={loading}
+        className="h-12 w-full rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+      >
+        {loading ? "Creando checkout..." : "Pagar"}
+      </button>
       {message && <p className="mt-3 text-xs leading-5 text-comet-fuchsia">{message}</p>}
     </div>
   );
