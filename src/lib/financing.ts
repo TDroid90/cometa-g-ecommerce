@@ -2,20 +2,9 @@ export type PaymentPlanCode =
   | "one"
   | "common2"
   | "mipyme3"
-  | "common4"
-  | "common5"
   | "mipyme6"
-  | "common7"
-  | "common8"
   | "common9"
-  | "common10"
-  | "common11"
   | "common12"
-  | "common13"
-  | "common14"
-  | "common15"
-  | "common16"
-  | "common17"
   | "common18";
 
 export type PaymentPlan = {
@@ -63,8 +52,6 @@ export const PAYMENT_PLANS: PaymentPlan[] = [
     cashflowRate: CASHFLOW_RATE,
     note: "Regimen MiPyME"
   },
-  commonPlan(4, 1.2722),
-  commonPlan(5, 1.3348),
   {
     code: "mipyme6",
     label: "6 cuotas MiPyME",
@@ -74,17 +61,8 @@ export const PAYMENT_PLANS: PaymentPlan[] = [
     cashflowRate: CASHFLOW_RATE,
     note: "Regimen MiPyME"
   },
-  commonPlan(7, 1.4945),
-  commonPlan(8, 1.5702),
   commonPlan(9, 1.6494),
-  commonPlan(10, 1.7322),
-  commonPlan(11, 1.8188),
   commonPlan(12, 1.9093),
-  commonPlan(13, 2.004),
-  commonPlan(14, 2.103),
-  commonPlan(15, 2.2066),
-  commonPlan(16, 2.315),
-  commonPlan(17, 2.4284),
   commonPlan(18, 2.5472)
 ];
 
