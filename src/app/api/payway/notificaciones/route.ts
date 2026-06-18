@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { uploadPurchaseReceipt } from "@/lib/googleDrive";
 import { extractPaywayPaymentId, updateSaleStatus } from "@/lib/sales";
 
 export const runtime = "nodejs";
@@ -55,6 +56,16 @@ export async function POST(request: NextRequest) {
     console.error("No se pudo actualizar venta desde Payway", error);
     return false;
   });
+
+  if (orderId || paymentId) {
+    await uploadPurchaseReceipt({
+      orderId: orderId || paymentId,
+      paymentId,
+      payload
+    }).catch((error) => {
+      console.error("No se pudo subir comprobante a Drive", error);
+    });
+  }
 
   return NextResponse.json({ ok: true, updated });
 }

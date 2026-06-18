@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatPrice, productPrice } from "@/lib/data";
 import {
   effectiveInterestRate,
@@ -12,6 +13,14 @@ import {
 import { CartItem } from "@/lib/types";
 
 type PaymentTab = "credit" | "debit" | "wallet";
+type SessionUser = {
+  email: string;
+  nombre?: string;
+  apellido?: string;
+  direccion?: string;
+  telefono?: string;
+  profile_complete: boolean;
+};
 
 export function CheckoutButton({ items }: { items: CartItem[] }) {
   const [loading, setLoading] = useState(false);
@@ -19,6 +28,11 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlanCode>("one");
   const [paymentTab, setPaymentTab] = useState<PaymentTab>("credit");
   const [paymentMenuOpen, setPaymentMenuOpen] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(() => {
+    if (typeof window === "undefined") return null;
+    const saved = window.localStorage.getItem("cometag-user");
+    return saved ? (JSON.parse(saved) as SessionUser) : null;
+  });
   const subtotal = items.reduce((total, item) => total + productPrice(item.product) * item.quantity, 0);
   const selectedPlan = PAYMENT_PLANS.find((plan) => plan.code === paymentPlan) || PAYMENT_PLANS[0];
   const finalTotal = financedTotal(subtotal, selectedPlan);
@@ -40,7 +54,8 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
             id: item.product.id,
             quantity: item.quantity
           })),
-          paymentPlan: checkoutPlan
+          paymentPlan: checkoutPlan,
+          customerEmail: user?.email
         })
       });
       const data = (await response.json()) as {
@@ -65,6 +80,20 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
 
   return (
     <div className="mt-6">
+      {(!user || !user.profile_complete) && (
+        <div className="mb-4 rounded-md border border-comet-fuchsia bg-comet-fuchsia/10 p-3 text-sm leading-6 text-zinc-200">
+          {!user
+            ? "Para comprar necesitas iniciar sesion."
+            : "Para comprar necesitas completar tu perfil con telefono y direccion."}
+          <Link
+            href={!user ? "/login" : "/perfil"}
+            className="mt-3 grid h-11 place-items-center rounded-md comet-gradient text-sm font-black text-white"
+          >
+            {!user ? "Iniciar sesion" : "Completar perfil"}
+          </Link>
+        </div>
+      )}
+
       <div className="mb-4 rounded-md border border-comet-border bg-black/25 p-3">
         <div className="grid grid-cols-3 overflow-hidden rounded-md border border-comet-border bg-comet-black text-[11px] font-black text-zinc-400">
           {[
@@ -223,7 +252,7 @@ export function CheckoutButton({ items }: { items: CartItem[] }) {
 
       <button
         onClick={startCheckout}
-        disabled={loading}
+        disabled={loading || !user || !user.profile_complete}
         className="h-12 w-full rounded-md comet-gradient text-sm font-black text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
       >
         {loading ? "Creando checkout..." : "Pagar"}

@@ -105,6 +105,12 @@ export async function loginUser(email: string, password: string): Promise<UserPr
   return publicUser(user);
 }
 
+export async function getUserProfile(email: string): Promise<UserProfile | null> {
+  const normalizedEmail = normalizeEmail(email);
+  const user = (await getUsers()).find((candidate) => candidate.email === normalizedEmail);
+  return user ? publicUser(user) : null;
+}
+
 export async function updateUserProfile(input: {
   email: string;
   nombre: string;

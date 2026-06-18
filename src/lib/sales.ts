@@ -22,7 +22,9 @@ export const SALES_COLUMNS = [
   "cliente_nombre",
   "payway_estado",
   "payway_payload",
-  "updated_at"
+  "updated_at",
+  "cliente_telefono",
+  "cliente_direccion"
 ] as const;
 
 export const SALES_INDEX_COLUMNS = [
@@ -34,6 +36,18 @@ export const SALES_INDEX_COLUMNS = [
   "estado",
   "total_real",
   "total_payway",
+  "created_at",
+  "updated_at"
+] as const;
+
+export const USER_ORDER_COLUMNS = [
+  "email",
+  "order_id",
+  "fecha",
+  "payment_id",
+  "estado",
+  "total_payway",
+  "productos",
   "created_at",
   "updated_at"
 ] as const;
@@ -64,6 +78,8 @@ type SaleInput = {
   customer?: {
     email?: string;
     name?: string;
+    phone?: string;
+    address?: string;
   };
   paywayStatus?: string;
   paywayPayload?: unknown;
@@ -161,6 +177,23 @@ function saleToValues(sale: SaleInput, sheetDate = dateInBuenosAires()) {
     sale.customer?.name || "",
     sale.paywayStatus || "",
     payloadText(sale.paywayPayload),
+    timestamp,
+    sale.customer?.phone || "",
+    sale.customer?.address || ""
+  ];
+}
+
+function userOrderToValues(sale: SaleInput, sheetDate = dateInBuenosAires()) {
+  const timestamp = nowIso();
+  return [
+    sale.customer?.email || "",
+    sale.orderId,
+    sheetDate,
+    sale.paymentId || "",
+    sale.status,
+    sale.totalPayway,
+    productSummary(sale.products),
+    timestamp,
     timestamp
   ];
 }
@@ -193,6 +226,11 @@ export async function appendPendingSale(sale: SaleInput) {
 
   await ensureSheetHeader("VENTAS_INDEX", SALES_INDEX_COLUMNS, spreadsheetId);
   await appendSheetRow("VENTAS_INDEX", indexToValues(sale, sheetName, sheetDate), spreadsheetId);
+
+  if (sale.customer?.email) {
+    await ensureSheetHeader("USUARIOS_COMPRAS", USER_ORDER_COLUMNS, spreadsheetId);
+    await appendSheetRow("USUARIOS_COMPRAS", userOrderToValues(sale, sheetDate), spreadsheetId);
+  }
 }
 
 function findRow(rows: Record<string, string>[], predicate: (row: Record<string, string>) => boolean) {
@@ -263,10 +301,37 @@ export async function updateSaleStatus(update: SaleUpdate) {
       saleMatch.row.cliente_nombre,
       update.paywayStatus || saleMatch.row.payway_estado,
       payloadText(update.paywayPayload) || saleMatch.row.payway_payload,
-      updatedAt
+      updatedAt,
+      saleMatch.row.cliente_telefono,
+      saleMatch.row.cliente_direccion
     ],
     spreadsheetId
   );
+
+  const userOrderRows = await readSheetRows("USUARIOS_COMPRAS", spreadsheetId).catch(() => []);
+  const userOrderMatch = findRow(
+    userOrderRows,
+    (row) => row.order_id === indexMatch.row.order_id || Boolean(update.paymentId && row.payment_id === update.paymentId)
+  );
+
+  if (userOrderMatch) {
+    await updateSheetRow(
+      "USUARIOS_COMPRAS",
+      userOrderMatch.rowNumber,
+      [
+        userOrderMatch.row.email,
+        userOrderMatch.row.order_id,
+        userOrderMatch.row.fecha,
+        userOrderMatch.row.payment_id,
+        update.status,
+        userOrderMatch.row.total_payway,
+        userOrderMatch.row.productos,
+        userOrderMatch.row.created_at,
+        updatedAt
+      ],
+      spreadsheetId
+    );
+  }
 
   return true;
 }

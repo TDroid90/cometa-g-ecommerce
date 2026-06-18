@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProducts, productPrice } from "@/lib/data";
 import { effectiveInterestRate, financedTotal, getPaymentPlan } from "@/lib/financing";
 import { appendPendingSale, createOrderId, extractPaywayPaymentId } from "@/lib/sales";
+import { getUserProfile } from "@/lib/users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -195,8 +196,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json()) as { items?: CheckoutItem[]; paymentPlan?: string };
+  const body = (await request.json()) as { items?: CheckoutItem[]; paymentPlan?: string; customerEmail?: string };
   const selectedPlan = getPaymentPlan(body.paymentPlan);
+  const customer = await getUserProfile(body.customerEmail || "");
+
+  if (!customer) {
+    return NextResponse.json(
+      { ok: false, error: "login_required", message: "Necesitas iniciar sesion para comprar." },
+      { status: 401 }
+    );
+  }
+
+  if (!customer.profile_complete) {
+    return NextResponse.json(
+      { ok: false, error: "profile_required", message: "Completa tu perfil antes de comprar." },
+      { status: 403 }
+    );
+  }
+
   const requestedItems = (body.items || [])
     .map((item) => ({
       id: String(item.id || ""),
@@ -301,6 +318,12 @@ export async function POST(request: NextRequest) {
         planGobierno: selectedPlan.planGobierno
       },
       products: saleProducts,
+      customer: {
+        email: customer.email,
+        name: [customer.nombre, customer.apellido].filter(Boolean).join(" "),
+        phone: customer.telefono,
+        address: customer.direccion
+      },
       paywayStatus: String(checkoutBody.paywayStatus || ""),
       paywayPayload: checkoutBody.payway
     }).catch((error) => {
