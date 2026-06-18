@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const payload = await request.json().catch(() => ({}));
-  console.info("Payway notification", payload);
 
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   const nested =
@@ -30,6 +29,12 @@ export async function POST(request: NextRequest) {
       nested.payment_status ||
       ""
   ).toLowerCase();
+
+  if (!paymentId && !orderId) {
+    console.warn("Payway notification without identifiers");
+    return NextResponse.json({ ok: false, updated: false, error: "missing_identifiers" }, { status: 400 });
+  }
+
   const status = rawStatus.includes("approved") || rawStatus.includes("aprob")
     ? "aprobado"
     : rawStatus.includes("reject") || rawStatus.includes("rechaz")
@@ -37,6 +42,8 @@ export async function POST(request: NextRequest) {
       : rawStatus.includes("cancel")
         ? "cancelado"
         : rawStatus || "notificado";
+
+  console.info("Payway notification", { orderId, paymentId, status });
 
   const updated = await updateSaleStatus({
     orderId,
