@@ -92,6 +92,7 @@ En la página de producto se muestran hasta 5 productos de la misma `categoria`,
 
 ```env
 GOOGLE_SHEETS_ID=tu_spreadsheet_id
+GOOGLE_SHEETS_PRODUCTOS_ID=opcional_otra_planilla_para_productos
 GOOGLE_SHEETS_VENTAS_ID=opcional_otra_planilla_para_ventas
 GOOGLE_SERVICE_ACCOUNT_JSON={...}
 GOOGLE_SHEETS_REVALIDATE_SECONDS=60
@@ -101,6 +102,8 @@ ADMIN_UPLOAD_SECRET=una_clave_larga_inventada_por_vos
 ```
 
 También se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.
+
+`GOOGLE_SHEETS_ID` queda como planilla principal de backend, layout, usuarios y ventas. Si definis `GOOGLE_SHEETS_PRODUCTOS_ID`, la app lee y escribe productos desde esa planilla separada; si no esta definida, usa la hoja `PRODUCTOS` de la planilla principal.
 
 ## Payway
 

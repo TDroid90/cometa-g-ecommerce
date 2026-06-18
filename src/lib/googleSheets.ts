@@ -335,7 +335,8 @@ export async function ensureSheetHeader(
 export async function appendProductRow(product: Record<string, unknown>): Promise<void> {
   await appendSheetRow(
     process.env.GOOGLE_SHEETS_PRODUCTOS_NAME || "PRODUCTOS",
-    PRODUCT_COLUMNS.map((column) => product[column] ?? "")
+    PRODUCT_COLUMNS.map((column) => product[column] ?? ""),
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID
   );
 }
 
@@ -576,11 +577,17 @@ function normalizeSectionType(value: string): LayoutSection["section_type"] {
 }
 
 export async function readProductsFromGoogleSheets(): Promise<Product[] | null> {
-  const rows = await fetchSheetRows(
-    "GOOGLE_SHEETS_PRODUCTOS_NAME",
-    "GOOGLE_SHEETS_PRODUCTOS_URL",
-    "PRODUCTOS"
-  );
+  const rows =
+    (await fetchPrivateSheetRows(
+      "GOOGLE_SHEETS_PRODUCTOS_NAME",
+      "PRODUCTOS",
+      process.env.GOOGLE_SHEETS_PRODUCTOS_ID
+    ).catch(() => null)) ||
+    (await fetchSheetRows(
+      "GOOGLE_SHEETS_PRODUCTOS_NAME",
+      "GOOGLE_SHEETS_PRODUCTOS_URL",
+      "PRODUCTOS"
+    ));
 
   if (!rows) return null;
 
