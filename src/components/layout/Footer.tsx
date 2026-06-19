@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Instagram, MessageCircle, Send } from "lucide-react";
 import { LayoutSection } from "@/lib/types";
@@ -193,17 +192,17 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         <div>
           <h3 className="text-sm font-black uppercase tracking-wide text-white">Data Fiscal</h3>
           <a
-            href="https://www.afip.gob.ar/landing/default.asp"
-            target="_blank"
+            href="http://qr.afip.gob.ar/?qr=HDul37GPIEuVUXh0EOKQ0g,,"
+            target="_F960AFIPInfo"
             rel="noreferrer"
             className="mt-4 inline-flex rounded-md border border-comet-border bg-[#242424] p-3 transition hover:border-comet-fuchsia"
           >
-            <Image
-              src="/data-fiscal-arca.svg"
+            <img
+              src="http://www.afip.gob.ar/images/f960/DATAWEB.jpg"
               alt="Data Fiscal ARCA"
               width={74}
-              height={98}
-              className="h-auto w-[74px]"
+              height={104}
+              className="h-auto w-[74px] border-0"
             />
           </a>
         </div>
