@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { appendSheetRow, readSheetRows, updateSheetRow } from "@/lib/googleSheets";
 
 const USERS_SHEET = process.env.GOOGLE_SHEETS_USERS_NAME || "USUARIOS";
+const USERS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_USERS_ID || process.env.GOOGLE_SHEETS_CUSTOMERS_ID;
 const PASSWORD_PEPPER = process.env.AUTH_PASSWORD_PEPPER || "cometa-g-v1";
 
 export type UserProfile = {
@@ -57,7 +58,7 @@ function publicUser(user: UserRow): UserProfile {
 }
 
 async function getUsers(): Promise<UserRow[]> {
-  const rows = await readSheetRows(USERS_SHEET);
+  const rows = await readSheetRows(USERS_SHEET, USERS_SPREADSHEET_ID);
   return rows.map(rowToUser).filter((user) => user.email);
 }
 
@@ -73,17 +74,11 @@ export async function registerUser(email: string, password: string): Promise<Use
   }
 
   const now = new Date().toISOString();
-  await appendSheetRow(USERS_SHEET, [
-    normalizedEmail,
-    hashPassword(normalizedEmail, password),
-    "",
-    "",
-    "",
-    "",
-    false,
-    now,
-    now
-  ]);
+  await appendSheetRow(
+    USERS_SHEET,
+    [normalizedEmail, hashPassword(normalizedEmail, password), "", "", "", "", false, now, now],
+    USERS_SPREADSHEET_ID
+  );
 
   return {
     email: normalizedEmail,
@@ -138,17 +133,22 @@ export async function updateUserProfile(input: {
     updated_at: now
   };
 
-  await updateSheetRow(USERS_SHEET, user.rowNumber, [
-    nextUser.email,
-    nextUser.password_hash,
-    nextUser.nombre,
-    nextUser.apellido,
-    nextUser.direccion,
-    nextUser.telefono,
-    nextUser.profile_complete,
-    nextUser.created_at,
-    nextUser.updated_at
-  ]);
+  await updateSheetRow(
+    USERS_SHEET,
+    user.rowNumber,
+    [
+      nextUser.email,
+      nextUser.password_hash,
+      nextUser.nombre,
+      nextUser.apellido,
+      nextUser.direccion,
+      nextUser.telefono,
+      nextUser.profile_complete,
+      nextUser.created_at,
+      nextUser.updated_at
+    ],
+    USERS_SPREADSHEET_ID
+  );
 
   return publicUser(nextUser);
 }

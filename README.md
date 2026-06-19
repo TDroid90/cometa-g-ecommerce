@@ -18,9 +18,9 @@ npm run start
 
 ## Google Sheets
 
-La app lee primero `LAYOUT_SIMPLE`. Si esa hoja no existe o está vacía, usa `LAYOUT` como respaldo.
+La app lee `LAYOUT` como hoja principal del editor visual.
 
-### LAYOUT_SIMPLE
+### LAYOUT
 
 Columnas:
 
@@ -93,6 +93,7 @@ En la página de producto se muestran hasta 5 productos de la misma `categoria`,
 ```env
 GOOGLE_SHEETS_ID=tu_spreadsheet_id
 GOOGLE_SHEETS_PRODUCTOS_ID=opcional_otra_planilla_para_productos
+GOOGLE_SHEETS_USERS_ID=opcional_otra_planilla_para_usuarios
 GOOGLE_SHEETS_VENTAS_ID=opcional_otra_planilla_para_ventas
 GOOGLE_SERVICE_ACCOUNT_JSON={...}
 GOOGLE_SHEETS_REVALIDATE_SECONDS=60
@@ -103,7 +104,7 @@ ADMIN_UPLOAD_SECRET=una_clave_larga_inventada_por_vos
 
 También se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.
 
-`GOOGLE_SHEETS_ID` queda como planilla principal de backend, layout, usuarios y ventas. Si definis `GOOGLE_SHEETS_PRODUCTOS_ID`, la app lee y escribe productos desde esa planilla separada; si no esta definida, usa la hoja `PRODUCTOS` de la planilla principal.
+`GOOGLE_SHEETS_ID` queda como planilla principal de backend y layout. Si definis `GOOGLE_SHEETS_PRODUCTOS_ID`, la app lee y escribe productos desde esa planilla separada. Si definis `GOOGLE_SHEETS_USERS_ID` y `GOOGLE_SHEETS_VENTAS_ID`, usuarios, ordenes y ventas quedan fuera de la planilla de layout.
 
 ## Payway
 

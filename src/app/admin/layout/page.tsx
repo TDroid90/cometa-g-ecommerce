@@ -923,7 +923,7 @@ export default function AdminLayoutPage() {
       });
       const data = (await response.json()) as { ok: boolean; mode?: string };
       if (!response.ok || !data.ok) throw new Error("No se pudo guardar.");
-      setMessage(data.mode === "created" ? "Bloque creado en LAYOUT_SIMPLE." : "Bloque actualizado.");
+      setMessage(data.mode === "created" ? "Bloque creado en LAYOUT." : "Bloque actualizado.");
       await loadRows(secret);
     } catch {
       setMessage("No pude guardar. Revisa la clave admin y permisos de la Sheet.");
@@ -994,7 +994,7 @@ export default function AdminLayoutPage() {
       return;
     }
 
-    setMessage("Seccion eliminada de LAYOUT_SIMPLE.");
+    setMessage("Seccion eliminada de LAYOUT.");
     await loadRows(secret);
   }
 
@@ -1387,7 +1387,7 @@ export default function AdminLayoutPage() {
                 <PreviewSelectedBlock row={selected} rows={rows} mode={previewMode} />
               </div>
               <p className="mx-auto mt-4 max-w-3xl text-center text-xs leading-5 text-zinc-500">
-                El preview es orientativo. Al guardar se actualiza LAYOUT_SIMPLE; la web toma los cambios desde Google Sheets.
+                El preview es orientativo. Al guardar se actualiza LAYOUT; la web toma los cambios desde Google Sheets.
               </p>
             </div>
           </div>

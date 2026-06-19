@@ -11,7 +11,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SHEET_NAME = "LAYOUT_SIMPLE";
+const SHEET_NAME = process.env.GOOGLE_SHEETS_LAYOUT_NAME || "LAYOUT";
 
 function isAuthorized(request: NextRequest) {
   const expected = process.env.ADMIN_UPLOAD_SECRET;

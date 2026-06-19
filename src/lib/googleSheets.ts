@@ -462,7 +462,9 @@ async function fetchSheetRows(
 }
 
 export async function readLayoutFromGoogleSheets(): Promise<LayoutSection[] | null> {
-  const simpleRows = await fetchSheetRows("", "", "LAYOUT_SIMPLE").catch(() => null);
+  const simpleRows = await fetchSheetRows("GOOGLE_SHEETS_LAYOUT_NAME", "GOOGLE_SHEETS_LAYOUT_URL", "LAYOUT").catch(
+    () => null
+  );
   if (simpleRows?.length) {
     return simpleRows
       .map((row) => {
