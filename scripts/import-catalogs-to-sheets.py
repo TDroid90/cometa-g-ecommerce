@@ -134,7 +134,7 @@ EXCLUDED_PATTERNS = [
     (r"\btelevisor|\btelevisores|\btv\b", "televisores"),
     (r"\bcelular|\bcelulares|\bsmartphone|\btelefon", "celulares/telefonia"),
     (r"\bsistema operativo|\blicencia|\blicencias|\bsoftware\b|\bwindows\b|\boffice\b", "software/licencias"),
-    (r"\brobot|\brobotica|\bdomotica", "robotica"),
+    (r"\brobot|\brobotica", "robotica"),
     (r"\bconsola|\bconsolas|\bplaystation|\bxbox\b|\bnintendo\b", "consolas"),
     (r"\bjuego\b|\bjuegos\b|\bgames\b|\bvideojuego", "juegos"),
     (r"contadora.*billete|clasificadora.*billete|billetes", "contadoras de billetes"),
@@ -206,6 +206,8 @@ CATEGORY_ALIASES = {
     "SOPORTES": ("Soportes", "Soportes"),
     "HOGAR": ("Casa Inteligente", "Hogar"),
     "CASA INTELIGENTE": ("Casa Inteligente", "Hogar"),
+    "ELECTRODOMESTICOS": ("Electro", "Electrodomesticos"),
+    "ELECTRODOMÃ‰STICOS": ("Electro", "Electrodomesticos"),
     "CAMARAS IP": ("Seguridad", "Camaras IP"),
     "KITS Y BUNDLES": ("Combos", "Kits y Bundles"),
     "OUTLET": ("Outlet", "Ofertas"),
@@ -222,12 +224,13 @@ MENU_CATEGORY_ORDER = {
     "Audio": 70,
     "Conectividad": 80,
     "Unidad de Energia": 90,
-    "Estuches": 100,
-    "Soportes": 110,
-    "Seguridad": 120,
-    "Casa Inteligente": 130,
-    "Muebles": 140,
-    "Accesorios": 150,
+    "Electro": 100,
+    "Estuches": 110,
+    "Soportes": 120,
+    "Seguridad": 130,
+    "Casa Inteligente": 140,
+    "Muebles": 150,
+    "Accesorios": 160,
 }
 
 SUBCATEGORY_ALIASES = {
@@ -259,6 +262,13 @@ SUBCATEGORY_ALIASES = {
     "UNIDAD DE ENERGÍA": "Unidad de Energia",
     "KITS Y BUNDLES": "Kits y Bundles",
     "SILLAS Y ESCRITORIOS": "Sillas y Escritorios",
+    "SILLAS GAMER": "Sillas Gamer",
+    "ESCRITORIOS": "Escritorios",
+    "ELECTRODOMESTICOS": "Electrodomesticos",
+    "ELECTRODOMÃ‰STICOS": "Electrodomesticos",
+    "COCINA": "Cocina",
+    "LIMPIEZA": "Limpieza",
+    "TEMPERATURA": "Temperatura",
     "UPS": "UPS",
     "UPS Y ESTABILIZADORES": "UPS y Estabilizadores",
     "ESTABILIZADORES": "UPS y Estabilizadores",
@@ -323,6 +333,10 @@ def should_reject(*values: str) -> str:
             # Keep gamer controls, which are useful even if providers classify them near games.
             if reason in {"consolas", "juegos"} and re.search(r"joystick|gamepad|control|volante", haystack):
                 continue
+            if reason == "cables" and re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
+                continue
+            if reason == "robotica" and re.search(r"\baspiradora\b|\blimpieza\b|\btrap\b", haystack):
+                continue
             return reason
     return ""
 
@@ -331,17 +345,38 @@ def should_reject_normalized(category: str, subcategory: str, name: str, brand: 
     haystack = normalize_text(" ".join([category, subcategory, name, brand, extra]))
     if category in {"Outlet", "Combos", "Cables"}:
         return normalize_text(category)
-    if "cables" in haystack or re.search(r"\bcable[s]?\b", haystack):
+    if ("cables" in haystack or re.search(r"\bcable[s]?\b", haystack)) and not re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
         return "cables"
-    if category == "Casa Inteligente":
-        allowed = re.search(r"\bdomotica\b|\bhue\b|\bphilips\b|\bwiz\b|\blampara\b|\blamparas\b|\bled smart\b|\bsmart led\b", haystack)
-        if not allowed:
-            return "casa inteligente no prioritaria"
     return ""
 
 
 def recategorize_product(category: str, subcategory: str, name: str, brand: str) -> tuple[str, str]:
     haystack = normalize_text(" ".join([category, subcategory, name, brand]))
+    name_text = normalize_text(name)
+    if re.search(r"\bcafetera\b|\bcafe\b|\bhorno\b|\banafe\b|\bmicroondas\b|\bpava\b|\bfreidora\b|\blicuadora\b|\btostadora\b|\bbatidora\b|\bsandwichera\b", haystack):
+        return "Electro", "Cocina"
+    if re.search(r"\baspiradora\b|\blimpieza\b|\btrap\b", haystack):
+        return "Electro", "Limpieza"
+    if re.search(r"\bventilador\b|\bventiladores\b|\bcaloventor\b|\bcalefactor\b|\bestufa\b|\bclimatizador\b", haystack):
+        return "Electro", "Temperatura"
+    if category == "Electro" or re.search(r"\belectrodomestico\b|\belectrodomesticos\b", haystack):
+        return "Electro", subcategory or "Electrodomesticos"
+    if category == "Casa Inteligente" or re.search(r"\bdomotica\b|\bsmart home\b|\btapo\b|\bhue\b|\bwiz\b|\bphilips\b|\blampara\b|\blamparas\b|\bled smart\b|\bsmart led\b|\blightstrip\b", haystack):
+        if re.search(r"\bhub\b|\bbridge\b|\bpuente\b", haystack):
+            return "Casa Inteligente", "Hubs"
+        if re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blampara\b|\blamparas\b|\bled\b|\blightstrip\b", haystack):
+            return "Casa Inteligente", "Luces"
+        return "Casa Inteligente", "Domotica"
+    if category == "Muebles":
+        if re.search(r"\bescritorio\b|\bescritorios\b|\bestante\b", name_text):
+            return "Muebles", "Escritorios"
+        if re.search(r"\bsilla\b|\bsillas\b", name_text):
+            return "Muebles", "Sillas Gamer"
+        return "Muebles", subcategory or "Escritorios"
+    if category == "Accesorios" and not subcategory:
+        return "Accesorios", "Accesorios"
+    if category == "Soportes" and not subcategory:
+        return "Soportes", "Soportes"
     if category == "Memorias" and re.search(r"\bsodimm\b|\bso\s*dimm\b|\bnotebook\b", haystack):
         return "Memorias", "Memorias Notebook"
     if "placas de red" in haystack or re.search(r"\bplaca[s]?\s+de\s+red\b", haystack):

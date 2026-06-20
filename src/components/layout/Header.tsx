@@ -24,6 +24,7 @@ const megaMenuRoots = [
   { label: "Componentes", categories: ["Hardware", "Almacenamiento", "Memorias"] },
   { label: "Computos", categories: ["Computadoras", "Monitores"] },
   { label: "Perifericos", categories: ["Perifericos", "Audio", "Conectividad", "Unidad de Energia"] },
+  { label: "Electro", categories: ["Electro"] },
   {
     label: "Otros",
     categories: [
@@ -36,8 +37,6 @@ const megaMenuRoots = [
     ]
   }
 ];
-
-const compactMegaCategories = new Set(["Casa Inteligente", "Muebles", "Soportes", "Accesorios"]);
 
 function parseNavItems(text?: string, fallback = defaultNavItems) {
   const items = (text || "")
@@ -398,20 +397,18 @@ export function Header({
                           >
                             {group.category}
                           </Link>
-                          {!compactMegaCategories.has(group.category) && (
-                            <div className="space-y-1">
-                              {group.items.map((item) => (
-                                <Link
-                                  key={`${item.categoria}-${item.subcategoria}`}
-                                  href={item.link}
-                                  onClick={() => setMegaOpen(false)}
-                                  className="block rounded px-1 py-0.5 text-sm text-zinc-700 hover:bg-white hover:text-comet-fuchsia"
-                                >
-                                  {item.subcategoria}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
+                          <div className="space-y-1">
+                            {group.items.map((item) => (
+                              <Link
+                                key={`${item.categoria}-${item.subcategoria}`}
+                                href={item.link}
+                                onClick={() => setMegaOpen(false)}
+                                className="block rounded px-1 py-0.5 text-sm text-zinc-700 hover:bg-white hover:text-comet-fuchsia"
+                              >
+                                {item.subcategoria}
+                              </Link>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
