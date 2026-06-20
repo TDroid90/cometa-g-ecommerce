@@ -1,19 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, LocateFixed, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { LayoutSection, Product } from "@/lib/types";
+import { ChevronRight, Heart, LocateFixed, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CategoryMenuItem, LayoutSection, Product } from "@/lib/types";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 
 const defaultNavItems = [
-  { href: "/", label: "Inicio" },
-  { href: "/productos", label: "Productos" },
-  { href: "/productos?categoria=Placas%20de%20video", label: "Placas de video" },
-  { href: "/productos?categoria=Procesadores", label: "Procesadores" },
-  { href: "/productos?categoria=Monitores", label: "Monitores" },
-  { href: "/productos?disponibilidad=preventa", label: "Preventa" }
+  { href: "/productos?oferta=true", label: "Ofertas" },
+  { href: "/productos?disponibilidad=preventa", label: "Preventa" },
+  { href: "/mecanica-de-compra", label: "Mecanica de compra" },
+  { href: "/arma-tu-pc", label: "ARMA TU PC" }
 ];
 
 const defaultTopLinks = [
@@ -21,6 +19,25 @@ const defaultTopLinks = [
   { href: "#", label: "Seguir pedido" },
   { href: "/perfil", label: "Mi cuenta" }
 ];
+
+const megaMenuRoots = [
+  { label: "Componentes", categories: ["Hardware", "Almacenamiento", "Memorias"] },
+  { label: "Computos", categories: ["Computadoras", "Monitores"] },
+  { label: "Perifericos", categories: ["Perifericos", "Audio", "Conectividad", "Unidad de Energia"] },
+  {
+    label: "Otros",
+    categories: [
+      "Estuches",
+      "Seguridad",
+      "Casa Inteligente",
+      "Muebles",
+      "Soportes",
+      "Accesorios",
+    ]
+  }
+];
+
+const compactMegaCategories = new Set(["Casa Inteligente", "Muebles", "Soportes", "Accesorios"]);
 
 function parseNavItems(text?: string, fallback = defaultNavItems) {
   const items = (text || "")
@@ -30,6 +47,11 @@ function parseNavItems(text?: string, fallback = defaultNavItems) {
       return label ? { label, href: href || "#" } : null;
     })
     .filter(Boolean) as { label: string; href: string }[];
+
+  const labels = new Set(items.map((item) => item.label.toLowerCase()));
+  if (labels.has("inicio") || labels.has("productos") || labels.has("placas de video")) {
+    return fallback;
+  }
 
   return items.length ? items : fallback;
 }
@@ -63,8 +85,16 @@ function formatQuickPrice(value: number) {
   }).format(value);
 }
 
-export function Header({ sections }: { sections: LayoutSection[] }) {
+export function Header({
+  sections,
+  categoryMenu
+}: {
+  sections: LayoutSection[];
+  categoryMenu?: CategoryMenuItem[];
+}) {
   const [open, setOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [activeMegaRoot, setActiveMegaRoot] = useState(megaMenuRoots[0].label);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [suggestions, setSuggestions] = useState<Product[]>([]);
@@ -92,6 +122,44 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
   const showIcons = iconsSection?.visible !== false;
   const title = nav?.title || "COMETA G";
   const subtitle = nav?.subtitle || "Computacion Gamer";
+  const groupedMenu = useMemo(() => {
+    const groups = new Map<string, CategoryMenuItem[]>();
+    for (const item of categoryMenu || []) {
+      const current = groups.get(item.categoria) || [];
+      current.push(item);
+      groups.set(item.categoria, current);
+    }
+
+    return Array.from(groups.entries()).map(([category, items]) => ({
+      category,
+      total: items.reduce((sum, item) => sum + item.cantidad_productos, 0),
+      items: items
+        .filter((item) => item.subcategoria.toLowerCase() !== "ver todo")
+        .filter((item) => item.subcategoria)
+        .sort((a, b) => a.subcategoria.localeCompare(b.subcategoria))
+    }));
+  }, [categoryMenu]);
+  const megaMenu = useMemo(() => {
+    const byCategory = new Map(groupedMenu.map((group) => [group.category, group]));
+    const usedCategories = new Set<string>();
+
+    const roots = megaMenuRoots.map((root) => {
+      const groups = root.categories
+        .map((category) => byCategory.get(category))
+        .filter(Boolean) as typeof groupedMenu;
+      groups.forEach((group) => usedCategories.add(group.category));
+      return { ...root, groups };
+    });
+
+    const uncategorized = groupedMenu.filter((group) => !usedCategories.has(group.category));
+    const otherRoot = roots.find((root) => root.label === "Otros");
+    if (otherRoot) {
+      otherRoot.groups = [...otherRoot.groups, ...uncategorized];
+    }
+
+    return roots.filter((root) => root.groups.length > 0);
+  }, [groupedMenu]);
+  const selectedMegaRoot = megaMenu.find((root) => root.label === activeMegaRoot) || megaMenu[0];
 
   useEffect(() => {
     const cleaned = query.trim();
@@ -281,9 +349,77 @@ export function Header({ sections }: { sections: LayoutSection[] }) {
 
       <nav className="hidden bg-gradient-to-r from-comet-red via-comet-fuchsia to-comet-violet lg:block">
         <div className="mx-auto flex h-12 w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-          <button className="mr-2 inline-flex h-12 items-center gap-2 border-x border-white/15 px-4 text-sm font-black text-white">
-            <Menu size={18} /> {categoryNav?.button_text || "Categorias"}
-          </button>
+          <div
+            className="relative mr-2"
+            onMouseEnter={() => {
+              setMegaOpen(true);
+              if (!selectedMegaRoot && megaMenu[0]) setActiveMegaRoot(megaMenu[0].label);
+            }}
+            onMouseLeave={() => setMegaOpen(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setMegaOpen((current) => !current)}
+              className="inline-flex h-12 items-center gap-2 border-x border-white/15 px-4 text-sm font-black text-white transition hover:bg-black/15"
+            >
+              <Menu size={18} /> {categoryNav?.button_text || "Categorias"}
+            </button>
+
+            {megaOpen && selectedMegaRoot && (
+              <div className="absolute left-0 top-12 z-50 w-[min(1120px,calc(100vw-48px))] overflow-hidden rounded-b-md border border-comet-border bg-[#08080c] shadow-2xl shadow-black/50">
+                <div className="grid min-h-[360px] grid-cols-[230px_1fr]">
+                  <div className="border-r border-comet-border bg-white/[0.03] py-3">
+                    {megaMenu.map((root) => (
+                      <button
+                        key={root.label}
+                        type="button"
+                        onMouseEnter={() => setActiveMegaRoot(root.label)}
+                        onFocus={() => setActiveMegaRoot(root.label)}
+                        className={`flex w-full items-center justify-between px-5 py-3 text-left text-sm font-black transition ${
+                          selectedMegaRoot.label === root.label
+                            ? "bg-comet-fuchsia text-white"
+                            : "text-zinc-300 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span>{root.label}</span>
+                        <ChevronRight size={16} />
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="max-h-[520px] overflow-y-auto bg-[#f2f3f5] p-5 text-zinc-900">
+                    <div className="grid grid-cols-2 gap-x-10 gap-y-6 xl:grid-cols-4">
+                      {selectedMegaRoot.groups.map((group) => (
+                        <div key={group.category}>
+                          <Link
+                            href={`/productos?categoria=${encodeURIComponent(group.category)}`}
+                            onClick={() => setMegaOpen(false)}
+                            className="mb-2 block border-b border-zinc-300 pb-1 text-sm font-black text-zinc-800 hover:text-comet-fuchsia"
+                          >
+                            {group.category}
+                          </Link>
+                          {!compactMegaCategories.has(group.category) && (
+                            <div className="space-y-1">
+                              {group.items.map((item) => (
+                                <Link
+                                  key={`${item.categoria}-${item.subcategoria}`}
+                                  href={item.link}
+                                  onClick={() => setMegaOpen(false)}
+                                  className="block rounded px-1 py-0.5 text-sm text-zinc-700 hover:bg-white hover:text-comet-fuchsia"
+                                >
+                                  {item.subcategoria}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           {navItems.map((item) => (
             <Link
               key={item.href}

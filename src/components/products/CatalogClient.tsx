@@ -10,19 +10,33 @@ export function CatalogClient({
   products,
   initialQuery,
   initialCategory,
-  initialAvailability
+  initialSubcategory,
+  initialAvailability,
+  initialOffer
 }: {
   products: Product[];
   initialQuery?: string;
   initialCategory?: string;
+  initialSubcategory?: string;
   initialAvailability?: string;
+  initialOffer?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery || "");
   const [categoria, setCategoria] = useState(initialCategory || "");
+  const [subcategoria, setSubcategoria] = useState(initialSubcategory || "");
   const [marca, setMarca] = useState("");
   const [disponibilidad, setDisponibilidad] = useState(initialAvailability || "todos");
+  const [oferta, setOferta] = useState(Boolean(initialOffer));
   const [maxPrice, setMaxPrice] = useState("");
   const categories = uniqueValues(products, "categoria");
+  const subcategories = Array.from(
+    new Set(
+      products
+        .filter((product) => !categoria || product.categoria === categoria)
+        .map((product) => product.subcategoria)
+        .filter(Boolean) as string[]
+    )
+  ).sort((a, b) => a.localeCompare(b));
   const brands = uniqueValues(products, "marca");
   const highestPrice = Math.max(...products.map(productPrice), 0);
 
@@ -31,11 +45,13 @@ export function CatalogClient({
       filterProducts(products, {
         query,
         categoria: categoria || undefined,
+        subcategoria: subcategoria || undefined,
         marca: marca || undefined,
         disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
+        oferta,
         maxPrice: maxPrice ? Number(maxPrice) : undefined
       }),
-    [products, query, categoria, marca, disponibilidad, maxPrice]
+    [products, query, categoria, subcategoria, marca, disponibilidad, oferta, maxPrice]
   );
 
   return (
@@ -45,7 +61,7 @@ export function CatalogClient({
         <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Productos gamer</h1>
       </div>
 
-      <div className="mb-6 grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
+      <div className="mb-6 grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={17} />
           <input
@@ -58,13 +74,29 @@ export function CatalogClient({
 
         <select
           value={categoria}
-          onChange={(event) => setCategoria(event.target.value)}
+          onChange={(event) => {
+            setCategoria(event.target.value);
+            setSubcategoria("");
+          }}
           className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
         >
           <option value="">Todas las categorias</option>
           {categories.map((category) => (
             <option key={category} value={category}>
               {category}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={subcategoria}
+          onChange={(event) => setSubcategoria(event.target.value)}
+          className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
+        >
+          <option value="">Subcategorias</option>
+          {subcategories.map((subcategory) => (
+            <option key={subcategory} value={subcategory}>
+              {subcategory}
             </option>
           ))}
         </select>
@@ -102,6 +134,16 @@ export function CatalogClient({
           placeholder="Precio max."
           className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-comet-fuchsia"
         />
+
+        <label className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-comet-border bg-comet-black px-3 text-sm font-bold text-white">
+          <input
+            type="checkbox"
+            checked={oferta}
+            onChange={(event) => setOferta(event.target.checked)}
+            className="accent-comet-fuchsia"
+          />
+          Oferta
+        </label>
       </div>
 
       <div className="mb-5 flex items-center justify-between text-sm text-zinc-400">
@@ -110,8 +152,10 @@ export function CatalogClient({
           onClick={() => {
             setQuery("");
             setCategoria("");
+            setSubcategoria("");
             setMarca("");
             setDisponibilidad("todos");
+            setOferta(false);
             setMaxPrice("");
           }}
           className="font-bold text-zinc-300 hover:text-white"

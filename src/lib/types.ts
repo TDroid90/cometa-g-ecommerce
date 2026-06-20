@@ -55,7 +55,9 @@ export type Product = {
   slug: string;
   descripcion_corta?: string;
   descripcion_larga?: string;
+  precio_usd?: number;
   precio: number;
+  precio_oferta_usd?: number;
   precio_oferta?: number;
   stock: number;
   stock_status: StockStatus;
@@ -87,8 +89,19 @@ export type CartItem = {
 export type ProductFilters = {
   query?: string;
   categoria?: string;
+  subcategoria?: string;
   marca?: string;
   disponibilidad?: "todos" | "disponible" | "sin_stock" | "preventa";
+  oferta?: boolean;
   minPrice?: number;
   maxPrice?: number;
+};
+
+export type CategoryMenuItem = {
+  categoria: string;
+  subcategoria: string;
+  cantidad_productos: number;
+  link: string;
+  orden: number;
+  visible: boolean;
 };

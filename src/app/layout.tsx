@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLayoutSections } from "@/lib/data";
+import { getCategoryMenu, getLayoutSections } from "@/lib/data";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartProvider } from "@/components/cart/CartProvider";
@@ -19,7 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const sections = await getLayoutSections();
+  const [sections, categoryMenu] = await Promise.all([getLayoutSections(), getCategoryMenu()]);
   const headerSections = sections.filter((section) => section.area === "header");
   const footerSections = sections.filter((section) => section.area === "footer");
 
@@ -30,7 +30,7 @@ export default async function RootLayout({
           <CartProvider>
             <WishlistProvider>
               <div className="flex min-h-screen flex-col">
-                <Header sections={headerSections} />
+                <Header sections={headerSections} categoryMenu={categoryMenu} />
                 <main className="flex-1">{children}</main>
                 <Footer sections={footerSections} />
               </div>

@@ -1,5 +1,5 @@
 import { createSign } from "crypto";
-import { LayoutSection, Product, StockStatus } from "@/lib/types";
+import { CategoryMenuItem, LayoutSection, Product, StockStatus } from "@/lib/types";
 
 type SheetRow = Record<string, string>;
 type GoogleToken = { accessToken: string; expiresAt: number };
@@ -11,7 +11,9 @@ export const PRODUCT_COLUMNS = [
   "slug",
   "descripcion_corta",
   "descripcion_larga",
+  "precio_usd",
   "precio",
+  "precio_oferta_usd",
   "precio_oferta",
   "stock",
   "stock_status",
@@ -35,6 +37,8 @@ export const PRODUCT_COLUMNS = [
 ] as const;
 
 const TRUE_VALUES = new Set(["true", "1", "si", "sí", "yes", "y"]);
+const DEFAULT_PRODUCTS_SPREADSHEET_ID = "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY";
+const DEFAULT_MENU_SHEET_NAME = "MENU_CAT_MAR";
 let cachedGoogleToken: GoogleToken | null = null;
 
 function clean(value: unknown): string {
@@ -48,7 +52,13 @@ function toBool(value: unknown, fallback = false): boolean {
 }
 
 function toNumber(value: unknown, fallback = 0): number {
-  const raw = clean(value).replace(/\./g, "").replace(",", ".");
+  const rawValue = clean(value);
+  const raw =
+    rawValue.includes(",")
+      ? rawValue.replace(/\./g, "").replace(",", ".")
+      : rawValue.includes(".") && /^\d+\.\d{1,2}$/.test(rawValue)
+        ? rawValue
+        : rawValue.replace(/\./g, "");
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
@@ -76,8 +86,13 @@ function parseKeyValue(value: unknown): Record<string, string> | undefined {
   }
 
   const entries = raw
-    .split("|")
-    .map((pair) => pair.split(":").map((part) => part.trim()))
+    .replace(/\s*\|\s*/g, "|")
+    .split(/[|;]/)
+    .map((pair) => {
+      const separatorIndex = pair.indexOf(":");
+      if (separatorIndex < 0) return ["", ""];
+      return [pair.slice(0, separatorIndex).trim(), pair.slice(separatorIndex + 1).trim()];
+    })
     .filter(([key, val]) => key && val);
 
   return entries.length ? Object.fromEntries(entries) : undefined;
@@ -181,7 +196,7 @@ function base64Url(input: string): string {
 
 function getServiceAccountConfig(): { clientEmail: string; privateKey: string } | null {
   const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (rawJson) {
+  if (rawJson && rawJson.trim() !== "") {
     const parsed = JSON.parse(rawJson);
     return {
       clientEmail: clean(parsed.client_email),
@@ -336,7 +351,7 @@ export async function appendProductRow(product: Record<string, unknown>): Promis
   await appendSheetRow(
     process.env.GOOGLE_SHEETS_PRODUCTOS_NAME || "PRODUCTOS",
     PRODUCT_COLUMNS.map((column) => product[column] ?? ""),
-    process.env.GOOGLE_SHEETS_PRODUCTOS_ID
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
   );
 }
 
@@ -423,6 +438,45 @@ async function fetchPrivateSheetRows(
 
   const payload = (await response.json()) as { values?: unknown[][] };
   return rowsFromValues(payload.values ?? []);
+}
+
+async function fetchPrivateSheetCell(
+  sheetNameEnv: string,
+  fallbackName: string,
+  cell: string,
+  spreadsheetIdOverride?: string
+): Promise<string | null> {
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
+  if (!spreadsheetId) return null;
+
+  const accessToken = await getGoogleAccessToken();
+  if (!accessToken) return null;
+
+  const sheetName = process.env[sheetNameEnv] || fallbackName;
+  const encodedRange = encodeURIComponent(`${sheetName}!${cell}`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}`,
+    {
+      next: { revalidate: toNumber(process.env.GOOGLE_SHEETS_REVALIDATE_SECONDS, 60) },
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }
+  );
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as { values?: unknown[][] };
+  return clean(payload.values?.[0]?.[0]);
+}
+
+async function readUsdRateFromMenu(): Promise<number> {
+  const value = await fetchPrivateSheetCell(
+    "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
+    DEFAULT_MENU_SHEET_NAME,
+    "G1",
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
+  ).catch(() => null);
+
+  return toNumber(value, toNumber(process.env.CATALOG_USD_RATE, 1470));
 }
 
 function sheetUrl(sheetNameEnv: string, urlEnv: string, fallbackName: string): string | null {
@@ -583,7 +637,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
     (await fetchPrivateSheetRows(
       "GOOGLE_SHEETS_PRODUCTOS_NAME",
       "PRODUCTOS",
-      process.env.GOOGLE_SHEETS_PRODUCTOS_ID
+      process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
     ).catch(() => null)) ||
     (await fetchSheetRows(
       "GOOGLE_SHEETS_PRODUCTOS_NAME",
@@ -592,12 +646,19 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
     ));
 
   if (!rows) return null;
+  const usdRate = await readUsdRateFromMenu();
 
   return rows
     .map((row) => {
       const preventa = toBool(row.preventa);
       const explicitStatus = clean(row.stock_status).toLowerCase() as StockStatus;
       const stock = toNumber(row.stock, 0);
+      const precioUsd = toNumber(row.precio_usd, 0);
+      const precioOfertaUsd = toNumber(row.precio_oferta_usd, 0);
+      const precio = precioUsd > 0 ? Math.round(precioUsd * usdRate) : toNumber(row.precio, 0);
+      const precioOferta = precioOfertaUsd > 0
+        ? Math.round(precioOfertaUsd * usdRate)
+        : toNumber(row.precio_oferta);
       const stockStatus: StockStatus =
         preventa ? "preventa" : explicitStatus || (stock > 0 ? "disponible" : "sin_stock");
 
@@ -608,8 +669,10 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         slug: clean(row.slug),
         descripcion_corta: clean(row.descripcion_corta),
         descripcion_larga: clean(row.descripcion_larga),
-        precio: toNumber(row.precio, 0),
-        precio_oferta: toNumber(row.precio_oferta) > 0 ? toNumber(row.precio_oferta) : undefined,
+        precio_usd: precioUsd || undefined,
+        precio,
+        precio_oferta_usd: precioOfertaUsd || undefined,
+        precio_oferta: precioOferta > 0 ? precioOferta : undefined,
         stock,
         stock_status: stockStatus,
         categoria: clean(row.categoria),
@@ -633,4 +696,26 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
     })
     .filter((product) => product.id && product.nombre && product.slug)
     .sort((a, b) => a.orden - b.orden);
+}
+
+export async function readCategoryMenuFromGoogleSheets(): Promise<CategoryMenuItem[] | null> {
+  const rows = await fetchPrivateSheetRows(
+    "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
+    DEFAULT_MENU_SHEET_NAME,
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
+  ).catch(() => null);
+
+  if (!rows) return null;
+
+  return rows
+    .map((row) => ({
+      categoria: clean(row.categoria),
+      subcategoria: clean(row.subcategoria),
+      cantidad_productos: toNumber(row.cantidad_productos, 0),
+      link: clean(row.link),
+      orden: toNumber(row.orden, 999),
+      visible: toBool(row.visible, true)
+    }))
+    .filter((item) => item.visible && item.categoria)
+    .sort((a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
 }
