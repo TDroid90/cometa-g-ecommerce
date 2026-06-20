@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type BannerSlide = {
@@ -25,13 +26,30 @@ export function MainBannerCarousel({
     [slides]
   );
   const [active, setActive] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const slide = validSlides[active] || validSlides[0];
+
+  function goTo(index: number) {
+    if (validSlides.length <= 1 || index === active) return;
+    setDirection(index > active ? 1 : -1);
+    setActive(index);
+  }
+
+  function goNext() {
+    if (validSlides.length <= 1) return;
+    setDirection(1);
+    setActive((current) => (current + 1) % validSlides.length);
+  }
+
+  function goPrev() {
+    if (validSlides.length <= 1) return;
+    setDirection(-1);
+    setActive((current) => (current - 1 + validSlides.length) % validSlides.length);
+  }
 
   useEffect(() => {
     if (!autoplay || validSlides.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setActive((current) => (current + 1) % validSlides.length);
-    }, 5200);
+    const timer = window.setInterval(goNext, 5200);
     return () => window.clearInterval(timer);
   }, [autoplay, validSlides.length]);
 
@@ -43,20 +61,27 @@ export function MainBannerCarousel({
         <div className="absolute inset-y-0 right-0 hidden w-[64%] opacity-95 md:block">
           {slide.image && (
             <Image
-              key={slide.image}
+              key={`${slide.image}-${active}`}
               src={slide.image}
               alt={slide.title || "COMETA G"}
               fill
               priority
               sizes="64vw"
-              className="object-cover transition-opacity duration-500"
+              className={`object-cover motion-safe:animate-[heroSlide_520ms_ease-out] ${
+                direction === 1 ? "[--slide-from:24px]" : "[--slide-from:-24px]"
+              }`}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-comet-black via-comet-black/45 to-transparent" />
         </div>
 
         <div className="relative z-10 grid min-h-[420px] items-center px-6 py-12 sm:px-10 md:h-full md:min-h-0 lg:px-14">
-          <div className="max-w-xl">
+          <div
+            key={`${slide.title}-${active}`}
+            className={`max-w-xl motion-safe:animate-[heroSlide_520ms_ease-out] ${
+              direction === 1 ? "[--slide-from:18px]" : "[--slide-from:-18px]"
+            }`}
+          >
             {slide.eyebrow && (
               <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-comet-fuchsia">
                 {slide.eyebrow}
@@ -82,28 +107,49 @@ export function MainBannerCarousel({
         <div className="relative aspect-[16/9] md:hidden">
           {slide.image && (
             <Image
+              key={`${slide.image}-mobile-${active}`}
               src={slide.image}
               alt={slide.title || "COMETA G"}
               fill
               priority
               sizes="100vw"
-              className="object-cover"
+              className={`object-cover motion-safe:animate-[heroSlide_520ms_ease-out] ${
+                direction === 1 ? "[--slide-from:24px]" : "[--slide-from:-24px]"
+              }`}
             />
           )}
         </div>
 
         {validSlides.length > 1 && (
-          <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-            {validSlides.slice(0, 8).map((item, index) => (
-              <button
-                key={`${item.title}-${index}`}
-                type="button"
-                onClick={() => setActive(index)}
-                aria-label={`Ir al slide ${index + 1}`}
-                className={index === active ? "h-2 w-8 rounded-full comet-gradient" : "h-2 w-2 rounded-full bg-white/35"}
-              />
-            ))}
-          </div>
+          <>
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label="Slide anterior"
+              className="absolute left-3 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/10 bg-black/20 text-white/70 opacity-70 backdrop-blur transition hover:border-comet-fuchsia/50 hover:bg-black/45 hover:text-white hover:opacity-100 md:left-5"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="Slide siguiente"
+              className="absolute right-3 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/10 bg-black/20 text-white/70 opacity-70 backdrop-blur transition hover:border-comet-fuchsia/50 hover:bg-black/45 hover:text-white hover:opacity-100 md:right-5"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+              {validSlides.slice(0, 8).map((item, index) => (
+                <button
+                  key={`${item.title}-${index}`}
+                  type="button"
+                  onClick={() => goTo(index)}
+                  aria-label={`Ir al slide ${index + 1}`}
+                  className={index === active ? "h-2 w-8 rounded-full comet-gradient" : "h-2 w-2 rounded-full bg-white/35"}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </section>

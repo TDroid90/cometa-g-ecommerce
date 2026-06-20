@@ -38,16 +38,34 @@ BRAND_DOMAINS = {
     "GIGABYTE": ["gigabyte.com"],
     "THERMALTAKE": ["thermaltake.com"],
     "RAZER": ["razer.com"],
+    "ZOWIE": ["zowie.benq.com", "benq.com"],
 }
 
-MULTI_IMAGE_SUBCATEGORIES = {
-    "Mochilas": 5,
-    "Fundas": 5,
-    "Maletines": 5,
+IMAGE_COUNT_BY_CATEGORY = {
+    "Almacenamiento": 2,
+    "Audio": 3,
+    "Casa Inteligente": 3,
+    "Computadoras": 3,
+    "Conectividad": 3,
+    "Electro": 3,
     "Estuches": 5,
-    "Sillas Gamers": 5,
+    "Memorias": 1,
+    "Monitores": 3,
+    "Muebles": 3,
+    "Perifericos": 5,
+    "Seguridad": 3,
+    "Soportes": 3,
+    "Unidad de Energia": 1,
+    "Accesorios": 3,
+}
+
+IMAGE_COUNT_BY_HARDWARE_SUBCATEGORY = {
+    "Coolers": 3,
+    "Fuentes": 5,
     "Gabinetes": 5,
+    "Motherboards": 3,
     "Placas de Video": 5,
+    "Procesadores": 1,
 }
 
 
@@ -118,10 +136,9 @@ def product_provider(product):
 
 
 def wanted_count(product):
-    name = product.get("nombre", "").lower()
-    if any(token in name for token in ["mochila", "funda", "maletin", "maletín", "estuche"]):
-        return 5
-    return MULTI_IMAGE_SUBCATEGORIES.get(product.get("subcategoria"), 3)
+    if product.get("categoria") == "Hardware":
+        return IMAGE_COUNT_BY_HARDWARE_SUBCATEGORY.get(product.get("subcategoria"), 3)
+    return IMAGE_COUNT_BY_CATEGORY.get(product.get("categoria"), 3)
 
 
 def search_images(product, provider, needed):
@@ -249,6 +266,7 @@ def main():
     parser.add_argument("--name-contains", default="")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--offset", type=int, default=0)
+    parser.add_argument("--search-extra", action="store_true")
     parser.add_argument("--update-sheet", action="store_true")
     args = parser.parse_args()
 
@@ -286,7 +304,11 @@ def main():
         provider = product_provider(product)
         needed = wanted_count(product)
         uploaded_urls = []
-        source_urls, query = search_images(product, provider, needed)
+        if args.search_extra:
+            source_urls, query = search_images(product, provider, needed)
+        else:
+            source_urls = [product.get("imagen_principal", "")]
+            query = "catalog_image_only"
         for index, url in enumerate(source_urls, start=1):
             try:
                 image = download_and_square(url)
@@ -322,10 +344,13 @@ def main():
                 })
         if uploaded_urls and args.update_sheet:
             sheet_updates.append((product["_row"], uploaded_urls))
+            if len(sheet_updates) >= 25:
+                update_products(service, sheet_updates)
+                sheet_updates = []
         print(json.dumps({"id": product["id"], "uploaded": len(uploaded_urls), "needed": needed}, ensure_ascii=False))
         time.sleep(0.4)
 
-    if args.update_sheet:
+    if args.update_sheet and sheet_updates:
         update_products(service, sheet_updates)
 
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
