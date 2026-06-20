@@ -49,6 +49,7 @@ OUTPUT_COLUMNS = [
     "largo",
     "visible",
     "fecha_actualizacion",
+    "oferta",
 ]
 
 CONSOLIDATED_COLUMNS = [
@@ -76,6 +77,7 @@ CONSOLIDATED_COLUMNS = [
     "largo",
     "visible",
     "fecha_actualizacion",
+    "oferta",
 ]
 
 ECOMMERCE_PRODUCT_COLUMNS = [
@@ -333,6 +335,8 @@ def should_reject(*values: str) -> str:
             # Keep gamer controls, which are useful even if providers classify them near games.
             if reason in {"consolas", "juegos"} and re.search(r"joystick|gamepad|control|volante", haystack):
                 continue
+            if reason == "outlet":
+                continue
             if reason == "cables" and re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
                 continue
             if reason == "robotica" and re.search(r"\baspiradora\b|\blimpieza\b|\btrap\b", haystack):
@@ -343,16 +347,49 @@ def should_reject(*values: str) -> str:
 
 def should_reject_normalized(category: str, subcategory: str, name: str, brand: str, extra: str = "") -> str:
     haystack = normalize_text(" ".join([category, subcategory, name, brand, extra]))
-    if category in {"Outlet", "Combos", "Cables"}:
+    if category in {"Combos", "Cables"}:
         return normalize_text(category)
     if ("cables" in haystack or re.search(r"\bcable[s]?\b", haystack)) and not re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
         return "cables"
     return ""
 
 
+def is_offer_product(category: str, subcategory: str, name: str, extra: str = "") -> bool:
+    haystack = normalize_text(" ".join([category, subcategory, name, extra]))
+    return bool(re.search(r"\boutlet\b|\bsuper oferta\b|\bsuper ofertas\b|\boferta\b", haystack))
+
+
+def clean_offer_name(name: str) -> str:
+    return re.sub(r"^\s*(outlet|super oferta|super ofertas)\s+", "", clean(name), flags=re.I).strip()
+
+
 def recategorize_product(category: str, subcategory: str, name: str, brand: str) -> tuple[str, str]:
     haystack = normalize_text(" ".join([category, subcategory, name, brand]))
     name_text = normalize_text(name)
+    if category == "Outlet":
+        if re.search(r"\bmonitor\b", haystack):
+            return "Monitores", "Monitores"
+        if re.search(r"\bsilla\b|\bescritorio\b|\bestante\b", haystack):
+            return "Muebles", "Escritorios" if re.search(r"\bescritorio\b|\bestante\b", haystack) else "Sillas Gamer"
+        if re.search(r"\bfuente\b", haystack):
+            return "Hardware", "Fuentes"
+        if re.search(r"\bmother\b|\bmotherboard\b", haystack):
+            return "Hardware", "Motherboards"
+        if re.search(r"\bprocesador\b|\bath?lon\b|\bryzen\b|\bintel\b", haystack):
+            return "Hardware", "Procesadores"
+        if re.search(r"\bmemoria\b|\bddr\b|\bsodimm\b", haystack):
+            return "Memorias", "Memorias Notebook" if re.search(r"\bsodimm\b|\bnotebook\b", haystack) else "Memorias PC"
+        if re.search(r"\bdisco\b|\bhdd\b|\bssd\b", haystack):
+            return "Almacenamiento", "Discos Internos SSD" if "ssd" in haystack else "Discos Internos"
+        if re.search(r"\brouter\b|\bplaca usb\b|\bplaca de red\b|\bnetwork\b", haystack):
+            return "Conectividad", "Routers" if "router" in haystack else "Placas de Red"
+        if re.search(r"\bauricular\b|\bmicrofono\b|\bparlante\b", haystack):
+            return "Audio", "Auriculares" if "auricular" in haystack else "Microfonos" if "microfono" in haystack else "Parlantes"
+        if re.search(r"\bmouse\b|\bteclado\b|\bjoystick\b|\bkeycap\b", haystack):
+            return "Perifericos", "Mouses" if "mouse" in haystack else "Teclados" if "teclado" in haystack or "keycap" in haystack else "Joysticks"
+        if re.search(r"\bcafetera\b|\bcafe\b|\bhorno\b|\banafe\b|\bmicroondas\b|\bpava\b|\bfreidora\b|\blicuadora\b|\btostadora\b|\bbatidora\b|\bsandwichera\b", haystack):
+            return "Electro", "Cocina"
+        return "Accesorios", "Accesorios"
     if re.search(r"\bcafetera\b|\bcafe\b|\bhorno\b|\banafe\b|\bmicroondas\b|\bpava\b|\bfreidora\b|\blicuadora\b|\btostadora\b|\bbatidora\b|\bsandwichera\b", haystack):
         return "Electro", "Cocina"
     if re.search(r"\baspiradora\b|\blimpieza\b|\btrap\b", haystack):
@@ -435,6 +472,33 @@ def strip_html(value: Any) -> str:
     text = re.sub(r"</(p|tr|li|div|table)>", "\n", text, flags=re.I)
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_attributes(value: Any, limit: int = 12) -> str:
+    text = unescape(clean(value))
+    if not text:
+        return ""
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+    text = re.sub(r"</(p|tr|li|div|table)>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    parts = re.split(r"[\r\n|;]+", text)
+
+    pieces: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        part = re.sub(r"\s+", " ", part).strip(" |-")
+        if ":" not in part:
+            continue
+        key, val = [piece.strip(" |-") for piece in part.split(":", 1)]
+        if key and val and key.lower() not in seen:
+            seen.add(key.lower())
+            pieces.append(f"{key}:{val}")
+        if len(pieces) >= limit:
+            break
+
+    if pieces:
+        return "|".join(pieces)
+    return strip_html(value)[:500]
 
 
 def canonical_brand(value: Any) -> str:
@@ -573,6 +637,7 @@ def consolidate_products(*catalogs: list[list[str]]) -> list[list[str]]:
             row[20],
             row[21],
             row[22],
+            row[23] if len(row) > 23 else "",
         ])
 
     return sorted(
@@ -613,6 +678,7 @@ def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
         image = image_proxy(row[15])
         extra_images = "|".join(image_proxy(url) for url in row[16].split("|") if clean(url))
         attributes = row[17]
+        source_offer = clean(row[24] if len(row) > 24 else "")
         base_slug = slugify(f"{brand} {name}" if brand else name)
         slug_count = used_slugs.get(base_slug, 0)
         used_slugs[base_slug] = slug_count + 1
@@ -646,7 +712,7 @@ def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
             warranty,
             "TRUE" if index <= 24 else "FALSE",
             "FALSE",
-            "TRUE" if offer_usd else "FALSE",
+            "TRUE" if source_offer.upper() == "TRUE" or offer_usd else "FALSE",
             "FALSE",
             "",
             "TRUE",
@@ -768,6 +834,9 @@ def normalize_elit(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]
         categoria, subcategoria = split_category(row.get("Categorías", ""))
         nombre = clean(row.get("Nombre"))
         marca = canonical_brand(row.get("Marca"))
+        source_offer = is_offer_product(categoria, subcategoria, nombre, row.get("Tags", ""))
+        if source_offer:
+            nombre = clean_offer_name(nombre)
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("Tags", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("Tags", ""))
@@ -806,6 +875,7 @@ def normalize_elit(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]
             "",
             "TRUE",
             now,
+            "TRUE" if source_offer or parse_price(precio_oferta_ars) > 0 else "FALSE",
         ])
     return accepted, rejected
 
@@ -817,6 +887,9 @@ def normalize_nb(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]],
         categoria, subcategoria = split_category(row.get("CATEGORIA_USUARIO") or row.get("CATEGORIA", ""))
         nombre = clean(row.get("DETALLE_USUARIO") or row.get("DETALLE"))
         marca = canonical_brand(row.get("MARCA"))
+        source_offer = is_offer_product(categoria, subcategoria, nombre, row.get("ATRIBUTOS", ""))
+        if source_offer:
+            nombre = clean_offer_name(nombre)
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
@@ -844,13 +917,14 @@ def normalize_nb(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]],
             clean(row.get("GARANTIA")),
             clean(row.get("IMAGEN")),
             "",
-            clean(row.get("ATRIBUTOS")),
+            normalize_attributes(row.get("ATRIBUTOS")),
             clean(row.get("PESO")),
             clean(row.get("ALTO")),
             clean(row.get("ANCHO")),
             clean(row.get("LARGO")),
             "TRUE",
             now,
+            "TRUE" if source_offer else "FALSE",
         ])
     return accepted, rejected
 
@@ -939,6 +1013,7 @@ def normalize_invid(rows: list[dict[str, Any]], now: str) -> tuple[list[list[str
             price_to_number(row.get("LENGTH")),
             "TRUE",
             now,
+            "FALSE",
         ])
 
     return accepted, rejected
@@ -1042,9 +1117,18 @@ def replace_menu_values(
     ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=12)
     current_rate = read_cell(service, sheet, "G1")
     rate = current_rate or os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE) or DEFAULT_USD_RATE
+    current_brand_values = service.spreadsheets().values().get(
+        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
+        range=f"{sheet}!H2:J1000",
+    ).execute().get("values", [])
+    logo_by_brand = {
+        clean(row[0]).upper(): clean(row[2])
+        for row in current_brand_values
+        if len(row) >= 3 and clean(row[0]) and clean(row[2])
+    }
     service.spreadsheets().values().clear(
         spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!A:I",
+        range=f"{sheet}!A:J",
         body={},
     ).execute()
     values = [headers] + rows
@@ -1059,11 +1143,15 @@ def replace_menu_values(
         ).execute()
     service.spreadsheets().values().update(
         spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!G1:I1",
+        range=f"{sheet}!G1:J1",
         valueInputOption="USER_ENTERED",
-        body={"values": [[rate, "marca", "marca_canonica"]]},
+        body={"values": [[rate, "marca", "marca_canonica", "logo_url"]]},
     ).execute()
     if brand_rows:
+        brand_rows = [
+            [brand, canonical, logo_by_brand.get(brand.upper(), "")]
+            for brand, canonical in brand_rows
+        ]
         service.spreadsheets().values().update(
             spreadsheetId=PRODUCTS_SPREADSHEET_ID,
             range=f"{sheet}!H2",

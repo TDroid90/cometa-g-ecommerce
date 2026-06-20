@@ -106,7 +106,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {product.marca && (
               <div className="rounded-md border border-comet-border bg-comet-panel p-3">
                 <p className="text-xs uppercase text-zinc-500">Marca</p>
-                <p className="mt-1 text-sm font-bold text-white">{product.marca}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  {product.marca_logo_url && (
+                    <img
+                      src={product.marca_logo_url}
+                      alt={`Logo ${product.marca}`}
+                      className="h-7 max-w-24 rounded bg-white object-contain px-2 py-1"
+                    />
+                  )}
+                  <p className="text-sm font-bold text-white">{product.marca}</p>
+                </div>
               </div>
             )}
           </div>

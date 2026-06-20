@@ -87,6 +87,7 @@ function parseKeyValue(value: unknown): Record<string, string> | undefined {
 
   const entries = raw
     .replace(/\s*\|\s*/g, "|")
+    .replace(/\r?\n/g, "|")
     .split(/[|;]/)
     .map((pair) => {
       const separatorIndex = pair.indexOf(":");
@@ -479,6 +480,22 @@ async function readUsdRateFromMenu(): Promise<number> {
   return toNumber(value, toNumber(process.env.CATALOG_USD_RATE, 1470));
 }
 
+async function readBrandLogoMapFromMenu(): Promise<Map<string, string>> {
+  const rows = await fetchPrivateSheetRows(
+    "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
+    DEFAULT_MENU_SHEET_NAME,
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
+  ).catch(() => null);
+
+  const map = new Map<string, string>();
+  for (const row of rows || []) {
+    const brand = clean(row.marca || row.marca_canonica).toUpperCase();
+    const logo = clean(row.logo_url);
+    if (brand && logo) map.set(brand, logo);
+  }
+  return map;
+}
+
 function sheetUrl(sheetNameEnv: string, urlEnv: string, fallbackName: string): string | null {
   const directUrl = process.env[urlEnv];
   if (directUrl) return directUrl;
@@ -646,7 +663,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
     ));
 
   if (!rows) return null;
-  const usdRate = await readUsdRateFromMenu();
+  const [usdRate, brandLogoMap] = await Promise.all([readUsdRateFromMenu(), readBrandLogoMapFromMenu()]);
 
   return rows
     .map((row) => {
@@ -678,6 +695,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         categoria: clean(row.categoria),
         subcategoria: clean(row.subcategoria),
         marca: clean(row.marca),
+        marca_logo_url: brandLogoMap.get(clean(row.marca).toUpperCase()),
         tags: toList(row.tags),
         imagen_principal: clean(row.imagen_principal),
         imagenes_extra: toList(row.imagenes_extra),

@@ -24,10 +24,10 @@ const megaMenuRoots = [
   { label: "Componentes", categories: ["Hardware", "Almacenamiento", "Memorias"] },
   { label: "Computos", categories: ["Computadoras", "Monitores"] },
   { label: "Perifericos", categories: ["Perifericos", "Audio", "Conectividad", "Unidad de Energia"] },
-  { label: "Electro", categories: ["Electro"] },
   {
     label: "Otros",
     categories: [
+      "Electro",
       "Estuches",
       "Seguridad",
       "Casa Inteligente",

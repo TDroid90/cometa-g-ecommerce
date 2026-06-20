@@ -64,6 +64,7 @@ export type Product = {
   categoria?: string;
   subcategoria?: string;
   marca?: string;
+  marca_logo_url?: string;
   tags: string[];
   imagen_principal?: string;
   imagenes_extra: string[];
