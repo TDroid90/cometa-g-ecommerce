@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get("q") || "";
   const categoria = searchParams.get("categoria") || "";
   const subcategoria = searchParams.get("subcategoria") || "";
+  const marca = searchParams.get("marca") || "";
   const disponibilidad = searchParams.get("disponibilidad") || "";
   const oferta = searchParams.get("oferta");
   const limit = Number(searchParams.get("limit") || 0);
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
     query,
     categoria,
     subcategoria,
+    marca,
     disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
     oferta: oferta === "true" || oferta === "1"
   });

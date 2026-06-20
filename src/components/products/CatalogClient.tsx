@@ -8,23 +8,27 @@ import { ProductGrid } from "@/components/products/ProductGrid";
 
 export function CatalogClient({
   products,
+  pageTitle,
   initialQuery,
   initialCategory,
   initialSubcategory,
+  initialBrand,
   initialAvailability,
   initialOffer
 }: {
   products: Product[];
+  pageTitle?: string;
   initialQuery?: string;
   initialCategory?: string;
   initialSubcategory?: string;
+  initialBrand?: string;
   initialAvailability?: string;
   initialOffer?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery || "");
   const [categoria, setCategoria] = useState(initialCategory || "");
   const [subcategoria, setSubcategoria] = useState(initialSubcategory || "");
-  const [marca, setMarca] = useState("");
+  const [marca, setMarca] = useState(initialBrand || "");
   const [disponibilidad, setDisponibilidad] = useState(initialAvailability || "todos");
   const [oferta, setOferta] = useState(Boolean(initialOffer));
   const [maxPrice, setMaxPrice] = useState("");
@@ -58,7 +62,7 @@ export function CatalogClient({
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
         <p className="text-sm font-bold uppercase tracking-[0.18em] text-comet-fuchsia">Catalogo</p>
-        <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Productos gamer</h1>
+        <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">{pageTitle || "Productos gamer"}</h1>
       </div>
 
       <div className="mb-6 grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto]">

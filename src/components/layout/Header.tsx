@@ -10,7 +10,7 @@ import { useWishlist } from "@/components/wishlist/WishlistProvider";
 const defaultNavItems = [
   { href: "/productos?oferta=true", label: "Ofertas" },
   { href: "/productos?disponibilidad=preventa", label: "Preventa" },
-  { href: "/mecanica-de-compra", label: "Mecanica de compra" },
+  { href: "/mecanica-de-compra", label: "Mecánica de compra" },
   { href: "/arma-tu-pc", label: "ARMA TU PC" }
 ];
 
@@ -34,6 +34,7 @@ const megaMenuRoots = [
       "Muebles",
       "Soportes",
       "Accesorios",
+      "Marcas",
     ]
   }
 ];
@@ -74,6 +75,11 @@ function sectionStyle(section?: LayoutSection): React.CSSProperties {
 
 function sectionByVariant(sections: LayoutSection[], variant: string) {
   return sections.find((section) => section.layout_variant === variant && section.visible);
+}
+
+function buildCategoryHref(group: { category: string; items: CategoryMenuItem[] }) {
+  if (group.category === "Marcas") return "/productos";
+  return `/productos?categoria=${encodeURIComponent(group.category)}`;
 }
 
 function formatQuickPrice(value: number) {
@@ -218,8 +224,9 @@ export function Header({
 
       <div className="mx-auto grid min-h-20 w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[260px_1fr_auto] lg:px-8">
         <Link href={nav?.link_url || "/"} className="flex min-w-0 items-center gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md comet-gradient font-black text-white">
-            G
+          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-md bg-comet-panel">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.png" alt="" className="h-full w-full object-cover" />
           </span>
           <span className="min-w-0">
             <span className="block truncate text-2xl font-black leading-none tracking-tight text-white" style={sectionStyle(nav)}>
@@ -391,7 +398,7 @@ export function Header({
                       {selectedMegaRoot.groups.map((group) => (
                         <div key={group.category}>
                           <Link
-                            href={`/productos?categoria=${encodeURIComponent(group.category)}`}
+                            href={buildCategoryHref(group)}
                             onClick={() => setMegaOpen(false)}
                             className="mb-2 block border-b border-zinc-300 pb-1 text-sm font-black text-zinc-800 hover:text-comet-fuchsia"
                           >

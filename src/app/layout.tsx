@@ -10,8 +10,15 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "COMETA G - Computación Gamer",
-  description: "Tienda online gamer administrable desde Google Sheets."
+  title: "COMETA G - Computacion Gamer",
+  description: "Tienda online gamer administrable desde Google Sheets.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" }
+    ],
+    apple: "/apple-icon.png"
+  }
 };
 
 export default async function RootLayout({

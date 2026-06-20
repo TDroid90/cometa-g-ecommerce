@@ -5,6 +5,32 @@ import { ProductActions } from "@/components/products/ProductActions";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductGrid } from "@/components/products/ProductGrid";
 import { formatPrice, getProductBySlug, getProducts, productPrice } from "@/lib/data";
+import { Product } from "@/lib/types";
+
+function seededValue(seed: string) {
+  return Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function mixedProducts(products: Product[], current: Product): Product[] {
+  const byCategory = new Map<string, Product[]>();
+  for (const item of products) {
+    if (item.id === current.id || item.stock <= 1) continue;
+    const category = item.categoria || "Otros";
+    const currentItems = byCategory.get(category) || [];
+    currentItems.push(item);
+    byCategory.set(category, currentItems);
+  }
+
+  return Array.from(byCategory.entries())
+    .sort(([a], [b]) => seededValue(`${current.slug}-${a}`) - seededValue(`${current.slug}-${b}`))
+    .map(([category, items]) => {
+      const sorted = [...items].sort(
+        (a, b) => seededValue(`${category}-${current.slug}-${a.id}`) - seededValue(`${category}-${current.slug}-${b.id}`)
+      );
+      return sorted[0];
+    })
+    .slice(0, 5);
+}
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -16,10 +42,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
   const products = await getProducts();
-  const relatedProducts = products
-    .filter((item) => item.id !== product.id && item.categoria === product.categoria)
-    .sort((a, b) => b.orden - a.orden)
-    .slice(0, 5);
+  const relatedProducts = mixedProducts(products, product);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -36,13 +59,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {product.subcategoria && (
           <>
             <span>&gt;</span>
-            <span className="text-zinc-300">{product.subcategoria}</span>
+            <Link
+              href={`/productos?subcategoria=${encodeURIComponent(product.subcategoria)}`}
+              className="hover:text-white"
+            >
+              {product.subcategoria}
+            </Link>
           </>
         )}
         {product.marca && (
           <>
             <span>&gt;</span>
-            <span className="font-semibold text-comet-fuchsia">{product.marca}</span>
+            <Link
+              href={`/productos?marca=${encodeURIComponent(product.marca)}`}
+              className="font-semibold text-comet-fuchsia"
+            >
+              {product.marca}
+            </Link>
           </>
         )}
       </nav>
@@ -66,6 +99,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-5xl">{product.nombre}</h1>
           <p className="mt-3 text-sm text-zinc-500">SKU {product.sku || product.id}</p>
+          <p className="mt-1 text-xs lowercase text-zinc-500">imagen ilustrativa</p>
           {product.descripcion_corta && (
             <p className="mt-5 text-base leading-7 text-zinc-300">{product.descripcion_corta}</p>
           )}
@@ -111,7 +145,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     <img
                       src={product.marca_logo_url}
                       alt={`Logo ${product.marca}`}
-                      className="h-7 max-w-24 rounded bg-white object-contain px-2 py-1"
+                      className="h-7 max-w-[150px] rounded bg-white object-contain px-2 py-1"
                     />
                   )}
                   <p className="text-sm font-bold text-white">{product.marca}</p>
@@ -163,8 +197,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {relatedProducts.length > 0 && (
         <section className="mt-10">
           <div className="mb-5 border-b border-comet-border pb-3">
-            <h2 className="text-xl font-black text-white">Productos relacionados</h2>
-            <p className="mt-1 text-sm text-zinc-400">Últimos cargados en {product.categoria}</p>
+            <h2 className="text-xl font-black text-white">Más Productos</h2>
+            <p className="mt-1 text-sm text-zinc-400">Una selección variada de distintas categorías</p>
           </div>
           <ProductGrid products={relatedProducts} desktopColumns={5} mobileColumns={2} />
         </section>

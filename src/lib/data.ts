@@ -53,6 +53,12 @@ export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {
       counts.set(key, (counts.get(key) || 0) + 1);
     }
 
+    const brandCounts = new Map<string, number>();
+    for (const product of visibleProducts) {
+      if (!product.marca) continue;
+      brandCounts.set(product.marca, (brandCounts.get(product.marca) || 0) + 1);
+    }
+
     const dynamicItems = Array.from(counts.entries()).map(([key, count]) => {
       const [categoria, subcategoria] = key.split("|||");
       const params = new URLSearchParams({ categoria });
@@ -63,21 +69,38 @@ export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {
         cantidad_productos: count,
         link: `/productos?${params.toString()}`,
         orden: 999,
-        visible: true
+        visible: true,
+        tipo: "categoria" as const
       };
     });
 
+    const dynamicBrandItems = Array.from(brandCounts.entries()).map(([brand, count]) => ({
+      categoria: "Marcas",
+      subcategoria: brand,
+      cantidad_productos: count,
+      link: `/productos?marca=${encodeURIComponent(brand)}`,
+      orden: 998,
+      visible: true,
+      tipo: "marca" as const
+    }));
+
     if (!items?.length) {
-      return dynamicItems.sort((a, b) => a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
+      return [...dynamicItems, ...dynamicBrandItems].sort(
+        (a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria)
+      );
     }
 
-    return items
+    const sheetItems = items
       .map((item) => {
         const key = `${item.categoria}|||${item.subcategoria}`;
         return { ...item, cantidad_productos: counts.get(key) || 0 };
       })
       .filter((item) => item.visible && item.cantidad_productos > 0)
       .sort((a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
+
+    return [...sheetItems, ...dynamicBrandItems].sort(
+      (a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria)
+    );
   } catch (error) {
     console.error(error);
     return [];
@@ -121,7 +144,7 @@ export function filterProducts(products: Product[], filters: ProductFilters): Pr
       product.categoria?.toLowerCase() === normalizedCategory ||
       product.subcategoria?.toLowerCase() === normalizedCategory;
     const matchesSubcategory = !normalizedSubcategory || product.subcategoria?.toLowerCase() === normalizedSubcategory;
-    const matchesBrand = !filters.marca || product.marca === filters.marca;
+    const matchesBrand = !filters.marca || product.marca?.toLowerCase() === filters.marca.toLowerCase();
     const matchesAvailability =
       !filters.disponibilidad ||
       filters.disponibilidad === "todos" ||
@@ -166,7 +189,12 @@ export function sectionProducts(section: LayoutSection, products: Product[]): Pr
   }
 
   if (section.category_filter) {
-    scoped = scoped.filter((product) => product.categoria === section.category_filter);
+    const target = section.category_filter.toLowerCase();
+    scoped = scoped.filter(
+      (product) =>
+        product.categoria?.toLowerCase() === target ||
+        product.subcategoria?.toLowerCase() === target
+    );
   }
 
   if (section.brand_filter) {

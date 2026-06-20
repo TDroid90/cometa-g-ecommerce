@@ -335,8 +335,6 @@ def should_reject(*values: str) -> str:
             # Keep gamer controls, which are useful even if providers classify them near games.
             if reason in {"consolas", "juegos"} and re.search(r"joystick|gamepad|control|volante", haystack):
                 continue
-            if reason == "outlet":
-                continue
             if reason == "cables" and re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
                 continue
             if reason == "robotica" and re.search(r"\baspiradora\b|\blimpieza\b|\btrap\b", haystack):
@@ -349,6 +347,8 @@ def should_reject_normalized(category: str, subcategory: str, name: str, brand: 
     haystack = normalize_text(" ".join([category, subcategory, name, brand, extra]))
     if category in {"Combos", "Cables"}:
         return normalize_text(category)
+    if re.search(r"\bcondici[oó]n\s+outlet\b|\bcondicion\s+outlet\b|\boutlet\b", haystack):
+        return "outlet"
     if ("cables" in haystack or re.search(r"\bcable[s]?\b", haystack)) and not re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
         return "cables"
     return ""
@@ -356,7 +356,9 @@ def should_reject_normalized(category: str, subcategory: str, name: str, brand: 
 
 def is_offer_product(category: str, subcategory: str, name: str, extra: str = "") -> bool:
     haystack = normalize_text(" ".join([category, subcategory, name, extra]))
-    return bool(re.search(r"\boutlet\b|\bsuper oferta\b|\bsuper ofertas\b|\boferta\b", haystack))
+    if re.search(r"\boutlet\b|\bcondicion\s+outlet\b|\bcondici[oó]n\s+outlet\b", haystack):
+        return False
+    return bool(re.search(r"\bsuper oferta\b|\bsuper ofertas\b|\boferta\b", haystack))
 
 
 def clean_offer_name(name: str) -> str:
@@ -490,6 +492,11 @@ def normalize_attributes(value: Any, limit: int = 12) -> str:
         if ":" not in part:
             continue
         key, val = [piece.strip(" |-") for piece in part.split(":", 1)]
+        if normalize_text(key).startswith("otal output"):
+            key = f"T{key}"
+        if normalize_text(key) in {"a, w", "w"}:
+            continue
+        val = re.sub(r"^A,\s*W:\s*", "", val, flags=re.I)
         if key and val and key.lower() not in seen:
             seen.add(key.lower())
             pieces.append(f"{key}:{val}")

@@ -105,4 +105,5 @@ export type CategoryMenuItem = {
   link: string;
   orden: number;
   visible: boolean;
+  tipo?: "categoria" | "marca";
 };

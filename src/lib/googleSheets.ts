@@ -85,6 +85,16 @@ function parseKeyValue(value: unknown): Record<string, string> | undefined {
     // Also supports "RAM:16GB|SSD:1TB" for fast sheet editing.
   }
 
+  const cleanAttributeKey = (key: string) => {
+    let next = key.trim();
+    if (/^otal output/i.test(next)) next = `T${next}`;
+    if (/^input power$/i.test(next)) next = "Input power";
+    if (/^package contents$/i.test(next)) next = "Package contents";
+    return next;
+  };
+
+  const cleanAttributeValue = (val: string) => val.trim().replace(/^A,\s*W:\s*/i, "");
+
   const entries = raw
     .replace(/\s*\|\s*/g, "|")
     .replace(/\r?\n/g, "|")
@@ -92,9 +102,12 @@ function parseKeyValue(value: unknown): Record<string, string> | undefined {
     .map((pair) => {
       const separatorIndex = pair.indexOf(":");
       if (separatorIndex < 0) return ["", ""];
-      return [pair.slice(0, separatorIndex).trim(), pair.slice(separatorIndex + 1).trim()];
+      return [
+        cleanAttributeKey(pair.slice(0, separatorIndex)),
+        cleanAttributeValue(pair.slice(separatorIndex + 1))
+      ];
     })
-    .filter(([key, val]) => key && val);
+    .filter(([key, val]) => key && val && !/^(a,\s*w|w)$/i.test(key));
 
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
@@ -705,7 +718,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         garantia: clean(row.garantia),
         destacado: toBool(row.destacado),
         nuevo: toBool(row.nuevo),
-        oferta: toBool(row.oferta) || toNumber(row.precio_oferta) > 0,
+        oferta: toBool(row.oferta) || toNumber(row.precio_oferta) > 0 || precioOfertaUsd > 0,
         preventa,
         fecha_lanzamiento: clean(row.fecha_lanzamiento),
         visible: toBool(row.visible, true),
@@ -732,7 +745,8 @@ export async function readCategoryMenuFromGoogleSheets(): Promise<CategoryMenuIt
       cantidad_productos: toNumber(row.cantidad_productos, 0),
       link: clean(row.link),
       orden: toNumber(row.orden, 999),
-      visible: toBool(row.visible, true)
+      visible: toBool(row.visible, true),
+      tipo: clean(row.tipo) === "marca" ? ("marca" as const) : ("categoria" as const)
     }))
     .filter((item) => item.visible && item.categoria)
     .sort((a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
