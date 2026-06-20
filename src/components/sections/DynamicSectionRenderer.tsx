@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LayoutSection, Product } from "@/lib/types";
 import { ProductGrid } from "@/components/products/ProductGrid";
+import { MainBannerCarousel } from "@/components/sections/MainBannerCarousel";
 import { ProductTabsClient } from "@/components/sections/ProductTabsClient";
 import { sectionProducts, uniqueValues } from "@/lib/data";
 
@@ -65,85 +66,43 @@ function SectionHeader({ section }: { section: LayoutSection }) {
 }
 
 function parseItems(text?: string): string[][] {
-  return (text || "")
-    .split(";")
-    .map((item) => item.split("|").map((part) => part.trim()))
+  const raw = text || "";
+  const separator = raw.includes(";") ? ";" : "\n";
+  return raw
+    .split(separator)
+    .flatMap((item) => {
+      const trimmed = item.trim();
+      if (!trimmed) return [];
+      if (trimmed.includes("|")) return [trimmed.split("|").map((part) => part.trim())];
+      if (trimmed.includes(",")) return [trimmed.split(",").map((part) => part.trim())];
+      return [[trimmed]];
+    })
     .filter((parts) => parts.some(Boolean));
 }
 
 function MainBanner({ section }: { section: LayoutSection }) {
   const slides = parseItems(section.text).filter((parts) => parts.length >= 4);
-  const slide = slides[0];
-  const subtitle = slide?.[0] || section.subtitle || "COMETA G";
-  const title = slide?.[1] || section.title;
-  const rawTextLooksLikeSlides = Boolean(section.text?.includes("|") || section.text?.includes(";"));
-  const text = slide?.[2] || (rawTextLooksLikeSlides ? "" : section.text);
-  const image = slide?.[3] || section.image_url;
-  const href = slide?.[4] || section.link_url;
-  const button = slide?.[5] || section.button_text;
+  const fallbackSlide = [
+    section.subtitle || "COMETA G",
+    section.title || "",
+    section.text?.includes("|") || section.text?.includes(";") || section.text?.includes(",") ? "" : section.text || "",
+    section.image_url || "",
+    section.link_url || "",
+    section.button_text || ""
+  ];
 
   return (
-    <section className="bg-comet-black px-4 py-6 sm:px-6 lg:px-8">
-      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-xl border border-comet-border bg-comet-black shadow-lg md:aspect-[16/9] md:max-h-[640px]">
-        <div className="absolute inset-y-0 right-0 hidden w-[64%] opacity-95 md:block">
-          {image && (
-            <Image
-              src={image}
-              alt={title || "COMETA G"}
-              fill
-              priority
-              sizes="64vw"
-              className="object-cover"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-comet-black via-comet-black/45 to-transparent" />
-        </div>
-
-        <div className="relative z-10 grid min-h-[420px] items-center px-6 py-12 sm:px-10 md:h-full md:min-h-0 lg:px-14">
-          <div className="max-w-xl">
-            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-comet-fuchsia">
-              {subtitle}
-            </p>
-            <h1 className="mt-4 text-4xl font-black leading-[1.03] tracking-tight text-white sm:text-5xl lg:text-6xl">
-              {title}
-            </h1>
-            {text && <p className="mt-5 max-w-lg text-base leading-7 text-zinc-300">{text}</p>}
-            {href && button && (
-              <Link
-                href={href}
-                className="mt-8 inline-flex h-12 items-center justify-center rounded-md comet-gradient px-6 text-sm font-extrabold text-white transition hover:brightness-110"
-              >
-                {button}
-              </Link>
-            )}
-          </div>
-        </div>
-
-        <div className="relative aspect-[16/9] md:hidden">
-          {image && (
-            <Image
-              src={image}
-              alt={title || "COMETA G"}
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-          )}
-        </div>
-
-        {(section.carousel_enabled || slides.length > 1) && (
-          <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-            {(slides.length ? slides : [[""], [""], [""]]).slice(0, 5).map((_, index) => (
-              <span
-                key={index}
-                className={index === 0 ? "h-2 w-8 rounded-full comet-gradient" : "h-2 w-2 rounded-full bg-white/35"}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+    <MainBannerCarousel
+      slides={(slides.length ? slides : [fallbackSlide]).map(([eyebrow, title, text, image, href, button]) => ({
+        eyebrow,
+        title,
+        text,
+        image,
+        href,
+        button
+      }))}
+      autoplay={section.autoplay !== false}
+    />
   );
 }
 
