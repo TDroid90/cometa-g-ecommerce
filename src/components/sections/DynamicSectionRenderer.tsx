@@ -112,15 +112,15 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
 
   return (
     <section className="bg-comet-black px-4 py-4 sm:px-6 lg:px-8">
-      <div className={`mx-auto grid max-w-7xl gap-3 ${isCompactCategoryRow ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "md:grid-cols-2 lg:grid-cols-4"}`}>
+      <div className={`mx-auto grid w-full max-w-7xl gap-3 ${isCompactCategoryRow ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))]" : "md:grid-cols-2 lg:grid-cols-4"}`}>
         {items.map(([title, subtitle, image, href, button], index) => (
           <Link
             key={`${title}-${index}`}
             href={href || "/productos"}
             className={
               isCompactCategoryRow
-                ? "grid min-h-24 grid-cols-[62px_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
-                : "grid min-h-32 grid-cols-[42%_1fr] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
+                ? "grid min-h-24 min-w-0 grid-cols-[62px_minmax(0,1fr)] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
+                : "grid min-h-32 min-w-0 grid-cols-[42%_minmax(0,1fr)] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
             }
           >
             <div className={isCompactCategoryRow ? "relative h-14 w-14 overflow-hidden rounded-full border border-comet-border bg-comet-black" : "relative h-24"}>
@@ -128,7 +128,7 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
                 <Image src={image} alt={title} fill sizes="120px" className={isCompactCategoryRow ? "object-cover" : "object-contain"} />
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-medium uppercase leading-4 text-zinc-400">{title}</p>
               {subtitle && <p className="text-sm font-black uppercase leading-5 text-white">{subtitle}</p>}
               {button && <p className="mt-3 text-sm font-black text-comet-fuchsia">{button}</p>}
@@ -146,7 +146,7 @@ function ServiceStrip({ section }: { section: LayoutSection }) {
 
   return (
     <section className="bg-comet-black px-4 py-5 sm:px-6 lg:px-8">
-      <div className={`mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-comet-border bg-comet-card sm:grid-cols-2 ${columnsClass}`}>
+      <div className={`mx-auto grid w-full max-w-7xl overflow-hidden rounded-lg border border-comet-border bg-comet-card sm:grid-cols-2 ${columnsClass}`}>
         {items.map(([title, subtitle], index) => (
           <div
             key={`${title}-${index}`}

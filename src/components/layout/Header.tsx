@@ -116,10 +116,6 @@ export function Header({
   const navItems = parseNavItems(categoryNav?.text);
   const topLinks = parseNavItems(topRight?.text, defaultTopLinks);
   const searchItems = parseList(searchSection?.text);
-  const categories =
-    searchItems.length > 1
-      ? searchItems
-      : ["Placas de video", "Procesadores", "Monitores", "Perifericos"];
   const placeholder =
     searchSection?.text && searchItems.length <= 1
       ? searchSection.text
@@ -144,6 +140,16 @@ export function Header({
         .sort((a, b) => a.subcategoria.localeCompare(b.subcategoria))
     }));
   }, [categoryMenu]);
+
+  const categories = useMemo(() => {
+    const liveCategories = groupedMenu
+      .filter((group) => group.category !== "Marcas" && group.total > 0)
+      .map((group) => group.category)
+      .sort((a, b) => a.localeCompare(b));
+
+    return liveCategories.length ? liveCategories : searchItems;
+  }, [groupedMenu, searchItems]);
+
   const megaMenu = useMemo(() => {
     const byCategory = new Map(groupedMenu.map((group) => [group.category, group]));
     const usedCategories = new Set<string>();
