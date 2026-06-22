@@ -11,7 +11,8 @@ const defaultNavItems = [
   { href: "/productos?oferta=true", label: "Ofertas" },
   { href: "/productos?disponibilidad=preventa", label: "Preventa" },
   { href: "/mecanica-de-compra", label: "Mecánica de compra" },
-  { href: "/arma-tu-pc", label: "ARMA TU PC" }
+  { href: "/arma-tu-pc", label: "ARMA TU PC" },
+  { href: "#cluster-save", label: "Cluster Save" }
 ];
 
 const defaultTopLinks = [
@@ -434,7 +435,11 @@ export function Header({
             <Link
               key={item.href}
               href={item.href}
-              className="inline-flex h-12 items-center border-r border-white/15 px-4 text-sm font-black text-white transition hover:bg-black/15"
+              className={
+                item.label.toLowerCase() === "cluster save"
+                  ? "ml-2 inline-flex h-9 items-center rounded-md border border-sky-300/40 bg-sky-500 px-4 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400"
+                  : "inline-flex h-12 items-center border-r border-white/15 px-4 text-sm font-black text-white transition hover:bg-black/15"
+              }
             >
               {item.label}
             </Link>

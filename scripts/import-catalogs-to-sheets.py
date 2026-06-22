@@ -11,8 +11,8 @@ from typing import Any
 from urllib.parse import quote
 
 import requests
+from google.auth.transport.requests import Request
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -78,6 +78,25 @@ CONSOLIDATED_COLUMNS = [
     "visible",
     "fecha_actualizacion",
     "oferta",
+]
+
+INTERNAL_BUY_COLUMNS = [
+    "id_publico",
+    "sku",
+    "nombre",
+    "categoria",
+    "subcategoria",
+    "marca",
+    "proveedor_web",
+    "precio_web_usd",
+    "precio_web_ars",
+    "proveedor_recomendado",
+    "proveedor_codigo_recomendado",
+    "precio_recomendado_usd",
+    "precio_recomendado_ars",
+    "ahorro_usd",
+    "ahorro_pct",
+    "accion",
 ]
 
 ECOMMERCE_PRODUCT_COLUMNS = [
@@ -659,6 +678,106 @@ def consolidate_products(*catalogs: list[list[str]]) -> list[list[str]]:
     )
 
 
+def cheapest_by_key(catalog: list[list[str]]) -> dict[str, list[str]]:
+    best: dict[str, list[str]] = {}
+    for row in catalog:
+        key = product_key(row)
+        current = best.get(key)
+        if current is None or comparable_usd_price(row) < comparable_usd_price(current):
+            best[key] = row
+    return best
+
+
+def consolidate_public_catalog(nb: list[list[str]], elit: list[list[str]]) -> tuple[list[list[str]], list[list[str]]]:
+    nb_by_key = cheapest_by_key(nb)
+    elit_by_key = cheapest_by_key(elit)
+    public_rows: list[list[str]] = []
+    internal_rows: list[list[str]] = []
+
+    ordered_keys = sorted(
+        set(nb_by_key) | set(elit_by_key),
+        key=lambda key: (
+            0 if key in nb_by_key else 1,
+            normalize_text((nb_by_key.get(key) or elit_by_key[key])[4]),
+        ),
+    )
+
+    for index, key in enumerate(ordered_keys, start=1):
+        public_source = nb_by_key.get(key) or elit_by_key[key]
+        row = public_source
+        provider = row[0]
+        provider_code = row[1]
+        sku = row[2] or provider_code
+        name = row[3]
+        product_id = f"{provider.lower()}-{provider_code or index}"
+        public_row = [
+            product_id,
+            provider,
+            provider_code,
+            sku,
+            name,
+            row[4],
+            row[5],
+            row[6],
+            row[7],
+            row[8],
+            row[9],
+            row[10],
+            row[11],
+            row[12],
+            row[13],
+            row[14],
+            row[15],
+            row[16],
+            row[17],
+            row[18],
+            row[19],
+            row[20],
+            row[21],
+            row[22],
+            row[23] if len(row) > 23 else "",
+        ]
+        public_rows.append(public_row)
+
+        elit_match = elit_by_key.get(key)
+        if provider == "NB" and elit_match:
+            web_usd = comparable_usd_price(row)
+            recommended_usd = comparable_usd_price(elit_match)
+            if web_usd > 0 and recommended_usd > 0 and recommended_usd < web_usd:
+                savings = web_usd - recommended_usd
+                savings_pct = (savings / web_usd) * 100
+                internal_rows.append([
+                    product_id,
+                    sku,
+                    name,
+                    row[4],
+                    row[5],
+                    row[6],
+                    provider,
+                    str(round(web_usd, 2)),
+                    row[8],
+                    "ELIT",
+                    elit_match[1],
+                    str(round(recommended_usd, 2)),
+                    elit_match[8],
+                    str(round(savings, 2)),
+                    str(round(savings_pct, 2)),
+                    "Comprar en ELIT si confirma stock al momento de cerrar la orden.",
+                ])
+
+    public_rows = sorted(
+        public_rows,
+        key=lambda item: (
+            normalize_text(item[5]),
+            normalize_text(item[6]),
+            normalize_text(item[7]),
+            normalize_text(item[4]),
+            consolidated_usd_price(item),
+        ),
+    )
+    return public_rows, internal_rows
+
+
 def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
     products: list[list[str]] = []
     used_slugs: dict[str, int] = {}
@@ -1031,11 +1150,72 @@ def sheets_service():
         SERVICE_ACCOUNT_FILE,
         scopes=["https://www.googleapis.com/auth/spreadsheets"],
     )
-    return build("sheets", "v4", credentials=creds)
+    creds.refresh(Request())
+    return creds.token
+
+
+def sheets_headers(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+
+def sheets_get(token: str, path: str, **params: Any) -> dict[str, Any]:
+    response = requests.get(
+        f"https://sheets.googleapis.com/v4/spreadsheets/{PRODUCTS_SPREADSHEET_ID}{path}",
+        headers=sheets_headers(token),
+        params=params,
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def sheets_post(token: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    response = requests.post(
+        f"https://sheets.googleapis.com/v4/spreadsheets/{PRODUCTS_SPREADSHEET_ID}{path}",
+        headers=sheets_headers(token),
+        json=body or {},
+        timeout=90,
+    )
+    response.raise_for_status()
+    return response.json() if response.content else {}
+
+
+def sheets_put(token: str, path: str, body: dict[str, Any] | None = None, **params: Any) -> dict[str, Any]:
+    response = requests.put(
+        f"https://sheets.googleapis.com/v4/spreadsheets/{PRODUCTS_SPREADSHEET_ID}{path}",
+        headers=sheets_headers(token),
+        params=params,
+        json=body or {},
+        timeout=90,
+    )
+    response.raise_for_status()
+    return response.json() if response.content else {}
+
+
+def values_get(token: str, range_name: str) -> list[list[str]]:
+    return sheets_get(token, f"/values/{requests.utils.quote(range_name, safe='!:$')}").get("values", [])
+
+
+def values_clear(token: str, range_name: str) -> None:
+    sheets_post(token, f"/values/{requests.utils.quote(range_name, safe='!:$')}:clear", {})
+
+
+def values_update(token: str, range_name: str, values: list[list[str]]) -> None:
+    sheets_put(
+        token,
+        f"/values/{requests.utils.quote(range_name, safe='!:$')}",
+        {"values": values},
+        valueInputOption="USER_ENTERED",
+    )
+
+
+def batch_update(token: str, requests_body: list[dict[str, Any]]) -> None:
+    if requests_body:
+        sheets_post(token, "/:batchUpdate", {"requests": requests_body})
 
 
 def ensure_sheet(service, title: str, min_rows: int = 1000, min_cols: int = 26) -> None:
-    meta = service.spreadsheets().get(spreadsheetId=PRODUCTS_SPREADSHEET_ID).execute()
+    meta = sheets_get(service, "")
     existing = {s["properties"]["title"]: s["properties"] for s in meta.get("sheets", [])}
     if title in existing:
         props = existing[title]
@@ -1044,68 +1224,50 @@ def ensure_sheet(service, title: str, min_rows: int = 1000, min_cols: int = 26) 
         col_count = int(grid.get("columnCount", 0))
         if row_count >= min_rows and col_count >= min_cols:
             return
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-            body={
-                "requests": [
-                    {
-                        "updateSheetProperties": {
-                            "properties": {
-                                "sheetId": props["sheetId"],
-                                "gridProperties": {
-                                    "rowCount": max(row_count, min_rows),
-                                    "columnCount": max(col_count, min_cols),
-                                },
-                            },
-                            "fields": "gridProperties(rowCount,columnCount)",
-                        }
-                    }
-                ]
-            },
-        ).execute()
+        batch_update(service, [{
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": props["sheetId"],
+                    "gridProperties": {
+                        "rowCount": max(row_count, min_rows),
+                        "columnCount": max(col_count, min_cols),
+                    },
+                },
+                "fields": "gridProperties(rowCount,columnCount)",
+            }
+        }])
         return
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        body={
-            "requests": [
-                {
-                    "addSheet": {
-                        "properties": {
-                            "title": title,
-                            "gridProperties": {"rowCount": min_rows, "columnCount": min_cols},
-                        }
-                    }
-                }
-            ]
-        },
-    ).execute()
+    batch_update(service, [{
+        "addSheet": {
+            "properties": {
+                "title": title,
+                "gridProperties": {"rowCount": min_rows, "columnCount": min_cols},
+            }
+        }
+    }])
 
 
 def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
     ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=max(len(headers) + 2, 26))
-    service.spreadsheets().values().clear(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!A:ZZ",
-        body={},
-    ).execute()
+    values_clear(service, f"{sheet}!A:ZZ")
     values = [headers] + rows
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
-        service.spreadsheets().values().update(
-            spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-            range=f"{sheet}!A{start}",
-            valueInputOption="USER_ENTERED",
-            body={"values": chunk},
-        ).execute()
+        values_update(service, f"{sheet}!A{start}", chunk)
+
+
+def replace_existing_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
+    values_clear(service, f"{sheet}!A:ZZ")
+    values = [headers] + rows
+    for index in range(0, len(values), 500):
+        chunk = values[index:index + 500]
+        start = index + 1
+        values_update(service, f"{sheet}!A{start}", chunk)
 
 
 def read_cell(service, sheet: str, cell: str) -> str:
-    result = service.spreadsheets().values().get(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!{cell}",
-    ).execute()
-    values = result.get("values", [])
+    values = values_get(service, f"{sheet}!{cell}")
     return clean(values[0][0]) if values and values[0] else ""
 
 
@@ -1124,59 +1286,34 @@ def replace_menu_values(
     ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=12)
     current_rate = read_cell(service, sheet, "G1")
     rate = current_rate or os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE) or DEFAULT_USD_RATE
-    current_brand_values = service.spreadsheets().values().get(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!H2:J1000",
-    ).execute().get("values", [])
+    current_brand_values = values_get(service, f"{sheet}!H2:J1000")
     logo_by_brand = {
         clean(row[0]).upper(): clean(row[2])
         for row in current_brand_values
         if len(row) >= 3 and clean(row[0]) and clean(row[2])
     }
-    service.spreadsheets().values().clear(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!A:J",
-        body={},
-    ).execute()
+    values_clear(service, f"{sheet}!A:J")
     values = [headers] + rows
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
-        service.spreadsheets().values().update(
-            spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-            range=f"{sheet}!A{start}",
-            valueInputOption="USER_ENTERED",
-            body={"values": chunk},
-        ).execute()
-    service.spreadsheets().values().update(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!G1:J1",
-        valueInputOption="USER_ENTERED",
-        body={"values": [[rate, "marca", "marca_canonica", "logo_url"]]},
-    ).execute()
+        values_update(service, f"{sheet}!A{start}", chunk)
+    values_update(service, f"{sheet}!G1:J1", [[rate, "marca", "marca_canonica", "logo_url"]])
     if brand_rows:
         brand_rows = [
             [brand, canonical, logo_by_brand.get(brand.upper(), "")]
             for brand, canonical in brand_rows
         ]
-        service.spreadsheets().values().update(
-            spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-            range=f"{sheet}!H2",
-            valueInputOption="USER_ENTERED",
-            body={"values": brand_rows},
-        ).execute()
+        values_update(service, f"{sheet}!H2", brand_rows)
 
 
 def color_consolidated_rows(service, sheet: str) -> None:
-    meta = service.spreadsheets().get(spreadsheetId=PRODUCTS_SPREADSHEET_ID).execute()
+    meta = sheets_get(service, "")
     sheet_props = next(
         s["properties"] for s in meta.get("sheets", []) if s["properties"]["title"] == sheet
     )
     sheet_id = sheet_props["sheetId"]
-    rows = service.spreadsheets().values().get(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        range=f"{sheet}!A2:W",
-    ).execute().get("values", [])
+    rows = values_get(service, f"{sheet}!A2:W")
 
     requests = [
         {
@@ -1225,49 +1362,41 @@ def color_consolidated_rows(service, sheet: str) -> None:
         })
 
     for index in range(0, len(requests), 500):
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-            body={"requests": requests[index:index + 500]},
-        ).execute()
+        batch_update(service, requests[index:index + 500])
 
 
 def format_menu_sheet(service, sheet: str) -> None:
-    meta = service.spreadsheets().get(spreadsheetId=PRODUCTS_SPREADSHEET_ID).execute()
+    meta = sheets_get(service, "")
     sheet_props = next(
         s["properties"] for s in meta.get("sheets", []) if s["properties"]["title"] == sheet
     )
     sheet_id = sheet_props["sheetId"]
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=PRODUCTS_SPREADSHEET_ID,
-        body={
-            "requests": [
-                {
-                    "repeatCell": {
-                        "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor": {"red": 0.06, "green": 0.06, "blue": 0.08},
-                                "textFormat": {
-                                    "bold": True,
-                                    "foregroundColor": {"red": 1, "green": 1, "blue": 1},
-                                },
-                            }
+    batch_update(service, [
+        {
+            "repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {"red": 0.06, "green": 0.06, "blue": 0.08},
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1, "green": 1, "blue": 1},
                         },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat)",
                     }
                 },
-                {
-                    "updateSheetProperties": {
-                        "properties": {
-                            "sheetId": sheet_id,
-                            "gridProperties": {"frozenRowCount": 1},
-                        },
-                        "fields": "gridProperties.frozenRowCount",
-                    }
-                },
-            ]
+                "fields": "userEnteredFormat(backgroundColor,textFormat)",
+            }
         },
-    ).execute()
+        {
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": sheet_id,
+                    "gridProperties": {"frozenRowCount": 1},
+                },
+                "fields": "gridProperties.frozenRowCount",
+            }
+        },
+    ])
 
 
 def main() -> None:
@@ -1305,31 +1434,36 @@ def main() -> None:
         + nb_stock_rejected
         + invid_stock_rejected
     )
-    consolidated = consolidate_products(elit, nb, invid)
+    consolidated, internal_buy = consolidate_public_catalog(nb, elit)
     store_products = products_for_store(consolidated)
     menu_rows = build_menu_rows(consolidated)
     brand_rows = build_brand_rows(consolidated)
 
     service = sheets_service()
-    replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
-    replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
-    replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
-    replace_values(service, "CATALOGO_CONSOLIDADO", CONSOLIDATED_COLUMNS, consolidated)
-    color_consolidated_rows(service, "CATALOGO_CONSOLIDADO")
-    replace_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
+    quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
+    if not quick_publish:
+        replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
+        replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
+        replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
+    replace_existing_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
     replace_menu_values(service, MENU_SHEET, MENU_COLUMNS, menu_rows, brand_rows)
-    format_menu_sheet(service, MENU_SHEET)
-    replace_values(service, "CATALOGO_RECHAZADOS", REJECT_COLUMNS, rejected)
-    replace_values(
-        service,
-        "CATALOGO_LOG",
-        ["fecha", "proveedor", "importados", "rechazados"],
-        [
-            [now, "ELIT", str(len(elit)), str(len(elit_rejected) + len(elit_stock_rejected))],
-            [now, "NB", str(len(nb)), str(len(nb_rejected) + len(nb_stock_rejected))],
-            [now, "INVID", str(len(invid)), str(len(invid_rejected) + len(invid_stock_rejected))],
-        ],
-    )
+    replace_values(service, "COMPRA_INTERNA_RECOMENDADA", INTERNAL_BUY_COLUMNS, internal_buy)
+    if not quick_publish:
+        replace_existing_values(service, "CATALOGO_CONSOLIDADO", CONSOLIDATED_COLUMNS, consolidated)
+    if not quick_publish:
+        color_consolidated_rows(service, "CATALOGO_CONSOLIDADO")
+        format_menu_sheet(service, MENU_SHEET)
+        replace_values(service, "CATALOGO_RECHAZADOS", REJECT_COLUMNS, rejected)
+        replace_values(
+            service,
+            "CATALOGO_LOG",
+            ["fecha", "proveedor", "importados", "rechazados"],
+            [
+                [now, "ELIT", str(len(elit)), str(len(elit_rejected) + len(elit_stock_rejected))],
+                [now, "NB", str(len(nb)), str(len(nb_rejected) + len(nb_stock_rejected))],
+                [now, "INVID", str(len(invid)), str(len(invid_rejected) + len(invid_stock_rejected))],
+            ],
+        )
 
     print(json.dumps({
         "ELIT_importados": len(elit),
@@ -1339,6 +1473,7 @@ def main() -> None:
         "INVID_importados": len(invid),
         "INVID_rechazados": len(invid_rejected) + len(invid_stock_rejected),
         "CONSOLIDADO": len(consolidated),
+        "COMPRA_INTERNA_RECOMENDADA": len(internal_buy),
         "PRODUCTOS": len(store_products),
         "MENU_CAT_MAR": len(menu_rows),
         "total_importados": len(elit) + len(nb) + len(invid),
