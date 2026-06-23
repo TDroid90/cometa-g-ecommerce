@@ -483,12 +483,19 @@ async function fetchPrivateSheetCell(
 }
 
 async function readUsdRateFromMenu(): Promise<number> {
-  const value = await fetchPrivateSheetCell(
+  const value =
+    (await fetchPrivateSheetCell(
+      "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
+      DEFAULT_MENU_SHEET_NAME,
+      "L2",
+      process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
+    ).catch(() => null)) ||
+    (await fetchPrivateSheetCell(
     "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
     DEFAULT_MENU_SHEET_NAME,
     "G1",
     process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
-  ).catch(() => null);
+    ).catch(() => null));
 
   return toNumber(value, toNumber(process.env.CATALOG_USD_RATE, 1470));
 }

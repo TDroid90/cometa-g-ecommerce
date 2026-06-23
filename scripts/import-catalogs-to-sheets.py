@@ -309,6 +309,7 @@ MENU_COLUMNS = [
     "link",
     "orden",
     "visible",
+    "markup_multiplicador",
 ]
 
 MENU_SHEET = "MENU_CAT_MAR"
@@ -622,6 +623,18 @@ def consolidated_usd_price(row: list[str]) -> float:
     return parse_price(row[8]) if len(row) > 8 else 0
 
 
+def menu_markup_key(category: str, subcategory: str) -> str:
+    return f"{normalize_text(category)}|{normalize_text(subcategory)}"
+
+
+def markup_for(row: list[str], markups: dict[str, str] | None = None) -> float:
+    if not markups:
+        return 1.0
+    raw = markups.get(menu_markup_key(row[5], row[6])) or markups.get(menu_markup_key(row[5], ""))
+    value = parse_price(raw)
+    return value if value > 0 else 1.0
+
+
 def consolidate_products(*catalogs: list[list[str]]) -> list[list[str]]:
     best: dict[str, list[str]] = {}
     for catalog in catalogs:
@@ -779,6 +792,10 @@ def consolidate_public_catalog(nb: list[list[str]], elit: list[list[str]]) -> tu
 
 
 def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
+    return products_for_store_with_markup(consolidated, {})
+
+
+def products_for_store_with_markup(consolidated: list[list[str]], markups: dict[str, str]) -> list[list[str]]:
     products: list[list[str]] = []
     used_slugs: dict[str, int] = {}
 
@@ -790,7 +807,8 @@ def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
         category = row[5]
         subcategory = row[6]
         brand = row[7]
-        price_usd = str(round(consolidated_usd_price(row), 2))
+        markup = markup_for(row, markups)
+        price_usd = str(round(consolidated_usd_price(row) * markup, 2))
         usd_rate = parse_price(os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE)) or parse_price(DEFAULT_USD_RATE)
         price_ars = str(round(parse_price(price_usd) * usd_rate, 2))
         offer_usd = ""
@@ -848,7 +866,7 @@ def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
     return products
 
 
-def build_menu_rows(consolidated: list[list[str]]) -> list[list[str]]:
+def build_menu_rows(consolidated: list[list[str]], markups: dict[str, str] | None = None) -> list[list[str]]:
     counts: dict[tuple[str, str], int] = {}
     for row in consolidated:
         category = row[5]
@@ -870,6 +888,7 @@ def build_menu_rows(consolidated: list[list[str]]) -> list[list[str]]:
             f"/productos?{params}",
             str(order),
             "TRUE",
+            (markups or {}).get(menu_markup_key(category, subcategory), "1.00"),
         ])
 
     return sorted(rows, key=lambda item: (int(item[4]), item[0], item[1]))
@@ -1020,8 +1039,8 @@ def normalize_nb(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]],
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         code = clean(row.get("CODIGO"))
-        precio_usd = price_to_number(row.get("PRECIO FINAL") or row.get("PRECIO"))
-        precio_ars = price_to_number(row.get("PRECIO PESOS CON IVA"))
+        precio_usd = price_to_number(row.get("PRECIO"))
+        precio_ars = price_to_number(row.get("PRECIO PESOS SIN IVA") or row.get("PRECIO PESOS CON IVA"))
         if reason:
             rejected.append(["NB", code, nombre, categoria, subcategoria, marca, reason, now])
             continue
@@ -1200,12 +1219,29 @@ def values_clear(token: str, range_name: str) -> None:
     sheets_post(token, f"/values/{requests.utils.quote(range_name, safe='!:$')}:clear", {})
 
 
+def values_batch_clear(token: str, ranges: list[str]) -> None:
+    sheets_post(token, "/values:batchClear", {"ranges": ranges})
+
+
 def values_update(token: str, range_name: str, values: list[list[str]]) -> None:
     sheets_put(
         token,
         f"/values/{requests.utils.quote(range_name, safe='!:$')}",
         {"values": values},
         valueInputOption="USER_ENTERED",
+    )
+
+
+def values_batch_update(token: str, updates: list[tuple[str, list[list[str]]]]) -> None:
+    if not updates:
+        return
+    sheets_post(
+        token,
+        "/values:batchUpdate",
+        {
+            "valueInputOption": "USER_ENTERED",
+            "data": [{"range": range_name, "values": values} for range_name, values in updates],
+        },
     )
 
 
@@ -1251,19 +1287,23 @@ def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]
     ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=max(len(headers) + 2, 26))
     values_clear(service, f"{sheet}!A:ZZ")
     values = [headers] + rows
+    updates = []
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
-        values_update(service, f"{sheet}!A{start}", chunk)
+        updates.append((f"{sheet}!A{start}", chunk))
+    values_batch_update(service, updates)
 
 
 def replace_existing_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
     values_clear(service, f"{sheet}!A:ZZ")
     values = [headers] + rows
+    updates = []
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
-        values_update(service, f"{sheet}!A{start}", chunk)
+        updates.append((f"{sheet}!A{start}", chunk))
+    values_batch_update(service, updates)
 
 
 def read_cell(service, sheet: str, cell: str) -> str:
@@ -1276,6 +1316,28 @@ def build_brand_rows(consolidated: list[list[str]]) -> list[list[str]]:
     return [[brand, canonical_brand(brand)] for brand in brands]
 
 
+def read_menu_markups(service, sheet: str) -> dict[str, str]:
+    rows = values_get(service, f"{sheet}!A1:G1000")
+    if not rows:
+        return {}
+    headers = [normalize_text(cell) for cell in rows[0]]
+    try:
+        markup_index = headers.index("markup_multiplicador")
+    except ValueError:
+        markup_index = 6
+
+    markups: dict[str, str] = {}
+    for row in rows[1:]:
+        if len(row) <= markup_index:
+            continue
+        category = clean(row[0] if len(row) > 0 else "")
+        subcategory = clean(row[1] if len(row) > 1 else "")
+        markup = clean(row[markup_index])
+        if category and markup:
+            markups[menu_markup_key(category, subcategory)] = markup
+    return markups
+
+
 def replace_menu_values(
     service,
     sheet: str,
@@ -1283,8 +1345,8 @@ def replace_menu_values(
     rows: list[list[str]],
     brand_rows: list[list[str]],
 ) -> None:
-    ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=12)
-    current_rate = read_cell(service, sheet, "G1")
+    ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=14)
+    current_rate = read_cell(service, sheet, "L2") or read_cell(service, sheet, "G1")
     rate = current_rate or os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE) or DEFAULT_USD_RATE
     current_brand_values = values_get(service, f"{sheet}!H2:J1000")
     logo_by_brand = {
@@ -1292,19 +1354,22 @@ def replace_menu_values(
         for row in current_brand_values
         if len(row) >= 3 and clean(row[0]) and clean(row[2])
     }
-    values_clear(service, f"{sheet}!A:J")
+    values_clear(service, f"{sheet}!A:N")
     values = [headers] + rows
+    updates = []
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
-        values_update(service, f"{sheet}!A{start}", chunk)
-    values_update(service, f"{sheet}!G1:J1", [[rate, "marca", "marca_canonica", "logo_url"]])
+        updates.append((f"{sheet}!A{start}", chunk))
+    updates.append((f"{sheet}!H1:N1", [["marca", "marca_canonica", "logo_url", "config", "cotizacion_usd", "nota", ""]]))
+    updates.append((f"{sheet}!L2", [[rate]]))
     if brand_rows:
         brand_rows = [
             [brand, canonical, logo_by_brand.get(brand.upper(), "")]
             for brand, canonical in brand_rows
         ]
-        values_update(service, f"{sheet}!H2", brand_rows)
+        updates.append((f"{sheet}!H2", brand_rows))
+    values_batch_update(service, updates)
 
 
 def color_consolidated_rows(service, sheet: str) -> None:
@@ -1435,11 +1500,11 @@ def main() -> None:
         + invid_stock_rejected
     )
     consolidated, internal_buy = consolidate_public_catalog(nb, elit)
-    store_products = products_for_store(consolidated)
-    menu_rows = build_menu_rows(consolidated)
-    brand_rows = build_brand_rows(consolidated)
-
     service = sheets_service()
+    existing_markups = read_menu_markups(service, MENU_SHEET)
+    store_products = products_for_store_with_markup(consolidated, existing_markups)
+    menu_rows = build_menu_rows(consolidated, existing_markups)
+    brand_rows = build_brand_rows(consolidated)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
     if not quick_publish:
         replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)

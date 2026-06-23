@@ -57,7 +57,7 @@ export function MainBannerCarousel({
 
   return (
     <section className="bg-comet-black px-4 py-6 sm:px-6 lg:px-8">
-      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-xl border border-comet-border bg-comet-black shadow-lg md:aspect-[16/9] md:max-h-[640px]">
+      <div className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-xl border border-comet-border bg-comet-black shadow-lg md:aspect-[16/9] md:max-h-[640px]">
         <div className="absolute inset-y-0 right-0 hidden w-[64%] opacity-95 md:block">
           {slide.image && (
             <Image

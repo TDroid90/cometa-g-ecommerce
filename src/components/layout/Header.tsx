@@ -34,10 +34,10 @@ const megaMenuRoots = [
       "Casa Inteligente",
       "Muebles",
       "Soportes",
-      "Accesorios",
-      "Marcas",
+      "Accesorios"
     ]
-  }
+  },
+  { label: "Marcas", categories: ["Marcas"] }
 ];
 
 function parseNavItems(text?: string, fallback = defaultNavItems) {
@@ -172,6 +172,7 @@ export function Header({
     return roots.filter((root) => root.groups.length > 0);
   }, [groupedMenu]);
   const selectedMegaRoot = megaMenu.find((root) => root.label === activeMegaRoot) || megaMenu[0];
+  const selectedMegaGroups = selectedMegaRoot?.groups || [];
 
   useEffect(() => {
     const cleaned = query.trim();
@@ -392,7 +393,7 @@ export function Header({
                           selectedMegaRoot.label === root.label
                             ? "bg-comet-fuchsia text-white"
                             : "text-zinc-300 hover:bg-white/5 hover:text-white"
-                        }`}
+                        } ${root.label === "Marcas" ? "mt-3 border-t border-comet-border pt-5" : ""}`}
                       >
                         <span>{root.label}</span>
                         <ChevronRight size={16} />
@@ -400,10 +401,24 @@ export function Header({
                     ))}
                   </div>
 
-                  <div className="max-h-[520px] overflow-y-auto bg-[#f2f3f5] p-5 text-zinc-900">
-                    <div className="grid grid-cols-2 gap-x-10 gap-y-6 xl:grid-cols-4">
-                      {selectedMegaRoot.groups.map((group) => (
-                        <div key={group.category}>
+                  <div className="max-h-[560px] overflow-y-auto bg-[#f2f3f5] p-5 text-zinc-900">
+                    <div className={selectedMegaRoot.label === "Marcas" ? "grid grid-cols-2 gap-x-5 gap-y-2 lg:grid-cols-6" : "grid grid-cols-2 gap-x-10 gap-y-6 xl:grid-cols-4"}>
+                      {selectedMegaGroups.map((group) => (
+                        <div key={group.category} className={group.category === "Marcas" ? "contents" : undefined}>
+                          {group.category === "Marcas" ? (
+                            group.items.map((item) => (
+                              <Link
+                                key={`${item.categoria}-${item.subcategoria}`}
+                                href={item.link}
+                                onClick={() => setMegaOpen(false)}
+                                className="block truncate rounded px-2 py-1 text-sm font-semibold text-zinc-700 hover:bg-white hover:text-comet-fuchsia"
+                                title={item.subcategoria}
+                              >
+                                {item.subcategoria}
+                              </Link>
+                            ))
+                          ) : (
+                            <>
                           <Link
                             href={buildCategoryHref(group)}
                             onClick={() => setMegaOpen(false)}
@@ -423,6 +438,8 @@ export function Header({
                               </Link>
                             ))}
                           </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
