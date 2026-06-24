@@ -58,7 +58,7 @@ export function MainBannerCarousel({
   return (
     <section className="bg-comet-black px-4 py-6 sm:px-6 lg:px-8">
       <div className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-xl border border-comet-border bg-comet-black shadow-lg md:aspect-[16/9] md:max-h-[640px]">
-        <div className="absolute inset-y-0 right-0 hidden w-[64%] opacity-95 md:block">
+        <div className="absolute inset-0 opacity-80 md:inset-y-0 md:left-auto md:right-0 md:w-[64%] md:opacity-95">
           {slide.image && (
             <Image
               key={`${slide.image}-${active}`}
@@ -66,13 +66,13 @@ export function MainBannerCarousel({
               alt={slide.title || "COMETA G"}
               fill
               priority
-              sizes="64vw"
+              sizes="(min-width: 768px) 64vw, 100vw"
               className={`object-cover motion-safe:animate-[heroSlide_520ms_ease-out] ${
                 direction === 1 ? "[--slide-from:24px]" : "[--slide-from:-24px]"
               }`}
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-comet-black via-comet-black/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-comet-black via-comet-black/75 to-comet-black/35 md:bg-gradient-to-r md:from-comet-black md:via-comet-black/45 md:to-transparent" />
         </div>
 
         <div className="relative z-10 grid min-h-[420px] items-center px-6 py-12 sm:px-10 md:h-full md:min-h-0 lg:px-14">
@@ -102,22 +102,6 @@ export function MainBannerCarousel({
               </Link>
             )}
           </div>
-        </div>
-
-        <div className="relative aspect-[16/9] md:hidden">
-          {slide.image && (
-            <Image
-              key={`${slide.image}-mobile-${active}`}
-              src={slide.image}
-              alt={slide.title || "COMETA G"}
-              fill
-              priority
-              sizes="100vw"
-              className={`object-cover motion-safe:animate-[heroSlide_520ms_ease-out] ${
-                direction === 1 ? "[--slide-from:24px]" : "[--slide-from:-24px]"
-              }`}
-            />
-          )}
         </div>
 
         {validSlides.length > 1 && (

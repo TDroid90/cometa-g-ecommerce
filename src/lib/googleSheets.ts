@@ -516,6 +516,33 @@ async function readBrandLogoMapFromMenu(): Promise<Map<string, string>> {
   return map;
 }
 
+function menuMarkupKey(category: string, subcategory: string) {
+  return `${clean(category).toLowerCase()}|${clean(subcategory).toLowerCase()}`;
+}
+
+async function readMarkupMapFromMenu(): Promise<Map<string, number>> {
+  const rows = await fetchPrivateSheetRows(
+    "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
+    DEFAULT_MENU_SHEET_NAME,
+    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
+  ).catch(() => null);
+
+  const map = new Map<string, number>();
+  for (const row of rows || []) {
+    const category = clean(row.categoria);
+    const subcategory = clean(row.subcategoria);
+    const markup = toNumber(row.markup_multiplicador, 1);
+    if (category && markup > 0) {
+      map.set(menuMarkupKey(category, subcategory), markup);
+    }
+  }
+  return map;
+}
+
+function markupForProduct(markupMap: Map<string, number>, category: string, subcategory: string) {
+  return markupMap.get(menuMarkupKey(category, subcategory)) || markupMap.get(menuMarkupKey(category, "")) || 1;
+}
+
 function sheetUrl(sheetNameEnv: string, urlEnv: string, fallbackName: string): string | null {
   const directUrl = process.env[urlEnv];
   if (directUrl) return directUrl;
@@ -683,7 +710,11 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
     ));
 
   if (!rows) return null;
-  const [usdRate, brandLogoMap] = await Promise.all([readUsdRateFromMenu(), readBrandLogoMapFromMenu()]);
+  const [usdRate, brandLogoMap, markupMap] = await Promise.all([
+    readUsdRateFromMenu(),
+    readBrandLogoMapFromMenu(),
+    readMarkupMapFromMenu()
+  ]);
 
   return rows
     .map((row) => {
@@ -694,11 +725,14 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
       const precioOfertaUsd = toNumber(row.precio_oferta_usd, 0);
       const precioArs = toNumber(row.precio, 0);
       const precioOfertaArs = toNumber(row.precio_oferta, 0);
-      const precio = precioArs > 0 ? Math.round(precioArs) : Math.round(precioUsd * usdRate);
+      const categoria = clean(row.categoria);
+      const subcategoria = clean(row.subcategoria);
+      const markup = markupForProduct(markupMap, categoria, subcategoria);
+      const precio = Math.round((precioArs > 0 ? precioArs : precioUsd * usdRate) * markup);
       const precioOferta = precioOfertaArs > 0
-        ? Math.round(precioOfertaArs)
+        ? Math.round(precioOfertaArs * markup)
         : precioOfertaUsd > 0
-          ? Math.round(precioOfertaUsd * usdRate)
+          ? Math.round(precioOfertaUsd * usdRate * markup)
           : 0;
       const stockStatus: StockStatus =
         preventa ? "preventa" : explicitStatus || (stock > 0 ? "disponible" : "sin_stock");
@@ -716,8 +750,8 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         precio_oferta: precioOferta > 0 ? precioOferta : undefined,
         stock,
         stock_status: stockStatus,
-        categoria: clean(row.categoria),
-        subcategoria: clean(row.subcategoria),
+        categoria,
+        subcategoria,
         marca: clean(row.marca),
         marca_logo_url: brandLogoMap.get(clean(row.marca).toUpperCase()),
         tags: toList(row.tags),

@@ -28,7 +28,7 @@ export function ProductTabsClient({
         category_filter: taxonomyFilters.has(requestedFilter.toLowerCase()) ? section.category_filter : requestedFilter
       },
       products
-    ).slice(0, 5);
+    ).slice(0, 6);
   }, [activeTab, products, section]);
   const activeLabel = activeTab?.[0] || section.title || "Productos";
 
@@ -40,7 +40,7 @@ export function ProductTabsClient({
             key={`${label}-${index}`}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`relative pb-4 text-lg transition ${
+            className={`relative pb-4 text-lg transition ${label.toLowerCase().includes("muebles") ? "hidden sm:inline-block" : ""} ${
               index === activeIndex ? "font-black text-white" : "font-medium text-zinc-400 hover:text-white"
             }`}
           >

@@ -883,8 +883,7 @@ def products_for_store_with_markup(
         category = row[5]
         subcategory = row[6]
         brand = row[7]
-        markup = markup_for(row, markups)
-        price_usd = str(round(consolidated_usd_price(row) * markup, 2))
+        price_usd = str(round(consolidated_usd_price(row), 2))
         usd_rate = provider_rate_for_row(row, provider_rates)
         price_ars = str(round(parse_price(price_usd) * usd_rate, 2))
         offer_usd = ""
@@ -1015,6 +1014,60 @@ def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
         offset += 100
 
     return articles
+
+
+def stringify_raw_value(value: Any) -> str:
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return clean(value)
+
+
+def build_full_catalog(elit_rows: list[dict[str, Any]], nb_rows: list[dict[str, Any]], invid_rows: list[dict[str, Any]]) -> tuple[list[str], list[list[str]]]:
+    headers = ["proveedor"]
+    seen = {"proveedor"}
+    for rows in (elit_rows, nb_rows, invid_rows):
+        for row in rows:
+            for key in row.keys():
+                header = clean(key) or "sin_nombre"
+                if header not in seen:
+                    headers.append(header)
+                    seen.add(header)
+
+    output: list[list[str]] = []
+    for provider, rows in (("ELIT", elit_rows), ("NB", nb_rows), ("INVID", invid_rows)):
+        for row in rows:
+            output.append([provider] + [stringify_raw_value(row.get(header, "")) for header in headers[1:]])
+    return headers, output
+
+
+def normalized_rows_as_dicts(headers: list[str], rows: list[list[str]]) -> list[dict[str, Any]]:
+    return [{headers[index]: value for index, value in enumerate(row) if index < len(headers)} for row in rows]
+
+
+def apply_basic_filter(service, sheet: str, rows: int, columns: int) -> None:
+    meta = sheets_get(service, "")
+    sheet_props = next(
+        (s["properties"] for s in meta.get("sheets", []) if s["properties"]["title"] == sheet),
+        None,
+    )
+    if not sheet_props:
+        return
+    sheet_id = sheet_props["sheetId"]
+    batch_update(service, [
+        {
+            "setBasicFilter": {
+                "filter": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": 0,
+                        "endRowIndex": max(rows + 1, 2),
+                        "startColumnIndex": 0,
+                        "endColumnIndex": max(columns, 1),
+                    }
+                }
+            }
+        }
+    ])
 
 
 def read_normalized_catalog(path: Path) -> list[list[str]]:
@@ -1566,7 +1619,8 @@ def main() -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     elit_rows = read_csv_path(ELIT_CSV)
     nb_rows = read_csv_url(nb_csv_url) if nb_csv_url else read_csv_path(NB_CSV_FALLBACK, delimiter=";")
-    invid_rows = [] if invid_cache.exists() else read_invid_articles(invid_username, invid_password)
+    full_invid_rows = read_invid_articles(invid_username, invid_password) if invid_username and invid_password else []
+    invid_rows = [] if invid_cache.exists() else full_invid_rows
     provider_rates = provider_exchange_rates(elit_rows, nb_rows, invid_rows)
 
     elit, elit_rejected = normalize_elit(elit_rows, now, provider_rates["ELIT"])
@@ -1574,6 +1628,8 @@ def main() -> None:
     if invid_cache.exists():
         invid = read_normalized_catalog(invid_cache)
         invid_rejected = read_rejected_catalog(invid_rejected_cache)
+        if not full_invid_rows:
+            full_invid_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, invid)
     else:
         invid, invid_rejected = normalize_invid(invid_rows, now, provider_rates["INVID"])
     elit, elit_stock_rejected = reject_low_stock(elit, now)
@@ -1598,6 +1654,10 @@ def main() -> None:
         replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
         replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
     replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
+    full_headers, full_rows = build_full_catalog(elit_rows, nb_rows, full_invid_rows)
+    ensure_sheet(service, "FULL_CATALOGO", min_rows=max(len(full_rows) + 10, 1000), min_cols=max(len(full_headers) + 2, 26))
+    replace_values(service, "FULL_CATALOGO", full_headers, full_rows)
+    apply_basic_filter(service, "FULL_CATALOGO", len(full_rows), len(full_headers))
     replace_existing_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
     replace_menu_values(service, MENU_SHEET, MENU_COLUMNS, menu_rows, brand_rows)
     replace_values(service, "COMPRA_INTERNA_RECOMENDADA", INTERNAL_BUY_COLUMNS, internal_buy)
@@ -1629,6 +1689,7 @@ def main() -> None:
         "COMPRA_INTERNA_RECOMENDADA": len(internal_buy),
         "PRODUCTOS": len(store_products),
         "MENU_CAT_MAR": len(menu_rows),
+        "FULL_CATALOGO": len(full_rows),
         "COTIZACION_ELIT": provider_rates["ELIT"],
         "COTIZACION_NB": provider_rates["NB"],
         "COTIZACION_INVID": provider_rates["INVID"],

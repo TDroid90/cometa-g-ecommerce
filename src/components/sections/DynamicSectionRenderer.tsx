@@ -113,13 +113,15 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
   return (
     <section className="bg-comet-black px-4 py-4 sm:px-6 lg:px-8">
       <div className={`mx-auto grid w-full max-w-7xl gap-3 ${isCompactCategoryRow ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))]" : "md:grid-cols-2 lg:grid-cols-4"}`}>
-        {items.map(([title, subtitle, image, href, button], index) => (
+        {items.map(([title, subtitle, image, href, button], index) => {
+          const hideOnMobile = isCompactCategoryRow && title.toLowerCase().includes("procesadores");
+          return (
           <Link
             key={`${title}-${index}`}
             href={href || "/productos"}
             className={
               isCompactCategoryRow
-                ? "grid min-h-24 min-w-0 grid-cols-[62px_minmax(0,1fr)] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
+                ? `min-h-24 min-w-0 grid-cols-[62px_minmax(0,1fr)] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50 ${hideOnMobile ? "hidden sm:grid" : "grid"}`
                 : "grid min-h-32 min-w-0 grid-cols-[42%_minmax(0,1fr)] items-center gap-3 rounded-md border border-comet-border bg-comet-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50"
             }
           >
@@ -134,7 +136,8 @@ function PromoTileGrid({ section }: { section: LayoutSection }) {
               {button && <p className="mt-3 text-sm font-black text-comet-fuchsia">{button}</p>}
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -155,7 +158,7 @@ function ServiceStrip({ section }: { section: LayoutSection }) {
             <div className="grid h-10 w-10 place-items-center rounded-full border border-comet-fuchsia/30 text-sm font-black text-comet-fuchsia">
               {index + 1}
             </div>
-            <div className="min-w-0 text-left">
+            <div className="min-w-0 text-center sm:text-left">
               <p className="text-sm font-black text-white">{title}</p>
               {subtitle && <p className="text-sm text-zinc-400">{subtitle}</p>}
             </div>
