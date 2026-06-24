@@ -314,6 +314,16 @@ MENU_COLUMNS = [
 
 MENU_SHEET = "MENU_CAT_MAR"
 DEFAULT_USD_RATE = "1470"
+CATALOG_LOG_COLUMNS = ["fecha", "proveedor", "importados", "rechazados", "cotizacion_usd"]
+IMAGE_GUIDE_HEADERS = ["resolucion", "aspect_ratio", "sugerencia", "donde_integrarla"]
+IMAGE_GUIDE_ROWS = [
+    ["1920x1080", "16:9", "Slider principal y banners grandes de home", "LAYOUT: main_banner"],
+    ["1600x900", "16:9", "Banner preventa / secciones hero secundarias", "LAYOUT: promo_strip o main_banner"],
+    ["1000x1000", "1:1", "Producto principal, galeria y miniaturas generadas", "PRODUCTOS: imagen_principal / imagenes_extra"],
+    ["600x600", "1:1", "Categorias circulares debajo del banner", "LAYOUT: promo_tile_grid"],
+    ["150x80", "variable", "Logo de marca chico, fondo transparente o blanco limpio", "MENU_CAT_MAR: logo_url"],
+    ["1200x400", "3:1", "Tiras promocionales horizontales", "LAYOUT: promo_strip"],
+]
 
 
 def clean(value: Any) -> str:
@@ -469,6 +479,68 @@ def parse_price(value: Any) -> float:
         return float(price_to_number(value) or "0")
     except ValueError:
         return 0
+
+
+def format_number(value: float) -> str:
+    return str(round(value, 2)).rstrip("0").rstrip(".")
+
+
+def median(values: list[float]) -> float:
+    cleaned = sorted(value for value in values if value > 0)
+    if not cleaned:
+        return 0.0
+    middle = len(cleaned) // 2
+    if len(cleaned) % 2:
+        return cleaned[middle]
+    return (cleaned[middle - 1] + cleaned[middle]) / 2
+
+
+def scrape_exchange_rate(url: str) -> float:
+    try:
+        response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        response.raise_for_status()
+    except Exception:
+        return 0.0
+    text = re.sub(r"\s+", " ", response.text[:250000])
+    patterns = [
+        r"(?:USD|U\$S|DOLAR|DÓLAR|COTIZACION|COTIZACIÓN)[^0-9]{0,30}([0-9]+(?:[\.,][0-9]+)?)",
+        r"([0-9]+(?:[\.,][0-9]+)?)[^0-9]{0,20}(?:ARS|PESOS)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            value = parse_price(match.group(1))
+            if 500 <= value <= 5000:
+                return value
+    return 0.0
+
+
+def provider_exchange_rates(
+    elit_rows: list[dict[str, str]],
+    nb_rows: list[dict[str, str]],
+    invid_rows: list[dict[str, Any]],
+) -> dict[str, float]:
+    default_rate = parse_price(os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE)) or parse_price(DEFAULT_USD_RATE)
+    nb_rate = median([parse_price(row.get("COTIZACION DOLAR")) for row in nb_rows]) or default_rate
+    scrape_enabled = os.environ.get("SCRAPE_PROVIDER_RATES", "FALSE").upper() == "TRUE"
+    elit_rate = (
+        parse_price(os.environ.get("ELIT_USD_RATE"))
+        or (scrape_exchange_rate("https://www.elit.com.ar") if scrape_enabled else 0)
+        or nb_rate
+        or default_rate
+    )
+    invid_rate = (
+        parse_price(os.environ.get("INVID_USD_RATE"))
+        or (scrape_exchange_rate("https://www.invidcomputers.com") if scrape_enabled else 0)
+        or nb_rate
+        or default_rate
+    )
+    return {"ELIT": elit_rate, "NB": nb_rate, "INVID": invid_rate}
+
+
+def provider_rate_for_row(row: list[str], rates: dict[str, float]) -> float:
+    provider = clean(row[1] if len(row) > 1 else row[0]).upper()
+    return rates.get(provider) or parse_price(os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE)) or parse_price(DEFAULT_USD_RATE)
 
 
 def has_enough_stock(row: list[str]) -> bool:
@@ -792,10 +864,14 @@ def consolidate_public_catalog(nb: list[list[str]], elit: list[list[str]]) -> tu
 
 
 def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
-    return products_for_store_with_markup(consolidated, {})
+    return products_for_store_with_markup(consolidated, {}, {})
 
 
-def products_for_store_with_markup(consolidated: list[list[str]], markups: dict[str, str]) -> list[list[str]]:
+def products_for_store_with_markup(
+    consolidated: list[list[str]],
+    markups: dict[str, str],
+    provider_rates: dict[str, float],
+) -> list[list[str]]:
     products: list[list[str]] = []
     used_slugs: dict[str, int] = {}
 
@@ -809,7 +885,7 @@ def products_for_store_with_markup(consolidated: list[list[str]], markups: dict[
         brand = row[7]
         markup = markup_for(row, markups)
         price_usd = str(round(consolidated_usd_price(row) * markup, 2))
-        usd_rate = parse_price(os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE)) or parse_price(DEFAULT_USD_RATE)
+        usd_rate = provider_rate_for_row(row, provider_rates)
         price_ars = str(round(parse_price(price_usd) * usd_rate, 2))
         offer_usd = ""
         offer_ars = ""
@@ -972,7 +1048,7 @@ def split_category(value: str) -> tuple[str, str]:
     return normalize_category(parts[0], " > ".join(parts[1:]))
 
 
-def normalize_elit(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]], list[list[str]]]:
+def normalize_elit(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple[list[list[str]], list[list[str]]]:
     accepted: list[list[str]] = []
     rejected: list[list[str]] = []
     for row in rows:
@@ -990,7 +1066,6 @@ def normalize_elit(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]
         precio_oferta_ars = price_to_number(row.get("Precio promocional"))
         precio_usd = ""
         if precio_ars:
-            usd_rate = parse_price(os.environ.get("CATALOG_USD_RATE", "1470")) or 1470
             precio_usd = str(round(parse_price(precio_ars) / usd_rate, 2))
         if reason:
             rejected.append(["ELIT", code, nombre, categoria, subcategoria, marca, reason, now])
@@ -1025,7 +1100,7 @@ def normalize_elit(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]
     return accepted, rejected
 
 
-def normalize_nb(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]], list[list[str]]]:
+def normalize_nb(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple[list[list[str]], list[list[str]]]:
     accepted: list[list[str]] = []
     rejected: list[list[str]] = []
     for row in rows:
@@ -1039,8 +1114,9 @@ def normalize_nb(rows: list[dict[str, str]], now: str) -> tuple[list[list[str]],
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         code = clean(row.get("CODIGO"))
+        row_rate = parse_price(row.get("COTIZACION DOLAR")) or usd_rate
         precio_usd = price_to_number(row.get("PRECIO"))
-        precio_ars = price_to_number(row.get("PRECIO PESOS SIN IVA") or row.get("PRECIO PESOS CON IVA"))
+        precio_ars = str(round(parse_price(precio_usd) * row_rate, 2)) if parse_price(precio_usd) > 0 else ""
         if reason:
             rejected.append(["NB", code, nombre, categoria, subcategoria, marca, reason, now])
             continue
@@ -1100,10 +1176,9 @@ def invid_attributes(row: dict[str, Any]) -> str:
     return "|".join(piece for piece in pieces if piece and not piece.endswith(":"))
 
 
-def normalize_invid(rows: list[dict[str, Any]], now: str) -> tuple[list[list[str]], list[list[str]]]:
+def normalize_invid(rows: list[dict[str, Any]], now: str, usd_rate: float) -> tuple[list[list[str]], list[list[str]]]:
     accepted: list[list[str]] = []
     rejected: list[list[str]] = []
-    usd_rate = parse_price(os.environ.get("CATALOG_USD_RATE", "1470")) or 1470
 
     for row in rows:
         categoria, subcategoria = invid_category(row)
@@ -1284,8 +1359,10 @@ def ensure_sheet(service, title: str, min_rows: int = 1000, min_cols: int = 26) 
 
 
 def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
-    ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=max(len(headers) + 2, 26))
-    values_clear(service, f"{sheet}!A:ZZ")
+    if os.environ.get("CATALOG_ENSURE_SHEETS", "FALSE").upper() == "TRUE":
+        ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=max(len(headers) + 2, 26))
+    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
+        values_clear(service, f"{sheet}!A:{column_letter(max(len(headers), 1))}")
     values = [headers] + rows
     updates = []
     for index in range(0, len(values), 500):
@@ -1296,7 +1373,8 @@ def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]
 
 
 def replace_existing_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
-    values_clear(service, f"{sheet}!A:ZZ")
+    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
+        values_clear(service, f"{sheet}!A:{column_letter(max(len(headers), 1))}")
     values = [headers] + rows
     updates = []
     for index in range(0, len(values), 500):
@@ -1309,6 +1387,14 @@ def replace_existing_values(service, sheet: str, headers: list[str], rows: list[
 def read_cell(service, sheet: str, cell: str) -> str:
     values = values_get(service, f"{sheet}!{cell}")
     return clean(values[0][0]) if values and values[0] else ""
+
+
+def column_letter(index: int) -> str:
+    letters = ""
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters or "A"
 
 
 def build_brand_rows(consolidated: list[list[str]]) -> list[list[str]]:
@@ -1345,24 +1431,25 @@ def replace_menu_values(
     rows: list[list[str]],
     brand_rows: list[list[str]],
 ) -> None:
-    ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=14)
-    current_rate = read_cell(service, sheet, "L2") or read_cell(service, sheet, "G1")
-    rate = current_rate or os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE) or DEFAULT_USD_RATE
+    if os.environ.get("CATALOG_ENSURE_SHEETS", "FALSE").upper() == "TRUE":
+        ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=15)
     current_brand_values = values_get(service, f"{sheet}!H2:J1000")
     logo_by_brand = {
         clean(row[0]).upper(): clean(row[2])
         for row in current_brand_values
         if len(row) >= 3 and clean(row[0]) and clean(row[2])
     }
-    values_clear(service, f"{sheet}!A:N")
+    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
+        values_clear(service, f"{sheet}!A:O")
     values = [headers] + rows
     updates = []
     for index in range(0, len(values), 500):
         chunk = values[index:index + 500]
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
-    updates.append((f"{sheet}!H1:N1", [["marca", "marca_canonica", "logo_url", "config", "cotizacion_usd", "nota", ""]]))
-    updates.append((f"{sheet}!L2", [[rate]]))
+    updates.append((f"{sheet}!H1:J1", [["marca", "marca_canonica", "logo_url"]]))
+    updates.append((f"{sheet}!L1:O1", [IMAGE_GUIDE_HEADERS]))
+    updates.append((f"{sheet}!L2:O{len(IMAGE_GUIDE_ROWS) + 1}", IMAGE_GUIDE_ROWS))
     if brand_rows:
         brand_rows = [
             [brand, canonical, logo_by_brand.get(brand.upper(), "")]
@@ -1480,14 +1567,15 @@ def main() -> None:
     elit_rows = read_csv_path(ELIT_CSV)
     nb_rows = read_csv_url(nb_csv_url) if nb_csv_url else read_csv_path(NB_CSV_FALLBACK, delimiter=";")
     invid_rows = [] if invid_cache.exists() else read_invid_articles(invid_username, invid_password)
+    provider_rates = provider_exchange_rates(elit_rows, nb_rows, invid_rows)
 
-    elit, elit_rejected = normalize_elit(elit_rows, now)
-    nb, nb_rejected = normalize_nb(nb_rows, now)
+    elit, elit_rejected = normalize_elit(elit_rows, now, provider_rates["ELIT"])
+    nb, nb_rejected = normalize_nb(nb_rows, now, provider_rates["NB"])
     if invid_cache.exists():
         invid = read_normalized_catalog(invid_cache)
         invid_rejected = read_rejected_catalog(invid_rejected_cache)
     else:
-        invid, invid_rejected = normalize_invid(invid_rows, now)
+        invid, invid_rejected = normalize_invid(invid_rows, now, provider_rates["INVID"])
     elit, elit_stock_rejected = reject_low_stock(elit, now)
     nb, nb_stock_rejected = reject_low_stock(nb, now)
     invid, invid_stock_rejected = reject_low_stock(invid, now)
@@ -1502,33 +1590,33 @@ def main() -> None:
     consolidated, internal_buy = consolidate_public_catalog(nb, elit)
     service = sheets_service()
     existing_markups = read_menu_markups(service, MENU_SHEET)
-    store_products = products_for_store_with_markup(consolidated, existing_markups)
+    store_products = products_for_store_with_markup(consolidated, existing_markups, provider_rates)
     menu_rows = build_menu_rows(consolidated, existing_markups)
     brand_rows = build_brand_rows(consolidated)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
     if not quick_publish:
         replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
-        replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
         replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
+    replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
     replace_existing_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
     replace_menu_values(service, MENU_SHEET, MENU_COLUMNS, menu_rows, brand_rows)
     replace_values(service, "COMPRA_INTERNA_RECOMENDADA", INTERNAL_BUY_COLUMNS, internal_buy)
+    replace_values(
+        service,
+        "CATALOGO_LOG",
+        CATALOG_LOG_COLUMNS,
+        [
+            [now, "ELIT", str(len(elit)), str(len(elit_rejected) + len(elit_stock_rejected)), format_number(provider_rates["ELIT"])],
+            [now, "NB", str(len(nb)), str(len(nb_rejected) + len(nb_stock_rejected)), format_number(provider_rates["NB"])],
+            [now, "INVID", str(len(invid)), str(len(invid_rejected) + len(invid_stock_rejected)), format_number(provider_rates["INVID"])],
+        ],
+    )
     if not quick_publish:
         replace_existing_values(service, "CATALOGO_CONSOLIDADO", CONSOLIDATED_COLUMNS, consolidated)
     if not quick_publish:
         color_consolidated_rows(service, "CATALOGO_CONSOLIDADO")
         format_menu_sheet(service, MENU_SHEET)
         replace_values(service, "CATALOGO_RECHAZADOS", REJECT_COLUMNS, rejected)
-        replace_values(
-            service,
-            "CATALOGO_LOG",
-            ["fecha", "proveedor", "importados", "rechazados"],
-            [
-                [now, "ELIT", str(len(elit)), str(len(elit_rejected) + len(elit_stock_rejected))],
-                [now, "NB", str(len(nb)), str(len(nb_rejected) + len(nb_stock_rejected))],
-                [now, "INVID", str(len(invid)), str(len(invid_rejected) + len(invid_stock_rejected))],
-            ],
-        )
 
     print(json.dumps({
         "ELIT_importados": len(elit),
@@ -1541,6 +1629,9 @@ def main() -> None:
         "COMPRA_INTERNA_RECOMENDADA": len(internal_buy),
         "PRODUCTOS": len(store_products),
         "MENU_CAT_MAR": len(menu_rows),
+        "COTIZACION_ELIT": provider_rates["ELIT"],
+        "COTIZACION_NB": provider_rates["NB"],
+        "COTIZACION_INVID": provider_rates["INVID"],
         "total_importados": len(elit) + len(nb) + len(invid),
         "total_rechazados": len(rejected),
     }, ensure_ascii=False, indent=2))

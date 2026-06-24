@@ -1,4 +1,4 @@
-# COMETA G - Computación Gamer
+﻿# COMETA G - ComputaciÃ³n Gamer
 
 Tienda online gamer con Next.js, Tailwind CSS y Google Sheets como panel inicial.
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Para producción:
+Para producciÃ³n:
 
 ```bash
 npm run build
@@ -34,13 +34,13 @@ Tipos simples soportados:
 nav, menu, banner, promociones, beneficios, tabs_productos, grilla_productos, categorias, texto, links_footer, contacto_footer
 ```
 
-Ejemplo de menú del header:
+Ejemplo de menÃº del header:
 
 ```txt
 Inicio|/,Productos|/productos,Placas de video|/productos?categoria=Placas%20de%20video
 ```
 
-Ejemplo de pestañas con una activa:
+Ejemplo de pestaÃ±as con una activa:
 
 ```txt
 Featured Products|destacado|active;Latest Products|nuevo|;Sale Products|oferta
@@ -54,39 +54,39 @@ Columnas:
 id, sku, nombre, slug, descripcion_corta, descripcion_larga, precio, precio_oferta, stock, stock_status, categoria, subcategoria, marca, tags, imagen_principal, imagenes_extra, atributos, variables, color, garantia, destacado, nuevo, oferta, preventa, fecha_lanzamiento, visible, orden
 ```
 
-### Agregar más líneas en descripción/atributos
+### Agregar mÃ¡s lÃ­neas en descripciÃ³n/atributos
 
-En `atributos` usá pares separados por `|`:
+En `atributos` usÃ¡ pares separados por `|`:
 
 ```txt
 Memoria:12GB GDDR6X|Uso:Gaming 1440p|Consumo:220W|Fuente recomendada:650W|Conectores:2x HDMI, 3x DisplayPort
 ```
 
-Cada par se muestra como una línea/recuadro en la página de producto.
+Cada par se muestra como una lÃ­nea/recuadro en la pÃ¡gina de producto.
 
-### Agregar más fotos
+### Agregar mÃ¡s fotos
 
-En `imagenes_extra`, pegá URLs separadas por `|`:
+En `imagenes_extra`, pegÃ¡ URLs separadas por `|`:
 
 ```txt
 https://imagen-1.jpg|https://imagen-2.jpg|https://imagen-3.jpg
 ```
 
-La primera imagen sale de `imagen_principal`; las demás aparecen como miniaturas.
+La primera imagen sale de `imagen_principal`; las demÃ¡s aparecen como miniaturas.
 
-### Imágenes desde Google Drive
+### ImÃ¡genes desde Google Drive
 
-Podés pegar links públicos de Drive en `imagen_principal` o `imagenes_extra`, por ejemplo:
+PodÃ©s pegar links pÃºblicos de Drive en `imagen_principal` o `imagenes_extra`, por ejemplo:
 
 ```txt
 https://drive.google.com/file/d/ID_DEL_ARCHIVO/view?usp=sharing
 ```
 
-La app los convierte a una URL directa. El archivo tiene que estar compartido como "cualquier persona con el enlace puede ver". Para imágenes privadas de Drive hace falta un proxy/API con service account; funciona, pero no es lo ideal para ecommerce por velocidad y límites.
+La app los convierte a una URL directa. El archivo tiene que estar compartido como "cualquier persona con el enlace puede ver". Para imÃ¡genes privadas de Drive hace falta un proxy/API con service account; funciona, pero no es lo ideal para ecommerce por velocidad y lÃ­mites.
 
 ### Relacionados
 
-En la página de producto se muestran hasta 5 productos de la misma `categoria`, ordenados por `orden` descendente. Es decir: los últimos cargados aparecen primero.
+En la pÃ¡gina de producto se muestran hasta 5 productos de la misma `categoria`, ordenados por `orden` descendente. Es decir: los Ãºltimos cargados aparecen primero.
 
 ## Variables de entorno
 
@@ -99,10 +99,9 @@ GOOGLE_SERVICE_ACCOUNT_JSON={...}
 GOOGLE_SHEETS_REVALIDATE_SECONDS=60
 BLOB_READ_WRITE_TOKEN=token_de_vercel_blob_opcional
 BLOB_STORE_ID=store_xxx_si_usas_integracion_oidc_de_vercel
-ADMIN_UPLOAD_SECRET=una_clave_larga_inventada_por_vos
 ```
 
-También se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.
+TambiÃ©n se puede usar `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`.
 
 `GOOGLE_SHEETS_ID` queda como planilla principal de backend y layout. Si definis `GOOGLE_SHEETS_PRODUCTOS_ID`, la app lee y escribe productos desde esa planilla separada. Si definis `GOOGLE_SHEETS_USERS_ID` y `GOOGLE_SHEETS_VENTAS_ID`, usuarios, ordenes y ventas quedan fuera de la planilla de layout.
 
@@ -126,31 +125,11 @@ NEXT_PUBLIC_SITE_URL=https://www.cometag.store
 
 Usa `PAYWAY_ENVIRONMENT=developer` para sandbox y `PAYWAY_ENVIRONMENT=production` para cobros reales.
 
-## Panel admin en Google Sheets
+## Catalogo y markups
 
-El panel lateral vive en `apps-script/`.
+El catalogo no es en tiempo real: se importa a Google Sheets y la web lee la hoja PRODUCTOS.
+Para automatizarlo hay que ejecutar el importador con Vercel Cron o GitHub Actions.
 
-Instalación:
+La hoja CATALOGO_LOG guarda la cotizacion usada por proveedor en la columna E.
+La hoja MENU_CAT_MAR guarda categorias, subcategorias, marcas y el markup por subcategoria en la columna G (markup_multiplicador, formato 1.00, 1.18, 1.22).
 
-1. En tu Google Sheet: `Extensiones > Apps Script`.
-2. Pegá `apps-script/Code.gs` en `Code.gs`.
-3. Creá un archivo HTML llamado `Sidebar` y pegá `apps-script/Sidebar.html`.
-4. Guardá y recargá la Sheet.
-5. Menú `COMETA G > Configurar API`.
-6. API URL:
-
-```txt
-https://TU-DOMINIO/api/admin/productos
-```
-
-7. Clave admin: el mismo valor de `ADMIN_UPLOAD_SECRET` en Vercel.
-
-Uso:
-
-- Abrí `COMETA G > Crear producto`.
-- Completá los campos.
-- Subí imágenes.
-- Reordenalas con las flechas.
-- Tocá `CREAR`.
-
-La primera imagen se guarda en `imagen_principal`; las demás se guardan en `imagenes_extra` separadas por `|`.

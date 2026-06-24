@@ -485,9 +485,9 @@ async function fetchPrivateSheetCell(
 async function readUsdRateFromMenu(): Promise<number> {
   const value =
     (await fetchPrivateSheetCell(
-      "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
-      DEFAULT_MENU_SHEET_NAME,
-      "L2",
+      "GOOGLE_SHEETS_CATALOGO_LOG_NAME",
+      "CATALOGO_LOG",
+      "E3",
       process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
     ).catch(() => null)) ||
     (await fetchPrivateSheetCell(
@@ -692,10 +692,14 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
       const stock = toNumber(row.stock, 0);
       const precioUsd = toNumber(row.precio_usd, 0);
       const precioOfertaUsd = toNumber(row.precio_oferta_usd, 0);
-      const precio = precioUsd > 0 ? Math.round(precioUsd * usdRate) : toNumber(row.precio, 0);
-      const precioOferta = precioOfertaUsd > 0
-        ? Math.round(precioOfertaUsd * usdRate)
-        : toNumber(row.precio_oferta);
+      const precioArs = toNumber(row.precio, 0);
+      const precioOfertaArs = toNumber(row.precio_oferta, 0);
+      const precio = precioArs > 0 ? Math.round(precioArs) : Math.round(precioUsd * usdRate);
+      const precioOferta = precioOfertaArs > 0
+        ? Math.round(precioOfertaArs)
+        : precioOfertaUsd > 0
+          ? Math.round(precioOfertaUsd * usdRate)
+          : 0;
       const stockStatus: StockStatus =
         preventa ? "preventa" : explicitStatus || (stock > 0 ? "disponible" : "sin_stock");
 
