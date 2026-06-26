@@ -310,6 +310,7 @@ MENU_COLUMNS = [
     "orden",
     "visible",
     "markup_multiplicador",
+    "markup_oferta",
 ]
 
 MENU_SHEET = "MENU_CAT_MAR"
@@ -699,10 +700,11 @@ def menu_markup_key(category: str, subcategory: str) -> str:
     return f"{normalize_text(category)}|{normalize_text(subcategory)}"
 
 
-def markup_for(row: list[str], markups: dict[str, str] | None = None) -> float:
+def markup_for(row: list[str], markups: dict[str, dict[str, str]] | None = None, kind: str = "normal") -> float:
     if not markups:
         return 1.0
-    raw = markups.get(menu_markup_key(row[5], row[6])) or markups.get(menu_markup_key(row[5], ""))
+    entry = markups.get(menu_markup_key(row[5], row[6])) or markups.get(menu_markup_key(row[5], ""))
+    raw = entry.get(kind) if entry else ""
     value = parse_price(raw)
     return value if value > 0 else 1.0
 
@@ -869,7 +871,7 @@ def products_for_store(consolidated: list[list[str]]) -> list[list[str]]:
 
 def products_for_store_with_markup(
     consolidated: list[list[str]],
-    markups: dict[str, str],
+    markups: dict[str, dict[str, str]],
     provider_rates: dict[str, float],
 ) -> list[list[str]]:
     products: list[list[str]] = []
@@ -941,7 +943,7 @@ def products_for_store_with_markup(
     return products
 
 
-def build_menu_rows(consolidated: list[list[str]], markups: dict[str, str] | None = None) -> list[list[str]]:
+def build_menu_rows(consolidated: list[list[str]], markups: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
     counts: dict[tuple[str, str], int] = {}
     for row in consolidated:
         category = row[5]
@@ -956,6 +958,9 @@ def build_menu_rows(consolidated: list[list[str]], markups: dict[str, str] | Non
         if subcategory:
             params += f"&subcategoria={requests.utils.quote(subcategory)}"
         order = MENU_CATEGORY_ORDER.get(category, 999)
+        existing_markup = (markups or {}).get(menu_markup_key(category, subcategory), {})
+        normal_markup = existing_markup.get("normal") or "1.00"
+        offer_markup = existing_markup.get("offer") or normal_markup
         rows.append([
             category,
             subcategory,
@@ -963,7 +968,8 @@ def build_menu_rows(consolidated: list[list[str]], markups: dict[str, str] | Non
             f"/productos?{params}",
             str(order),
             "TRUE",
-            (markups or {}).get(menu_markup_key(category, subcategory), "1.00"),
+            normal_markup,
+            offer_markup,
         ])
 
     return sorted(rows, key=lambda item: (int(item[4]), item[0], item[1]))
@@ -1455,8 +1461,8 @@ def build_brand_rows(consolidated: list[list[str]]) -> list[list[str]]:
     return [[brand, canonical_brand(brand)] for brand in brands]
 
 
-def read_menu_markups(service, sheet: str) -> dict[str, str]:
-    rows = values_get(service, f"{sheet}!A1:G1000")
+def read_menu_markups(service, sheet: str) -> dict[str, dict[str, str]]:
+    rows = values_get(service, f"{sheet}!A1:H1000")
     if not rows:
         return {}
     headers = [normalize_text(cell) for cell in rows[0]]
@@ -1464,16 +1470,24 @@ def read_menu_markups(service, sheet: str) -> dict[str, str]:
         markup_index = headers.index("markup_multiplicador")
     except ValueError:
         markup_index = 6
+    try:
+        offer_markup_index = headers.index("markup_oferta")
+    except ValueError:
+        offer_markup_index = 7
 
-    markups: dict[str, str] = {}
+    markups: dict[str, dict[str, str]] = {}
     for row in rows[1:]:
         if len(row) <= markup_index:
             continue
         category = clean(row[0] if len(row) > 0 else "")
         subcategory = clean(row[1] if len(row) > 1 else "")
         markup = clean(row[markup_index])
+        offer_markup = clean(row[offer_markup_index]) if len(row) > offer_markup_index else ""
         if category and markup:
-            markups[menu_markup_key(category, subcategory)] = markup
+            markups[menu_markup_key(category, subcategory)] = {
+                "normal": markup,
+                "offer": offer_markup or markup,
+            }
     return markups
 
 
@@ -1486,7 +1500,7 @@ def replace_menu_values(
 ) -> None:
     if os.environ.get("CATALOG_ENSURE_SHEETS", "FALSE").upper() == "TRUE":
         ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=15)
-    current_brand_values = values_get(service, f"{sheet}!H2:J1000")
+    current_brand_values = values_get(service, f"{sheet}!I2:K1000") or values_get(service, f"{sheet}!H2:J1000")
     logo_by_brand = {
         clean(row[0]).upper(): clean(row[2])
         for row in current_brand_values
@@ -1500,7 +1514,7 @@ def replace_menu_values(
         chunk = values[index:index + 500]
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
-    updates.append((f"{sheet}!H1:J1", [["marca", "marca_canonica", "logo_url"]]))
+    updates.append((f"{sheet}!I1:K1", [["marca", "marca_canonica", "logo_url"]]))
     updates.append((f"{sheet}!L1:O1", [IMAGE_GUIDE_HEADERS]))
     updates.append((f"{sheet}!L2:O{len(IMAGE_GUIDE_ROWS) + 1}", IMAGE_GUIDE_ROWS))
     if brand_rows:
@@ -1508,7 +1522,7 @@ def replace_menu_values(
             [brand, canonical, logo_by_brand.get(brand.upper(), "")]
             for brand, canonical in brand_rows
         ]
-        updates.append((f"{sheet}!H2", brand_rows))
+        updates.append((f"{sheet}!I2", brand_rows))
     values_batch_update(service, updates)
 
 

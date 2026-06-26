@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08080c;
+        --panel: #14141c;
+        --line: #2a2a38;
+        --text: #ffffff;
+        --muted: #9ca3af;
+        --accent: #ec2d7a;
+        --accent2: #8b3df4;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      label {
+        display: block;
+        margin: 12px 0 5px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+      }
+      input,
+      textarea,
+      select {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 38px;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #050508;
+        color: var(--text);
+        font: inherit;
+      }
+      textarea {
+        min-height: 78px;
+        resize: vertical;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .bar {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0 16px;
+      }
+      button {
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: var(--panel);
+      }
+      .status {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 12px;
+      }
+      img {
+        display: block;
+        width: 100%;
+        max-height: 190px;
+        object-fit: contain;
+        margin-top: 10px;
+        border-radius: 8px;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Editor de producto</h2>
+    <div class="card">
+      <label for="lookup">ID, SKU o slug</label>
+      <input id="lookup" placeholder="Ej: NB-1234 o cooler-master..." />
+      <div class="bar">
+        <button onclick="openProduct()">Abrir</button>
+        <button class="secondary" onclick="createNewProduct()">Crear nuevo</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <form id="form" style="display:none; margin-top: 14px;"></form>
+
+    <script>
+      let rowNumber = null;
+      let fields = [];
+      const textareaFields = new Set(["descripcion_corta", "descripcion_larga", "imagenes_extra", "atributos", "variables", "tags"]);
+      const selectFields = {
+        visible: ["TRUE", "FALSE"],
+        destacado: ["FALSE", "TRUE"],
+        nuevo: ["FALSE", "TRUE"],
+        oferta: ["FALSE", "TRUE"],
+        preventa: ["FALSE", "TRUE"],
+        stock_status: ["disponible", "sin_stock", "preventa"]
+      };
+
+      function setStatus(message) {
+        document.getElementById("status").textContent = message || "";
+      }
+
+      function openProduct() {
+        const lookup = document.getElementById("lookup").value;
+        setStatus("Buscando...");
+        google.script.run
+          .withSuccessHandler(renderProduct)
+          .withFailureHandler((err) => setStatus(err.message))
+          .findProductByLookup(lookup);
+      }
+
+      function renderProduct(data) {
+        rowNumber = data.rowNumber;
+        fields = data.fields || [];
+        const product = data.product || {};
+        const form = document.getElementById("form");
+        form.style.display = "block";
+        form.innerHTML = fields.map((field) => fieldHtml(field, product[field] || "")).join("") +
+          '<div class="bar"><button type="button" onclick="saveProduct()">Guardar cambios</button></div>';
+        updatePreview();
+        setStatus(data.found ? "Producto abierto." : "No existe todavia. Completa datos y toca Crear nuevo.");
+      }
+
+      function fieldHtml(field, value) {
+        const safe = String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        if (selectFields[field]) {
+          return '<label>' + field + '</label><select data-field="' + field + '">' +
+            selectFields[field].map((option) => '<option value="' + option + '"' + (safe === option ? " selected" : "") + '>' + option + '</option>').join("") +
+            '</select>';
+        }
+        if (textareaFields.has(field)) {
+          return '<label>' + field + '</label><textarea data-field="' + field + '">' + safe + '</textarea>';
+        }
+        return '<label>' + field + '</label><input data-field="' + field + '" value="' + safe + '" oninput="updatePreview()" />';
+      }
+
+      function collectProduct() {
+        const product = {};
+        document.querySelectorAll("[data-field]").forEach((input) => {
+          product[input.getAttribute("data-field")] = input.value;
+        });
+        return product;
+      }
+
+      function saveProduct() {
+        if (!rowNumber) {
+          setStatus("Este producto todavia no existe. Usa Crear nuevo.");
+          return;
+        }
+        setStatus("Guardando...");
+        google.script.run
+          .withSuccessHandler((res) => setStatus(res.message))
+          .withFailureHandler((err) => setStatus(err.message))
+          .saveProduct({ rowNumber, product: collectProduct() });
+      }
+
+      function createNewProduct() {
+        const product = collectProduct();
+        if (!product.id) product.id = document.getElementById("lookup").value;
+        setStatus("Creando...");
+        google.script.run
+          .withSuccessHandler((res) => {
+            rowNumber = res.rowNumber;
+            setStatus(res.message);
+          })
+          .withFailureHandler((err) => setStatus(err.message))
+          .createProduct(product);
+      }
+
+      function updatePreview() {
+        const imageInput = document.querySelector('[data-field="imagen_principal"]');
+        let preview = document.getElementById("image-preview");
+        if (!imageInput || !imageInput.value) {
+          if (preview) preview.remove();
+          return;
+        }
+        if (!preview) {
+          preview = document.createElement("img");
+          preview.id = "image-preview";
+          imageInput.insertAdjacentElement("afterend", preview);
+        }
+        preview.src = imageInput.value;
+      }
+    </script>
+  </body>
+</html>

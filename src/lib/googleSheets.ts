@@ -225,7 +225,7 @@ function getServiceAccountConfig(): { clientEmail: string; privateKey: string } 
   return { clientEmail, privateKey };
 }
 
-async function getGoogleAccessToken(): Promise<string | null> {
+export async function getGoogleAccessToken(): Promise<string | null> {
   const serviceAccount = getServiceAccountConfig();
   if (!serviceAccount) return null;
 
@@ -520,27 +520,36 @@ function menuMarkupKey(category: string, subcategory: string) {
   return `${clean(category).toLowerCase()}|${clean(subcategory).toLowerCase()}`;
 }
 
-async function readMarkupMapFromMenu(): Promise<Map<string, number>> {
+type ProductMarkup = { normal: number; offer: number };
+
+async function readMarkupMapFromMenu(): Promise<Map<string, ProductMarkup>> {
   const rows = await fetchPrivateSheetRows(
     "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
     DEFAULT_MENU_SHEET_NAME,
     process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
   ).catch(() => null);
 
-  const map = new Map<string, number>();
+  const map = new Map<string, ProductMarkup>();
   for (const row of rows || []) {
     const category = clean(row.categoria);
     const subcategory = clean(row.subcategoria);
-    const markup = toNumber(row.markup_multiplicador, 1);
-    if (category && markup > 0) {
-      map.set(menuMarkupKey(category, subcategory), markup);
+    const normal = toNumber(row.markup_multiplicador, 1);
+    const offer = toNumber(row.markup_oferta, normal);
+    if (category && normal > 0) {
+      map.set(menuMarkupKey(category, subcategory), {
+        normal,
+        offer: offer > 0 ? offer : normal
+      });
     }
   }
   return map;
 }
 
-function markupForProduct(markupMap: Map<string, number>, category: string, subcategory: string) {
-  return markupMap.get(menuMarkupKey(category, subcategory)) || markupMap.get(menuMarkupKey(category, "")) || 1;
+function markupForProduct(markupMap: Map<string, ProductMarkup>, category: string, subcategory: string): ProductMarkup {
+  return markupMap.get(menuMarkupKey(category, subcategory)) || markupMap.get(menuMarkupKey(category, "")) || {
+    normal: 1,
+    offer: 1
+  };
 }
 
 function sheetUrl(sheetNameEnv: string, urlEnv: string, fallbackName: string): string | null {
@@ -728,12 +737,17 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
       const categoria = clean(row.categoria);
       const subcategoria = clean(row.subcategoria);
       const markup = markupForProduct(markupMap, categoria, subcategoria);
-      const precio = Math.round((precioArs > 0 ? precioArs : precioUsd * usdRate) * markup);
-      const precioOferta = precioOfertaArs > 0
-        ? Math.round(precioOfertaArs * markup)
+      const basePrice = precioArs > 0 ? precioArs : precioUsd * usdRate;
+      const precio = Math.round(basePrice * markup.normal);
+      const hasOffer = toBool(row.oferta) || precioOfertaArs > 0 || precioOfertaUsd > 0;
+      const sheetOfferBase = precioOfertaArs > 0
+        ? precioOfertaArs
         : precioOfertaUsd > 0
-          ? Math.round(precioOfertaUsd * usdRate * markup)
-          : 0;
+          ? precioOfertaUsd * usdRate
+          : basePrice;
+      const precioOferta = hasOffer
+        ? Math.round(sheetOfferBase * markup.offer)
+        : 0;
       const stockStatus: StockStatus =
         preventa ? "preventa" : explicitStatus || (stock > 0 ? "disponible" : "sin_stock");
 
@@ -763,7 +777,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         garantia: clean(row.garantia),
         destacado: toBool(row.destacado),
         nuevo: toBool(row.nuevo),
-        oferta: toBool(row.oferta) || toNumber(row.precio_oferta) > 0 || precioOfertaUsd > 0,
+        oferta: hasOffer,
         preventa,
         fecha_lanzamiento: clean(row.fecha_lanzamiento),
         visible: toBool(row.visible, true),

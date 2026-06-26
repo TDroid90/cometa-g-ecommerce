@@ -130,6 +130,12 @@ Usa `PAYWAY_ENVIRONMENT=developer` para sandbox y `PAYWAY_ENVIRONMENT=production
 El catalogo no es en tiempo real: se importa a Google Sheets y la web lee la hoja PRODUCTOS.
 Para automatizarlo hay que ejecutar el importador con Vercel Cron o GitHub Actions.
 
-La hoja CATALOGO_LOG guarda la cotizacion usada por proveedor en la columna E.
-La hoja MENU_CAT_MAR guarda categorias, subcategorias, marcas y el markup por subcategoria en la columna G (markup_multiplicador, formato 1.00, 1.18, 1.22).
+La hoja CATALOGO_LOG guarda la cotizacion usada por proveedor en la columna E. Vercel Hobby ejecuta `/api/cron/cotizaciones` una vez por dia para refrescar esos valores desde las fuentes disponibles. El mismo endpoint puede ejecutarse manualmente si necesitas refrescar antes.
+La hoja MENU_CAT_MAR guarda categorias, subcategorias, marcas y markups:
+
+- Columna G: `markup_multiplicador`, precio normal, formato 1.00, 1.18, 1.22.
+- Columna H: `markup_oferta`, precio de oferta para productos marcados como oferta.
+- Columnas I/J/K: marca, marca canonica y logo.
+
+Para editar productos desde Google Sheets, copia los archivos de `apps-script/` en `Extensiones > Apps Script` de la hoja de productos. Al recargar la Sheet aparece el menu `COMETA G > Editor de producto`.
 
