@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getGoogleAccessToken } from "@/lib/googleSheets";
 
 const DEFAULT_PRODUCTS_SPREADSHEET_ID = "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY";
+const NB_API_BASE_URL = "https://api.nb.com.ar/v1";
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
@@ -52,7 +53,7 @@ function median(values: number[]): number {
 }
 
 async function fetchNbRate(): Promise<number> {
-  const url = process.env.NB_PRICE_LIST_CSV_URL;
+  const url = await getNbCsvUrl();
   if (!url) return 0;
 
   const response = await fetch(url, {
@@ -71,6 +72,44 @@ async function fetchNbRate(): Promise<number> {
 
   const rates = lines.slice(1, 500).map((line) => toNumber(splitCsvLine(line)[rateIndex], 0));
   return median(rates);
+}
+
+async function getNbCsvUrl(): Promise<string> {
+  const username = clean(process.env.NB_USERNAME);
+  const password = clean(process.env.NB_PASSWORD);
+  if (username && password) {
+    try {
+      const login = await fetch(`${NB_API_BASE_URL}/auth/login`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "CometaG-Cron/1.0"
+        },
+        body: JSON.stringify({ user: username, password, mode: "web" })
+      });
+      if (login.ok) {
+        const loginPayload = (await login.json()) as { token?: string };
+        if (loginPayload.token) {
+          const list = await fetch(`${NB_API_BASE_URL}/priceListCsv`, {
+            cache: "no-store",
+            headers: {
+              Authorization: `Bearer ${loginPayload.token}`,
+              "User-Agent": "CometaG-Cron/1.0"
+            }
+          });
+          if (list.ok) {
+            const listPayload = (await list.json()) as { pathExcel?: string };
+            if (listPayload.pathExcel) return listPayload.pathExcel;
+          }
+        }
+      }
+    } catch {
+      // If NB changes auth temporarily, keep the rest of the cron alive.
+    }
+  }
+
+  return clean(process.env.NB_PRICE_LIST_CSV_URL);
 }
 
 async function scrapeRate(url: string): Promise<number> {

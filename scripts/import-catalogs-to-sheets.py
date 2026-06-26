@@ -21,6 +21,7 @@ SERVICE_ACCOUNT_FILE = ROOT / "cometag-444803-c2bdba83753e.json"
 PRODUCTS_SPREADSHEET_ID = os.environ.get("GOOGLE_SHEETS_PRODUCTOS_ID", "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY")
 INVID_AUTH_URL = "https://www.invidcomputers.com/api/v1/auth.php"
 INVID_ARTICLE_URL = "https://www.invidcomputers.com/api/v1/articulo.php"
+NB_API_BASE_URL = "https://api.nb.com.ar/v1"
 
 ELIT_CSV = ROOT / "elit-tiendanube-196-515.csv"
 NB_CSV_FALLBACK = ROOT / "nb-price-list.csv"
@@ -987,6 +988,47 @@ def read_csv_url(url: str, delimiter: str = ";") -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(content), delimiter=delimiter))
 
 
+def nb_api_login(username: str, password: str) -> str:
+    response = requests.post(
+        f"{NB_API_BASE_URL}/auth/login",
+        json={"user": username, "password": password, "mode": "web"},
+        timeout=30,
+        headers={"User-Agent": "CometaG-CatalogImporter/1.0"},
+    )
+    response.raise_for_status()
+    token = response.json().get("token")
+    if not token:
+        raise RuntimeError("NB no devolvio token.")
+    return token
+
+
+def read_nb_catalog() -> list[dict[str, str]]:
+    username = os.environ.get("NB_USERNAME")
+    password = os.environ.get("NB_PASSWORD")
+    if username and password:
+        token = nb_api_login(username, password)
+        response = requests.get(
+            f"{NB_API_BASE_URL}/priceListCsv",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "CometaG-CatalogImporter/1.0",
+            },
+            timeout=90,
+        )
+        response.raise_for_status()
+        csv_url = response.json().get("pathExcel")
+        if not csv_url:
+            raise RuntimeError("NB no devolvio pathExcel para priceListCsv.")
+        return read_csv_url(csv_url, delimiter=";")
+
+    nb_csv_url = os.environ.get("NB_PRICE_LIST_CSV_URL")
+    if nb_csv_url:
+        return read_csv_url(nb_csv_url, delimiter=";")
+    if NB_CSV_FALLBACK.exists():
+        return read_csv_path(NB_CSV_FALLBACK, delimiter=";")
+    raise RuntimeError("Falta NB_USERNAME/NB_PASSWORD, NB_PRICE_LIST_CSV_URL o nb-price-list.csv.")
+
+
 def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
     auth_response = requests.post(
         INVID_AUTH_URL,
@@ -1024,8 +1066,15 @@ def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
 
 def stringify_raw_value(value: Any) -> str:
     if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False)
-    return clean(value)
+        text = json.dumps(value, ensure_ascii=False)
+    else:
+        text = clean(value)
+
+    text = re.sub(r"\s+", " ", text).strip()
+    max_chars = int(os.environ.get("FULL_CATALOG_CELL_MAX_CHARS", "4000") or "4000")
+    if max_chars > 0 and len(text) > max_chars:
+        return f"{text[:max_chars]}...[truncated]"
+    return text
 
 
 def build_full_catalog(elit_rows: list[dict[str, Any]], nb_rows: list[dict[str, Any]], invid_rows: list[dict[str, Any]]) -> tuple[list[str], list[list[str]]]:
@@ -1357,26 +1406,28 @@ def values_batch_clear(token: str, ranges: list[str]) -> None:
     sheets_post(token, "/values:batchClear", {"ranges": ranges})
 
 
-def values_update(token: str, range_name: str, values: list[list[str]]) -> None:
+def values_update(token: str, range_name: str, values: list[list[str]], value_input_option: str = "USER_ENTERED") -> None:
     sheets_put(
         token,
         f"/values/{requests.utils.quote(range_name, safe='!:$')}",
         {"values": values},
-        valueInputOption="USER_ENTERED",
+        valueInputOption=value_input_option,
     )
 
 
-def values_batch_update(token: str, updates: list[tuple[str, list[list[str]]]]) -> None:
+def values_batch_update(token: str, updates: list[tuple[str, list[list[str]]]], value_input_option: str = "USER_ENTERED") -> None:
     if not updates:
         return
-    sheets_post(
-        token,
-        "/values:batchUpdate",
-        {
-            "valueInputOption": "USER_ENTERED",
-            "data": [{"range": range_name, "values": values} for range_name, values in updates],
-        },
-    )
+    for index in range(0, len(updates), 8):
+        chunk = updates[index:index + 8]
+        sheets_post(
+            token,
+            "/values:batchUpdate",
+            {
+                "valueInputOption": value_input_option,
+                "data": [{"range": range_name, "values": values} for range_name, values in chunk],
+            },
+        )
 
 
 def batch_update(token: str, requests_body: list[dict[str, Any]]) -> None:
@@ -1424,11 +1475,12 @@ def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]
         values_clear(service, f"{sheet}!A:{column_letter(max(len(headers), 1))}")
     values = [headers] + rows
     updates = []
-    for index in range(0, len(values), 500):
-        chunk = values[index:index + 500]
+    chunk_size = 100 if sheet == "FULL_CATALOGO" else 500
+    for index in range(0, len(values), chunk_size):
+        chunk = values[index:index + chunk_size]
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
-    values_batch_update(service, updates)
+    values_batch_update(service, updates, value_input_option="RAW" if sheet == "FULL_CATALOGO" else "USER_ENTERED")
 
 
 def replace_existing_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
@@ -1620,9 +1672,6 @@ def format_menu_sheet(service, sheet: str) -> None:
 
 def main() -> None:
     load_local_env()
-    nb_csv_url = os.environ.get("NB_PRICE_LIST_CSV_URL")
-    if not nb_csv_url and not NB_CSV_FALLBACK.exists():
-        raise RuntimeError("Falta NB_PRICE_LIST_CSV_URL en .env.local o variables de entorno.")
     invid_username = os.environ.get("INVID_USERNAME")
     invid_password = os.environ.get("INVID_PASSWORD")
     invid_cache = REPO_ROOT / "data" / "catalogos" / "catalogo_invid_normalizado.csv"
@@ -1632,8 +1681,9 @@ def main() -> None:
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     elit_rows = read_csv_path(ELIT_CSV)
-    nb_rows = read_csv_url(nb_csv_url) if nb_csv_url else read_csv_path(NB_CSV_FALLBACK, delimiter=";")
-    full_invid_rows = read_invid_articles(invid_username, invid_password) if invid_username and invid_password else []
+    nb_rows = read_nb_catalog()
+    refresh_invid = os.environ.get("INVID_REFRESH", "FALSE").upper() == "TRUE"
+    full_invid_rows = read_invid_articles(invid_username, invid_password) if (refresh_invid or not invid_cache.exists()) and invid_username and invid_password else []
     invid_rows = [] if invid_cache.exists() else full_invid_rows
     provider_rates = provider_exchange_rates(elit_rows, nb_rows, invid_rows)
 
