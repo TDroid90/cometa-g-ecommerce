@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Product } from "@/lib/types";
 import { filterProducts, productPrice, uniqueValues } from "@/lib/data";
 import { ProductGrid } from "@/components/products/ProductGrid";
@@ -32,17 +32,30 @@ export function CatalogClient({
   const [disponibilidad, setDisponibilidad] = useState(initialAvailability || "todos");
   const [oferta, setOferta] = useState(Boolean(initialOffer));
   const [maxPrice, setMaxPrice] = useState("");
-  const categories = uniqueValues(products, "categoria");
-  const subcategories = Array.from(
-    new Set(
-      products
-        .filter((product) => !categoria || product.categoria === categoria)
-        .map((product) => product.subcategoria)
-        .filter(Boolean) as string[]
-    )
-  ).sort((a, b) => a.localeCompare(b));
-  const brands = uniqueValues(products, "marca");
   const highestPrice = Math.max(...products.map(productPrice), 0);
+  const optionFilters = {
+    query,
+    disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
+    oferta,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined
+  };
+  const categoryProducts = useMemo(
+    () => filterProducts(products, { ...optionFilters, marca: marca || undefined }),
+    [products, query, marca, disponibilidad, oferta, maxPrice]
+  );
+  const categories = uniqueValues(categoryProducts, "categoria");
+  const subcategoryProducts = useMemo(
+    () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined, marca: marca || undefined }),
+    [products, query, categoria, marca, disponibilidad, oferta, maxPrice]
+  );
+  const subcategories = Array.from(
+    new Set(subcategoryProducts.map((product) => product.subcategoria).filter(Boolean) as string[])
+  ).sort((a, b) => a.localeCompare(b));
+  const brandProducts = useMemo(
+    () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined, subcategoria: subcategoria || undefined }),
+    [products, query, categoria, subcategoria, disponibilidad, oferta, maxPrice]
+  );
+  const brands = uniqueValues(brandProducts, "marca");
 
   const filtered = useMemo(
     () =>
@@ -57,6 +70,18 @@ export function CatalogClient({
       }),
     [products, query, categoria, subcategoria, marca, disponibilidad, oferta, maxPrice]
   );
+
+  useEffect(() => {
+    if (categoria && !categories.includes(categoria)) setCategoria("");
+  }, [categoria, categories]);
+
+  useEffect(() => {
+    if (subcategoria && !subcategories.includes(subcategoria)) setSubcategoria("");
+  }, [subcategoria, subcategories]);
+
+  useEffect(() => {
+    if (marca && !brands.includes(marca)) setMarca("");
+  }, [marca, brands]);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

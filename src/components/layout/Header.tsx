@@ -12,7 +12,7 @@ const defaultNavItems = [
   { href: "/productos?disponibilidad=preventa", label: "Preventa" },
   { href: "/mecanica-de-compra", label: "Mecánica de compra" },
   { href: "/arma-tu-pc", label: "ARMA TU PC" },
-  { href: "#cluster-save", label: "Cluster Save" }
+  { href: "https://cluster-save.vercel.app", label: "Cluster Save" }
 ];
 
 const defaultTopLinks = [
@@ -114,7 +114,13 @@ export function Header({
   const searchSection = sectionByVariant(sections, "header_search");
   const iconsSection = sections.find((section) => section.layout_variant === "header_icons");
 
-  const navItems = parseNavItems(categoryNav?.text);
+  const navItems = useMemo(() => {
+    const items = parseNavItems(categoryNav?.text).map((item) =>
+      item.label.toLowerCase() === "cluster save" ? { ...item, href: "https://cluster-save.vercel.app" } : item
+    );
+    const hasClusterSave = items.some((item) => item.label.toLowerCase() === "cluster save");
+    return hasClusterSave ? items : [...items, { href: "https://cluster-save.vercel.app", label: "Cluster Save" }];
+  }, [categoryNav?.text]);
   const topLinks = parseNavItems(topRight?.text, defaultTopLinks);
   const searchItems = parseList(searchSection?.text);
   const placeholder =
@@ -452,6 +458,8 @@ export function Header({
             <Link
               key={item.href}
               href={item.href}
+              target={item.label.toLowerCase() === "cluster save" ? "_blank" : undefined}
+              rel={item.label.toLowerCase() === "cluster save" ? "noreferrer" : undefined}
               className={
                 item.label.toLowerCase() === "cluster save"
                   ? "ml-2 inline-flex h-9 items-center rounded-md border border-sky-300/40 bg-sky-500 px-4 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400"
@@ -470,8 +478,14 @@ export function Header({
             <Link
               key={item.href}
               href={item.href}
+              target={item.label.toLowerCase() === "cluster save" ? "_blank" : undefined}
+              rel={item.label.toLowerCase() === "cluster save" ? "noreferrer" : undefined}
               onClick={() => setOpen(false)}
-              className="block rounded-md px-3 py-3 text-sm text-zinc-200 hover:bg-white/5"
+              className={
+                item.label.toLowerCase() === "cluster save"
+                  ? "mt-2 block rounded-md bg-sky-500 px-3 py-3 text-sm font-black text-white"
+                  : "block rounded-md px-3 py-3 text-sm text-zinc-200 hover:bg-white/5"
+              }
             >
               {item.label}
             </Link>
