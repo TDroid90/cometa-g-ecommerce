@@ -28,7 +28,7 @@ export function ProductTabsClient({
         category_filter: taxonomyFilters.has(requestedFilter.toLowerCase()) ? section.category_filter : requestedFilter
       },
       products
-    ).slice(0, 6);
+    ).slice(0, 10);
   }, [activeTab, products, section]);
   const activeLabel = activeTab?.[0] || section.title || "Productos";
 

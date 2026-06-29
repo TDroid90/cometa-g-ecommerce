@@ -14,11 +14,15 @@ function parseLinks(text?: string): Array<{ label: string; href: string }> {
 }
 
 const defaultUsefulLinks = [
-  { label: "Catalogo", href: "/productos" },
-  { label: "Preventa", href: "/productos?disponibilidad=preventa" },
-  { label: "Mecanica de compra", href: "/mecanica-de-compra" },
+  { label: "Mi cuenta", href: "/perfil" },
   { label: "Nosotros", href: "/nosotros" },
   { label: "Terminos y condiciones", href: "/terminos-y-condiciones" }
+];
+
+const defaultCommerceLinks = [
+  { label: "Catalogo", href: "/productos" },
+  { label: "Preventa", href: "/productos?disponibilidad=preventa" },
+  { label: "Mecanica de compra", href: "/mecanica-de-compra" }
 ];
 
 type PaymentLogoType = "visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto" | "naranja" | "qr";
@@ -81,11 +85,8 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
   const newsletterSection = sections.find((section) => section.layout_variant === "footer_newsletter" && section.visible);
   const socialSection = sections.find((section) => section.layout_variant === "footer_social" && section.visible);
   const paymentsSection = sections.find((section) => section.layout_variant === "footer_payments" && section.visible);
-  const parsedUsefulLinks = parseLinks(linksSection?.text);
-  const usefulLinks = [...(parsedUsefulLinks.length ? parsedUsefulLinks : defaultUsefulLinks)];
-  for (const link of defaultUsefulLinks) {
-    if (!usefulLinks.some((item) => item.href === link.href)) usefulLinks.push(link);
-  }
+  const usefulLinks = defaultUsefulLinks;
+  const commerceLinks = defaultCommerceLinks;
   const socialLinks = parseLinks(socialSection?.text);
   const paymentMethods = (paymentsSection?.text || "cabal,visa,master,naranja,mipyme,qr,cripto,amex")
     .split(",")
@@ -116,7 +117,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 text-center sm:px-6 md:grid-cols-3 lg:grid-cols-[1.15fr_.75fr_1.35fr] lg:px-8 lg:text-left">
+      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 text-center sm:px-6 md:grid-cols-3 lg:grid-cols-[1.15fr_1.05fr_1.35fr] lg:px-8 lg:text-left">
         <div className="flex flex-col items-center lg:items-start">
           <Link href="/" className="inline-flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-md comet-gradient text-lg font-black text-white">G</span>
@@ -145,12 +146,22 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           </div>
         </div>
 
-        <div className="flex flex-col items-center lg:items-start">
-          <h3 className="text-sm font-black uppercase tracking-wide text-white">Links utiles</h3>
-          <div className="mt-4 grid gap-3">
-            {usefulLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm text-zinc-400 hover:text-white">{link.label}</Link>
-            ))}
+        <div className="grid gap-8 sm:grid-cols-2 lg:gap-0">
+          <div className="flex flex-col items-center lg:items-start lg:pr-8">
+            <h3 className="text-sm font-black uppercase tracking-wide text-white">Links utiles</h3>
+            <div className="mt-4 grid gap-3">
+              {usefulLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="text-sm text-zinc-400 hover:text-white">{link.label}</Link>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col items-center border-comet-border lg:items-start lg:border-l lg:pl-8">
+            <h3 className="text-sm font-black uppercase tracking-wide text-white">Comprar</h3>
+            <div className="mt-4 grid gap-3">
+              {commerceLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="text-sm text-zinc-400 hover:text-white">{link.label}</Link>
+              ))}
+            </div>
           </div>
         </div>
 
