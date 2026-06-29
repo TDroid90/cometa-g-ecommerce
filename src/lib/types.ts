@@ -60,6 +60,7 @@ export type Product = {
   precio_oferta_usd?: number;
   precio_oferta?: number;
   stock: number;
+  stockLocal?: number;
   stock_status: StockStatus;
   categoria?: string;
   subcategoria?: string;

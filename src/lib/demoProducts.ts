@@ -118,6 +118,7 @@ export function generateDemoProducts(existingProducts: Product[], targetTotal = 
         precio: price,
         precio_oferta: offer ? Math.round((price * 0.92) / 1000) * 1000 : undefined,
         stock,
+        stockLocal: order % 11 === 0 ? Math.min(stock, 3) : undefined,
         stock_status: preventa ? "preventa" : stock > 0 ? "disponible" : "sin_stock",
         categoria: item.category,
         subcategoria: item.subcategory,

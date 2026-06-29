@@ -129,6 +129,7 @@ export const seedProducts: Product[] = [
     precio: 899999,
     precio_oferta: 849999,
     stock: 6,
+    stockLocal: 2,
     stock_status: "disponible",
     categoria: "Placas de video",
     subcategoria: "NVIDIA",

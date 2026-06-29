@@ -16,6 +16,8 @@ export const PRODUCT_COLUMNS = [
   "precio_oferta_usd",
   "precio_oferta",
   "stock",
+  "stockLocal",
+  "stock_local",
   "stock_status",
   "categoria",
   "subcategoria",
@@ -730,6 +732,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
       const preventa = toBool(row.preventa);
       const explicitStatus = clean(row.stock_status).toLowerCase() as StockStatus;
       const stock = toNumber(row.stock, 0);
+      const stockLocal = toNumber(row.stockLocal || row.stock_local || row["stock local"], 0);
       const precioUsd = toNumber(row.precio_usd, 0);
       const precioOfertaUsd = toNumber(row.precio_oferta_usd, 0);
       const precioArs = toNumber(row.precio, 0);
@@ -763,6 +766,7 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         precio_oferta_usd: precioOfertaUsd || undefined,
         precio_oferta: precioOferta > 0 ? precioOferta : undefined,
         stock,
+        stockLocal: stockLocal > 0 ? stockLocal : undefined,
         stock_status: stockStatus,
         categoria,
         subcategoria,

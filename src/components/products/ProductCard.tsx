@@ -22,11 +22,19 @@ export function ProductCard({ product }: { product: Product }) {
   const disabled = product.stock_status === "sin_stock" && !product.preventa;
   const isSaved = hasItem(product.id);
   const imageUrl = normalizeImageUrl(product.imagen_principal);
+  const hasLocalStock = Boolean(product.stockLocal && product.stockLocal > 0);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-comet-border bg-comet-card shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50 hover:shadow-lg">
-      <div className="absolute left-3 top-3 z-10 rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-black text-white">
-        {statusLabel(product)}
+      <div className="absolute left-3 top-3 z-10 flex flex-col items-start gap-1.5">
+        <span className="rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-black text-white">
+          {statusLabel(product)}
+        </span>
+        {hasLocalStock && (
+          <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-[11px] font-black text-zinc-950 shadow-lg shadow-yellow-300/15">
+            STOCK LOCAL
+          </span>
+        )}
       </div>
 
       <button

@@ -16,7 +16,9 @@ function parseLinks(text?: string): Array<{ label: string; href: string }> {
 const defaultUsefulLinks = [
   { label: "Catalogo", href: "/productos" },
   { label: "Preventa", href: "/productos?disponibilidad=preventa" },
-  { label: "Mi cuenta", href: "/perfil" }
+  { label: "Mecanica de compra", href: "/mecanica-de-compra" },
+  { label: "Nosotros", href: "/nosotros" },
+  { label: "Terminos y condiciones", href: "/terminos-y-condiciones" }
 ];
 
 type PaymentLogoType = "visa" | "master" | "cabal" | "amex" | "mipyme" | "cripto" | "naranja" | "qr";
@@ -79,7 +81,11 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
   const newsletterSection = sections.find((section) => section.layout_variant === "footer_newsletter" && section.visible);
   const socialSection = sections.find((section) => section.layout_variant === "footer_social" && section.visible);
   const paymentsSection = sections.find((section) => section.layout_variant === "footer_payments" && section.visible);
-  const usefulLinks = (parseLinks(linksSection?.text).length ? parseLinks(linksSection?.text).slice(0, 3) : defaultUsefulLinks);
+  const parsedUsefulLinks = parseLinks(linksSection?.text);
+  const usefulLinks = [...(parsedUsefulLinks.length ? parsedUsefulLinks : defaultUsefulLinks)];
+  for (const link of defaultUsefulLinks) {
+    if (!usefulLinks.some((item) => item.href === link.href)) usefulLinks.push(link);
+  }
   const socialLinks = parseLinks(socialSection?.text);
   const paymentMethods = (paymentsSection?.text || "cabal,visa,master,naranja,mipyme,qr,cripto,amex")
     .split(",")

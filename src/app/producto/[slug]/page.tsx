@@ -43,6 +43,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
   const products = await getProducts();
   const relatedProducts = mixedProducts(products, product);
+  const hasLocalStock = Boolean(product.stockLocal && product.stockLocal > 0);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -95,6 +96,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <span className="rounded-md bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
               {product.preventa ? "Preventa" : product.stock_status === "sin_stock" ? "Sin stock" : "Disponible"}
             </span>
+            {hasLocalStock && (
+              <span className="rounded-md bg-yellow-300 px-3 py-1 text-xs font-black text-zinc-950">
+                STOCK LOCAL
+              </span>
+            )}
           </div>
 
           <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-5xl">{product.nombre}</h1>
@@ -136,6 +142,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     ? `${product.stock} unidades`
                     : "Sin stock"}
               </p>
+              {hasLocalStock && (
+                <p className="mt-1 text-xs font-bold text-yellow-300">
+                  Stock local: {product.stockLocal} unidades
+                </p>
+              )}
             </div>
             {product.marca && (
               <div className="rounded-md border border-comet-border bg-comet-panel p-3">
