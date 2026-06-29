@@ -1,16 +1,21 @@
-export default function PcBuilderPage() {
+import { PcBuilderClient } from "@/components/pc-builder/PcBuilderClient";
+import { getProductsWithTechData } from "@/lib/techData";
+
+export default async function PcBuilderPage() {
+  const products = await getProductsWithTechData();
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <p className="text-sm font-black uppercase tracking-[0.18em] text-comet-fuchsia">Próximamente</p>
-      <h1 className="mt-3 text-4xl font-black text-white">ARMA TU PC</h1>
-      <div className="mt-8 rounded-lg border border-comet-border bg-comet-panel p-6 text-zinc-300">
-        <p className="text-lg font-bold text-white">Estamos preparando el armador compatible de COMETA G.</p>
-        <p className="mt-4 leading-7">
-          La idea es validar procesador, mother, memoria, fuente, gabinete y placa de video con reglas reales de
-          compatibilidad. Lo vamos a trabajar con banderas y una tabla más detallada para que no haya combinaciones
-          incorrectas.
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="mb-8 rounded-lg border border-comet-border bg-comet-panel p-6 sm:p-8">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-comet-fuchsia">COMETA G</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">ARMA TU PC</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
+          Elegi componentes, revisa compatibilidades basicas y consulta tu armado. El sistema usa datos propios cacheados
+          y especificaciones tecnicas disponibles; no depende de scraping en tiempo real.
         </p>
-      </div>
+      </section>
+
+      <PcBuilderClient products={products} />
     </main>
   );
 }

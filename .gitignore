@@ -19,3 +19,7 @@ work/*.log
 __pycache__/
 *.pyc
 data/
+!data/
+data/*
+!data/versus/
+!data/versus/*.json

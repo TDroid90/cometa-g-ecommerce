@@ -16,6 +16,55 @@ export type SectionType =
   | "footer_contact";
 
 export type StockStatus = "disponible" | "sin_stock" | "preventa";
+export type CommercialStatus = "regular" | "preventa" | "oferta" | "a_pedido";
+
+export type ProductTechSpecs = {
+  socket?: string;
+  chipset?: string;
+  ramType?: "DDR3" | "DDR4" | "DDR5";
+  ramCapacityGb?: number;
+  ramSpeedMhz?: number;
+  cpuCores?: number;
+  cpuThreads?: number;
+  baseClockGhz?: number;
+  boostClockGhz?: number;
+  tdpWatts?: number;
+  gpuMemoryGb?: number;
+  gpuMemoryType?: string;
+  recommendedPsuWattage?: number;
+  storageType?: "SSD" | "HDD" | "NVMe";
+  capacityGb?: number;
+  interface?: string;
+  motherboardFormFactor?: "ATX" | "Micro ATX" | "Mini ITX";
+  supportedMotherboardFormats?: string[];
+  wattage?: number;
+  efficiencyRating?: string;
+  benchmarkScore?: number;
+  versusScore?: number;
+  source?: string;
+  sourceUrl?: string;
+  updatedAt?: string;
+};
+
+export type ProductExternalRefs = {
+  versusUrl?: string;
+  versusMatchedName?: string;
+  confidence?: number;
+  lastScrapedAt?: string;
+};
+
+export type ScrapedProductTechData = {
+  localProductId: string;
+  localProductName: string;
+  source: "versus";
+  sourceUrl: string;
+  sourceProductName: string;
+  matchConfidence: number;
+  matchStatus: "auto_approved" | "needs_review" | "rejected";
+  specs: ProductTechSpecs;
+  rawSpecs?: Record<string, unknown>;
+  scrapedAt: string;
+};
 
 export type LayoutSection = {
   section_id: string;
@@ -77,6 +126,10 @@ export type Product = {
   nuevo?: boolean;
   oferta?: boolean;
   preventa: boolean;
+  commercialStatus?: CommercialStatus;
+  estimatedDeliveryDays?: number;
+  techSpecs?: ProductTechSpecs;
+  externalRefs?: ProductExternalRefs;
   fecha_lanzamiento?: string;
   visible: boolean;
   orden: number;

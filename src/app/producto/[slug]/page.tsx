@@ -4,8 +4,9 @@ import { Eye, ShieldCheck, Truck } from "lucide-react";
 import { ProductActions } from "@/components/products/ProductActions";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductGrid } from "@/components/products/ProductGrid";
-import { formatPrice, getProductBySlug, getProducts, productPrice } from "@/lib/data";
-import { Product } from "@/lib/types";
+import { formatPrice, getProducts, productPrice } from "@/lib/data";
+import { getProductBySlugWithTechData } from "@/lib/techData";
+import { Product, ProductTechSpecs } from "@/lib/types";
 
 function seededValue(seed: string) {
   return Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -32,6 +33,52 @@ function mixedProducts(products: Product[], current: Product): Product[] {
     .slice(0, 5);
 }
 
+const techLabels: Partial<Record<keyof ProductTechSpecs, string>> = {
+  socket: "Socket",
+  chipset: "Chipset",
+  ramType: "Tipo de RAM",
+  ramCapacityGb: "Capacidad RAM",
+  ramSpeedMhz: "Velocidad RAM",
+  cpuCores: "Nucleos",
+  cpuThreads: "Hilos",
+  baseClockGhz: "Frecuencia base",
+  boostClockGhz: "Frecuencia turbo",
+  tdpWatts: "TDP",
+  gpuMemoryGb: "Memoria GPU",
+  gpuMemoryType: "Tipo memoria GPU",
+  recommendedPsuWattage: "Fuente recomendada",
+  storageType: "Tipo de almacenamiento",
+  capacityGb: "Capacidad",
+  interface: "Interfaz",
+  motherboardFormFactor: "Formato",
+  supportedMotherboardFormats: "Formatos soportados",
+  wattage: "Potencia",
+  efficiencyRating: "Certificacion",
+  benchmarkScore: "Benchmark",
+  versusScore: "Versus score"
+};
+
+function formatTechValue(key: keyof ProductTechSpecs, value: ProductTechSpecs[keyof ProductTechSpecs]) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "number") {
+    if (key === "ramCapacityGb" || key === "gpuMemoryGb" || key === "capacityGb") return `${value} GB`;
+    if (key === "ramSpeedMhz") return `${value} MHz`;
+    if (key === "baseClockGhz" || key === "boostClockGhz") return `${value} GHz`;
+    if (key === "tdpWatts" || key === "recommendedPsuWattage" || key === "wattage") return `${value} W`;
+  }
+  return String(value);
+}
+
+function technicalEntries(specs?: ProductTechSpecs) {
+  if (!specs) return [];
+  return (Object.entries(techLabels) as Array<[keyof ProductTechSpecs, string]>)
+    .map(([key, label]) => {
+      const value = specs[key];
+      return value === undefined || value === "" ? null : { key, label, value: formatTechValue(key, value) };
+    })
+    .filter(Boolean) as Array<{ key: keyof ProductTechSpecs; label: string; value: string }>;
+}
+
 export async function generateStaticParams() {
   const products = await getProducts();
   return products.map((product) => ({ slug: product.slug }));
@@ -39,7 +86,7 @@ export async function generateStaticParams() {
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getProductBySlugWithTechData(slug);
   if (!product) notFound();
   const products = await getProducts();
   const relatedProducts = mixedProducts(products, product);
@@ -204,6 +251,39 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         )}
       </section>
+
+      {technicalEntries(product.techSpecs).length > 0 && (
+        <section className="mt-10 rounded-lg border border-comet-border bg-comet-panel p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-white">Ficha tecnica</h2>
+              <p className="mt-1 text-sm text-zinc-400">Datos tecnicos de referencia para comparar compatibilidad.</p>
+            </div>
+            {product.externalRefs?.versusUrl && (
+              <a
+                href={product.externalRefs.versusUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-bold text-comet-fuchsia hover:text-white"
+              >
+                Fuente tecnica: Versus
+              </a>
+            )}
+          </div>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {technicalEntries(product.techSpecs).map((entry) => (
+              <div key={entry.key} className="rounded-md border border-comet-border bg-comet-black px-3 py-2.5">
+                <p className="text-xs text-zinc-500">{entry.label}</p>
+                <p className="mt-1 text-sm font-bold text-zinc-100">{entry.value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-6 text-zinc-500">
+            Los datos tecnicos son de referencia y pueden variar segun fabricante, revision del producto o proveedor.
+            Verifica la compatibilidad final antes de comprar.
+          </p>
+        </section>
+      )}
 
       {relatedProducts.length > 0 && (
         <section className="mt-10">

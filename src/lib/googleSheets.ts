@@ -1,5 +1,5 @@
 import { createSign } from "crypto";
-import { CategoryMenuItem, LayoutSection, Product, StockStatus } from "@/lib/types";
+import { CategoryMenuItem, CommercialStatus, LayoutSection, Product, ProductExternalRefs, ProductTechSpecs, StockStatus } from "@/lib/types";
 
 type SheetRow = Record<string, string>;
 type GoogleToken = { accessToken: string; expiresAt: number };
@@ -19,6 +19,8 @@ export const PRODUCT_COLUMNS = [
   "stockLocal",
   "stock_local",
   "stock_status",
+  "commercialStatus",
+  "estimatedDeliveryDays",
   "categoria",
   "subcategoria",
   "marca",
@@ -29,6 +31,8 @@ export const PRODUCT_COLUMNS = [
   "variables",
   "color",
   "garantia",
+  "techSpecs",
+  "externalRefs",
   "destacado",
   "nuevo",
   "oferta",
@@ -139,6 +143,17 @@ function parseVariables(value: unknown): Record<string, string[]> | undefined {
     .map(([key, val]) => [key, toList(val)] as const);
 
   return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function parseJsonObject<T extends Record<string, unknown>>(value: unknown): T | undefined {
+  const raw = clean(value);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as T : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function rowsFromValues(values: unknown[][]): SheetRow[] {
@@ -753,6 +768,10 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         : 0;
       const stockStatus: StockStatus =
         preventa ? "preventa" : explicitStatus || (stock > 0 ? "disponible" : "sin_stock");
+      const explicitCommercialStatus = clean(row.commercialStatus).toLowerCase() as CommercialStatus;
+      const commercialStatus: CommercialStatus =
+        explicitCommercialStatus ||
+        (preventa ? "preventa" : hasOffer ? "oferta" : "regular");
 
       return {
         id: clean(row.id) || clean(row.sku) || clean(row.slug),
@@ -783,6 +802,10 @@ export async function readProductsFromGoogleSheets(): Promise<Product[] | null> 
         nuevo: toBool(row.nuevo),
         oferta: hasOffer,
         preventa,
+        commercialStatus,
+        estimatedDeliveryDays: toNumber(row.estimatedDeliveryDays, commercialStatus === "preventa" ? 30 : commercialStatus === "a_pedido" ? 15 : 10),
+        techSpecs: parseJsonObject<ProductTechSpecs>(row.techSpecs),
+        externalRefs: parseJsonObject<ProductExternalRefs>(row.externalRefs),
         fecha_lanzamiento: clean(row.fecha_lanzamiento),
         visible: toBool(row.visible, true),
         orden: toNumber(row.orden, 0)
