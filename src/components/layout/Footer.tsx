@@ -129,7 +129,7 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           </Link>
 
           <div className="mt-6 flex flex-wrap justify-center gap-3 lg:justify-start">
-            <a href="https://wa.me/5491100000000?text=Hola%20COMETA%20G,%20quiero%20hacer%20una%20consulta" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-emerald-400 hover:border-emerald-400" aria-label="WhatsApp solo mensajes" title="WhatsApp solo mensajes">
+            <a href="https://wa.me/5492964696717?text=Hola%20COMETA%20G,%20quiero%20hacer%20una%20consulta" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-emerald-400 hover:border-emerald-400" aria-label="WhatsApp solo mensajes" title="WhatsApp solo mensajes">
               <MessageCircle size={18} />
             </a>
             <a href={socialLinks[0]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook" title="Facebook">
