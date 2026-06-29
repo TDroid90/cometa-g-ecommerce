@@ -1,25 +1,25 @@
 import Link from "next/link";
-import { Cpu, Gamepad2, PackageCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
+import { BadgeCheck, Gamepad2, PackageCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
 
 const pillars = [
   {
-    title: "Tecnología clara",
-    text: "Mostramos productos, stock y condiciones de compra con información simple para decidir mejor.",
-    icon: Cpu
+    title: "Marcas top",
+    text: "Seleccionamos marcas de calidad para que el catálogo sea confiable, competitivo y fácil de comparar.",
+    icon: BadgeCheck
   },
   {
-    title: "Hardware y gaming",
-    text: "Trabajamos componentes, periféricos, accesorios, equipos y soluciones informáticas para distintos usos.",
+    title: "Gaming duro",
+    text: "Te recomendamos hardware para que tu experiencia jugando sea un GG: fluida, estable y bien armada.",
     icon: Gamepad2
   },
   {
-    title: "Proveedores mayoristas",
-    text: "Integramos disponibilidad de warehouses y proveedores para ampliar variedad sin perder control comercial.",
+    title: "Warehouses y proveedores",
+    text: "Trabajamos con warehouses, importadores y proveedores para ampliar variedad y disponibilidad real.",
     icon: PackageCheck
   },
   {
-    title: "Compra acompañada",
-    text: "Buscamos que cada cliente sepa qué está comprando, cómo se gestiona y cuáles son los tiempos estimados.",
+    title: "Compra segura",
+    text: "Los pagos se realizan a través de Payway de Prisma Medios de Pago, en una plataforma externa y segura.",
     icon: ShieldCheck
   }
 ];

@@ -86,9 +86,9 @@ export default function TermsPage() {
           <div>
             <h2 className="text-lg font-black text-white">Importante sobre pagos externos</h2>
             <p className="mt-2 text-sm leading-7 text-zinc-300">
-              Al avanzar con una compra, el pago puede redirigirse o procesarse en una plataforma externa. Esa plataforma
-              es la responsable del procesamiento financiero seguro. COMETA G no ve ni almacena números completos de
-              tarjeta, códigos de seguridad ni credenciales bancarias.
+              Al avanzar con una compra, el pago se realiza en una plataforma externa: Prisma Medios de Pago Payway.
+              Esa plataforma es la responsable del procesamiento financiero seguro. COMETA G no ve, no almacena,
+              no registra ni accede a tu información sensible.
             </p>
           </div>
         </div>
