@@ -527,8 +527,9 @@ async function readBrandLogoMapFromMenu(): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   for (const row of rows || []) {
     const brand = clean(row.marca || row.marca_canonica).toUpperCase();
+    const visible = toBool(row.visible_marca ?? row.marca_visible ?? "TRUE", true);
     const logo = clean(row.logo_url);
-    if (brand && logo) map.set(brand, logo);
+    if (brand && visible && logo) map.set(brand, logo);
   }
   return map;
 }
@@ -824,7 +825,7 @@ export async function readCategoryMenuFromGoogleSheets(): Promise<CategoryMenuIt
 
   if (!rows) return null;
 
-  return rows
+  const categoryItems = rows
     .map((row) => ({
       categoria: clean(row.categoria),
       subcategoria: clean(row.subcategoria),
@@ -834,6 +835,26 @@ export async function readCategoryMenuFromGoogleSheets(): Promise<CategoryMenuIt
       visible: toBool(row.visible, true),
       tipo: clean(row.tipo) === "marca" ? ("marca" as const) : ("categoria" as const)
     }))
+    .filter((item) => item.tipo !== "marca")
     .filter((item) => item.visible && item.categoria)
     .sort((a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
+
+  const brandItems = rows
+    .map((row) => {
+      const brand = clean(row.marca);
+      return {
+        categoria: "Marcas",
+        subcategoria: brand,
+        cantidad_productos: 0,
+        link: brand ? `/productos?marca=${encodeURIComponent(brand)}` : "",
+        orden: 998,
+        visible: toBool(row.visible_marca ?? row.marca_visible ?? "TRUE", true),
+        tipo: "marca" as const
+      };
+    })
+    .filter((item) => item.visible && item.subcategoria);
+
+  return [...categoryItems, ...brandItems].sort(
+    (a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria)
+  );
 }

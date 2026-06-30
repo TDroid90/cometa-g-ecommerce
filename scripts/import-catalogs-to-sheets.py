@@ -1623,11 +1623,16 @@ def replace_menu_values(
 ) -> None:
     if os.environ.get("CATALOG_ENSURE_SHEETS", "FALSE").upper() == "TRUE":
         ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=15)
-    current_brand_values = values_get(service, f"{sheet}!I2:K1000") or values_get(service, f"{sheet}!H2:J1000")
+    current_brand_values = values_get(service, f"{sheet}!I2:L1000") or values_get(service, f"{sheet}!I2:K1000")
     logo_by_brand = {
+        clean(row[0]).upper(): clean(row[3] if len(row) >= 4 else row[2])
+        for row in current_brand_values
+        if len(row) >= 3 and clean(row[0]) and clean(row[3] if len(row) >= 4 else row[2])
+    }
+    visible_by_brand = {
         clean(row[0]).upper(): clean(row[2])
         for row in current_brand_values
-        if len(row) >= 3 and clean(row[0]) and clean(row[2])
+        if len(row) >= 4 and clean(row[0]) and clean(row[2])
     }
     if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
         values_clear(service, f"{sheet}!A:O")
@@ -1637,12 +1642,12 @@ def replace_menu_values(
         chunk = values[index:index + 500]
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
-    updates.append((f"{sheet}!I1:K1", [["marca", "marca_canonica", "logo_url"]]))
-    updates.append((f"{sheet}!L1:O1", [IMAGE_GUIDE_HEADERS]))
-    updates.append((f"{sheet}!L2:O{len(IMAGE_GUIDE_ROWS) + 1}", IMAGE_GUIDE_ROWS))
+    updates.append((f"{sheet}!I1:L1", [["marca", "marca_canonica", "visible_marca", "logo_url"]]))
+    updates.append((f"{sheet}!M1:P1", [IMAGE_GUIDE_HEADERS]))
+    updates.append((f"{sheet}!M2:P{len(IMAGE_GUIDE_ROWS) + 1}", IMAGE_GUIDE_ROWS))
     if brand_rows:
         brand_rows = [
-            [brand, canonical, logo_by_brand.get(brand.upper(), "")]
+            [brand, canonical, visible_by_brand.get(brand.upper(), "TRUE") or "TRUE", logo_by_brand.get(brand.upper(), "")]
             for brand, canonical in brand_rows
         ]
         updates.append((f"{sheet}!I2", brand_rows))

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Heart, LocateFixed, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
+import { ChevronRight, Heart, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CategoryMenuItem, LayoutSection, Product } from "@/lib/types";
 import { useCart } from "@/components/cart/CartProvider";
@@ -16,7 +16,6 @@ const defaultNavItems = [
 ];
 
 const defaultTopLinks = [
-  { href: "#", label: "Store locator" },
   { href: "#", label: "Seguir pedido" },
   { href: "/perfil", label: "Mi cuenta" }
 ];
@@ -122,6 +121,7 @@ export function Header({
     return hasClusterSave ? items : [...items, { href: "https://cluster-save.vercel.app", label: "Cluster Save" }];
   }, [categoryNav?.text]);
   const topLinks = parseNavItems(topRight?.text, defaultTopLinks);
+  const visibleTopLinks = topLinks.filter((item) => item.label.toLowerCase() !== "store locator");
   const searchItems = parseList(searchSection?.text);
   const placeholder =
     searchSection?.text && searchItems.length <= 1
@@ -217,18 +217,19 @@ export function Header({
       <div className="border-b border-comet-border/70 bg-[#18040d]" style={sectionStyle(topLeft)}>
         <div className="mx-auto flex h-9 w-full max-w-7xl items-center justify-between px-4 text-xs text-zinc-300 sm:px-6 lg:px-8">
           <p className="truncate">
-            {topLeft?.text || "Hardware gamer, preventas y componentes seleccionados para tu setup"}
+            <Link href="#" className="hover:text-white">
+              Unite a nuestro grupo de wsap y enterate de todo
+            </Link>
           </p>
           <div className="hidden items-center gap-5 md:flex">
-            {topLinks.map((item, index) => (
+            {visibleTopLinks.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
                 className="inline-flex items-center gap-1.5 hover:text-white"
                 style={sectionStyle(topRight)}
               >
-                {index === 0 && <LocateFixed size={14} />}
-                {index === 1 && <PackageCheck size={14} />}
+                {item.label.toLowerCase().includes("pedido") && <PackageCheck size={14} />}
                 {item.label}
               </Link>
             ))}

@@ -74,7 +74,17 @@ export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {
       };
     });
 
-    const dynamicBrandItems = Array.from(brandCounts.entries()).map(([brand, count]) => ({
+    const allowedSheetBrands = items?.length
+      ? new Set(
+          items
+            .filter((item) => item.tipo === "marca" && item.visible)
+            .map((item) => item.subcategoria.toUpperCase())
+        )
+      : null;
+
+    const dynamicBrandItems = Array.from(brandCounts.entries())
+      .filter(([brand]) => !allowedSheetBrands || allowedSheetBrands.has(brand.toUpperCase()))
+      .map(([brand, count]) => ({
       categoria: "Marcas",
       subcategoria: brand,
       cantidad_productos: count,

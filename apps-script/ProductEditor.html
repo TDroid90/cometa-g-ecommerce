@@ -181,6 +181,22 @@
       }
 
       function createNewProduct() {
+        if (!fields.length) {
+          const lookup = document.getElementById("lookup").value;
+          if (!lookup) {
+            setStatus("Escribi primero un ID o SKU para el producto nuevo.");
+            return;
+          }
+          setStatus("Preparando producto nuevo...");
+          google.script.run
+            .withSuccessHandler((data) => {
+              renderProduct(data);
+              setStatus("Formulario nuevo listo. Completa nombre, slug y toca Crear nuevo otra vez.");
+            })
+            .withFailureHandler((err) => setStatus(err.message))
+            .findProductByLookup(lookup);
+          return;
+        }
         const product = collectProduct();
         if (!product.id) product.id = document.getElementById("lookup").value;
         setStatus("Creando...");
