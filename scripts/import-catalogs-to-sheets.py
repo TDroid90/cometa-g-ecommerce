@@ -132,6 +132,24 @@ ECOMMERCE_PRODUCT_COLUMNS = [
     "orden",
 ]
 
+PRESERVED_PRODUCT_EDIT_COLUMNS = [
+    "descripcion_corta",
+    "descripcion_larga",
+    "imagen_principal",
+    "imagenes_extra",
+    "atributos",
+    "variables",
+    "color",
+    "garantia",
+    "destacado",
+    "nuevo",
+    "oferta",
+    "preventa",
+    "fecha_lanzamiento",
+    "visible",
+    "orden",
+]
+
 REJECT_COLUMNS = [
     "proveedor",
     "proveedor_codigo",
@@ -1495,6 +1513,59 @@ def replace_existing_values(service, sheet: str, headers: list[str], rows: list[
     values_batch_update(service, updates)
 
 
+def rows_to_dicts(values: list[list[str]]) -> list[dict[str, str]]:
+    if not values:
+        return []
+    headers = [clean(cell) for cell in values[0]]
+    return [
+        {header: clean(row[index] if index < len(row) else "") for index, header in enumerate(headers)}
+        for row in values[1:]
+        if any(clean(cell) for cell in row)
+    ]
+
+
+def read_existing_product_overrides(service) -> dict[str, dict[str, str]]:
+    if os.environ.get("CATALOG_PRESERVE_PRODUCT_EDITS", "TRUE").upper() == "FALSE":
+        return {}
+
+    rows = rows_to_dicts(values_get(service, "PRODUCTOS!A1:AK5000"))
+    overrides: dict[str, dict[str, str]] = {}
+    for row in rows:
+        keys = [clean(row.get("id")), clean(row.get("sku")), clean(row.get("slug"))]
+        editable = {
+            column: clean(row.get(column))
+            for column in PRESERVED_PRODUCT_EDIT_COLUMNS
+            if clean(row.get(column))
+        }
+        if not editable:
+            continue
+        for key in keys:
+            if key:
+                overrides[key.upper()] = editable
+    return overrides
+
+
+def apply_product_overrides(rows: list[list[str]], overrides: dict[str, dict[str, str]]) -> list[list[str]]:
+    if not overrides:
+        return rows
+
+    column_index = {column: index for index, column in enumerate(ECOMMERCE_PRODUCT_COLUMNS)}
+    for row in rows:
+        keys = [
+            clean(row[column_index["id"]] if len(row) > column_index["id"] else ""),
+            clean(row[column_index["sku"]] if len(row) > column_index["sku"] else ""),
+            clean(row[column_index["slug"]] if len(row) > column_index["slug"] else ""),
+        ]
+        override = next((overrides[key.upper()] for key in keys if key and key.upper() in overrides), None)
+        if not override:
+            continue
+        for column, value in override.items():
+            index = column_index.get(column)
+            if index is not None and index < len(row):
+                row[index] = value
+    return rows
+
+
 def read_cell(service, sheet: str, cell: str) -> str:
     values = values_get(service, f"{sheet}!{cell}")
     return clean(values[0][0]) if values and values[0] else ""
@@ -1710,7 +1781,9 @@ def main() -> None:
     consolidated, internal_buy = consolidate_public_catalog(nb, elit)
     service = sheets_service()
     existing_markups = read_menu_markups(service, MENU_SHEET)
+    existing_product_overrides = read_existing_product_overrides(service)
     store_products = products_for_store_with_markup(consolidated, existing_markups, provider_rates)
+    store_products = apply_product_overrides(store_products, existing_product_overrides)
     menu_rows = build_menu_rows(consolidated, existing_markups)
     brand_rows = build_brand_rows(consolidated)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
