@@ -302,6 +302,30 @@ export async function readSheetRows(sheetName: string, spreadsheetIdOverride?: s
   return rows;
 }
 
+export async function readSheetValues(sheetName: string, spreadsheetIdOverride?: string): Promise<string[][]> {
+  const spreadsheetId = spreadsheetIdOverride || process.env.GOOGLE_SHEETS_ID;
+  const accessToken = await getGoogleAccessToken();
+  if (!spreadsheetId || !accessToken) {
+    throw new Error(`No hay credenciales privadas para leer ${sheetName}.`);
+  }
+
+  const encodedRange = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}`,
+    {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo leer ${sheetName}.`);
+  }
+
+  const payload = (await response.json()) as { values?: unknown[][] };
+  return (payload.values || []).map((row) => row.map((cell) => clean(cell)));
+}
+
 export async function appendSheetRow(
   sheetName: string,
   values: unknown[],
