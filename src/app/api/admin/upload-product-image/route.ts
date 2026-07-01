@@ -18,13 +18,14 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const productId = String(formData.get("productId") || "producto");
-    const index = String(formData.get("index") || Date.now());
+    const index = String(formData.get("index") || "1");
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Falta archivo." }, { status: 400 });
     }
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
-    const pathname = `productos/manual/${slugify(productId)}/${String(index).padStart(2, "0")}.${extension}`;
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const pathname = `productos/manual/${slugify(productId)}/${String(index).padStart(2, "0")}-${uniqueSuffix}.${extension}`;
     const blob = await put(pathname, file, {
       access: "public",
       addRandomSuffix: false,
