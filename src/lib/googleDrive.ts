@@ -200,3 +200,92 @@ export async function uploadPurchaseReceipt(input: {
 
   return (await response.json()) as { id: string; name: string };
 }
+
+async function setPublicReadPermission(fileId: string, accessToken: string) {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      role: "reader",
+      type: "anyone"
+    })
+  });
+}
+
+function safeFileName(value: string) {
+  return clean(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120) || "producto";
+}
+
+export async function uploadProductImageToDrive(input: {
+  productId: string;
+  filename: string;
+  mimeType: string;
+  buffer: Buffer;
+}) {
+  const rootFolderId =
+    clean(process.env.GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID) ||
+    clean(process.env.GOOGLE_DRIVE_COMETA_FOLDER_ID) ||
+    clean(process.env.GOOGLE_DRIVE_COMPRAS_FOLDER_ID);
+  if (!rootFolderId) {
+    throw new Error("Blob esta suspendido y falta configurar GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID.");
+  }
+
+  const accessToken = await getDriveAccessToken();
+  if (!accessToken) {
+    throw new Error("No se pudo autenticar Google Drive.");
+  }
+
+  const productFolderId = await createFolder(rootFolderId, "imagenes-productos", accessToken);
+  const itemFolderId = await createFolder(productFolderId, safeFileName(input.productId), accessToken);
+  const boundary = `cometag_product_${Date.now()}`;
+  const metadata = {
+    name: safeFileName(input.filename),
+    parents: [itemFolderId],
+    mimeType: input.mimeType
+  };
+  const body = Buffer.concat([
+    Buffer.from(
+      [
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        JSON.stringify(metadata),
+        `--${boundary}`,
+        `Content-Type: ${input.mimeType}`,
+        "",
+      ].join("\r\n")
+    ),
+    input.buffer,
+    Buffer.from(`\r\n--${boundary}--`)
+  ]);
+
+  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo subir la imagen a Drive.");
+  }
+
+  const file = (await response.json()) as { id: string; name: string };
+  await setPublicReadPermission(file.id, accessToken);
+
+  return {
+    id: file.id,
+    name: file.name,
+    url: `https://drive.google.com/uc?export=view&id=${file.id}`
+  };
+}

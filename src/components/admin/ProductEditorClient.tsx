@@ -167,7 +167,7 @@ export function ProductEditorClient() {
         headers: { "x-admin-secret": secret },
         body: formData
       });
-      const payload = (await response.json()) as { url?: string; error?: string };
+      const payload = (await response.json()) as { url?: string; error?: string; storage?: string; warning?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || "No se pudo subir.");
       if (target === "main") {
         updateField("imagen_principal", payload.url);
@@ -175,7 +175,7 @@ export function ProductEditorClient() {
         const next = [...splitImages(product.imagenes_extra), payload.url].join("|");
         updateField("imagenes_extra", next);
       }
-      setMessage("Imagen subida. Toca Guardar producto para fijarla en la Sheet.");
+      setMessage(`${payload.warning || `Imagen subida a ${payload.storage || "storage"}.`} Toca Guardar producto para fijarla en la Sheet.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo subir.");
     } finally {
