@@ -42,7 +42,9 @@ function onOpen() {
     .addSeparator()
     .addItem("Importar ZIP imagenes a Drive", "importProductImageZipToDrive")
     .addItem("Migrar 20 imagenes Blob a Drive", "migrateBlobImagesBatch")
+    .addItem("Migrar 20 imagenes remotas a Drive", "migrateRemoteImagesBatch")
     .addItem("Reiniciar migracion de imagenes", "resetBlobImageMigration")
+    .addItem("Reiniciar migracion remota", "resetRemoteImageMigration")
     .addToUi();
 }
 
@@ -214,6 +216,15 @@ function isBlobImageUrl_(url) {
   return /\.blob\.vercel-storage\.com\//i.test(String(url || ""));
 }
 
+function isDriveImageUrl_(url) {
+  return /drive\.google\.com/i.test(String(url || ""));
+}
+
+function isMigratableImageUrl_(url) {
+  const text = String(url || "").trim();
+  return /^https?:\/\//i.test(text) && !isDriveImageUrl_(text);
+}
+
 function splitImageList_(value) {
   return String(value || "")
     .split(/[|,]/)
@@ -233,6 +244,11 @@ function fileExtensionFrom_(url, contentType) {
 
 function migrateBlobImageUrl_(url, product, index) {
   if (!isBlobImageUrl_(url)) return url;
+  return migrateRemoteImageUrl_(url, product, index);
+}
+
+function migrateRemoteImageUrl_(url, product, index) {
+  if (!isMigratableImageUrl_(url)) return url;
 
   const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   const code = response.getResponseCode();
@@ -248,9 +264,79 @@ function migrateBlobImageUrl_(url, product, index) {
   const contentType = response.getHeaders()["Content-Type"] || "image/webp";
   const extension = fileExtensionFrom_(url, contentType);
   const filename = safeName_(productName) + "-" + String(index).padStart(2, "0") + "." + extension;
-  const file = productFolder.createFile(response.getBlob().setName(filename));
+  const existing = productFolder.getFilesByName(filename);
+  const file = existing.hasNext()
+    ? existing.next()
+    : productFolder.createFile(response.getBlob().setName(filename));
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return driveImageUrl_(file.getId());
+}
+
+function resetRemoteImageMigration() {
+  PropertiesService.getScriptProperties().deleteProperty("REMOTE_IMAGE_MIGRATION_ROW");
+  toast_("Migracion remota reiniciada. Ejecuta de nuevo el lote.");
+}
+
+function migrateRemoteImagesBatch(limit) {
+  const sheet = getProductSheet_();
+  const { headers, indexByHeader } = getHeaders_(sheet);
+  const mainIndex = indexByHeader.imagen_principal;
+  const extraIndex = indexByHeader.imagenes_extra;
+  if (mainIndex === undefined && extraIndex === undefined) throw new Error("No encuentro columnas de imagenes.");
+
+  const props = PropertiesService.getScriptProperties();
+  const startRow = Number(props.getProperty("REMOTE_IMAGE_MIGRATION_ROW") || "2");
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const batchLimit = Math.max(1, Number(limit || 20));
+  if (startRow > lastRow) {
+    props.deleteProperty("REMOTE_IMAGE_MIGRATION_ROW");
+    return { ok: true, migrated: 0, startRow, nextRow: startRow, totalRows: lastRow - 1, done: true };
+  }
+
+  const endRow = Math.min(lastRow, startRow + batchLimit - 1);
+  const values = sheet.getRange(startRow, 1, endRow - startRow + 1, lastColumn).getValues();
+  let migrated = 0;
+
+  values.forEach((row) => {
+    const product = rowToProduct_(headers, row);
+    let imageIndex = 1;
+    if (mainIndex !== undefined && isMigratableImageUrl_(row[mainIndex])) {
+      const nextUrl = migrateRemoteImageUrl_(row[mainIndex], product, imageIndex);
+      if (nextUrl !== row[mainIndex]) migrated += 1;
+      row[mainIndex] = nextUrl;
+      imageIndex += 1;
+    }
+    if (extraIndex !== undefined) {
+      const urls = splitImageList_(row[extraIndex]);
+      const nextUrls = urls.map((url) => {
+        const nextUrl = migrateRemoteImageUrl_(url, product, imageIndex);
+        if (nextUrl !== url) migrated += 1;
+        imageIndex += 1;
+        return nextUrl;
+      });
+      row[extraIndex] = nextUrls.join("|");
+    }
+  });
+
+  sheet.getRange(startRow, 1, values.length, lastColumn).setValues(values);
+  const nextRow = endRow + 1;
+  if (nextRow > lastRow) {
+    props.deleteProperty("REMOTE_IMAGE_MIGRATION_ROW");
+  } else {
+    props.setProperty("REMOTE_IMAGE_MIGRATION_ROW", String(nextRow));
+  }
+  const result = {
+    ok: true,
+    migrated,
+    startRow,
+    endRow,
+    nextRow,
+    totalRows: lastRow - 1,
+    done: nextRow > lastRow
+  };
+  toast_("Migradas " + migrated + " imagenes remotas. Proxima fila: " + (result.done ? "fin" : nextRow));
+  return result;
 }
 
 function resetBlobImageMigration() {
@@ -352,9 +438,15 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
   if (params.reset === "1") {
-    PropertiesService.getScriptProperties().deleteProperty("ZIP_IMPORT_INDEX");
+    if (params.action === "remote") {
+      PropertiesService.getScriptProperties().deleteProperty("REMOTE_IMAGE_MIGRATION_ROW");
+    } else {
+      PropertiesService.getScriptProperties().deleteProperty("ZIP_IMPORT_INDEX");
+    }
   }
-  const result = importProductImageZipBatch(Number(params.limit || 80));
+  const result = params.action === "remote"
+    ? migrateRemoteImagesBatch(Number(params.limit || 20))
+    : importProductImageZipBatch(Number(params.limit || 80));
   return ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
 }
