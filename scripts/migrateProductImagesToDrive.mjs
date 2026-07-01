@@ -10,7 +10,7 @@ const PRODUCT_SPREADSHEET_ID =
   process.env.GOOGLE_SHEETS_PRODUCTOS_ID || "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY";
 const PRODUCT_SHEET_NAME = "PRODUCTOS";
 const DRIVE_PRODUCTS_FOLDER_ID =
-  process.env.DRIVE_PRODUCTS_FOLDER_ID || "1afYWS6MdeLz8HHjYEdvRe32CG9exE2Hi";
+  process.env.DRIVE_PRODUCTS_FOLDER_ID || "1Uj9mc_Rs6BzR6kKAbUxWStkypsI9sUpj";
 
 function loadEnv(file) {
   if (!fs.existsSync(file)) return;
