@@ -73,6 +73,11 @@
       button.secondary {
         background: var(--panel);
       }
+      button.upload {
+        width: 100%;
+        margin-top: 8px;
+        background: #050508;
+      }
       .status {
         min-height: 20px;
         color: var(--muted);
@@ -92,6 +97,12 @@
         margin-top: 10px;
         border-radius: 8px;
         background: #fff;
+      }
+      .hint {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
       }
     </style>
   </head>
@@ -142,6 +153,14 @@
         const form = document.getElementById("form");
         form.style.display = "block";
         form.innerHTML = fields.map((field) => fieldHtml(field, product[field] || "")).join("") +
+          '<div class="card" style="margin-top:12px;">' +
+          '<label>Subir imagenes a Drive / CATALOGO</label>' +
+          '<input id="upload-main" type="file" accept="image/*" style="display:none" onchange="uploadSelectedImage(this, &quot;main&quot;)" />' +
+          '<input id="upload-gallery" type="file" accept="image/*" style="display:none" onchange="uploadSelectedImage(this, &quot;gallery&quot;)" />' +
+          '<button class="upload" type="button" onclick="document.getElementById(&quot;upload-main&quot;).click()">Subir principal</button>' +
+          '<button class="upload" type="button" onclick="document.getElementById(&quot;upload-gallery&quot;).click()">Subir a galeria</button>' +
+          '<div class="hint">Se guarda en Drive dentro de CATALOGO/productos/categoria/subcategoria/producto. Despues toca Guardar cambios.</div>' +
+          '</div>' +
           '<div class="bar"><button type="button" onclick="saveProduct()">Guardar cambios</button></div>';
         updatePreview();
         setStatus(data.found ? "Producto abierto." : "No existe todavia. Completa datos y toca Crear nuevo.");
@@ -222,6 +241,59 @@
           imageInput.insertAdjacentElement("afterend", preview);
         }
         preview.src = imageInput.value;
+      }
+
+      function setFieldValue(field, value) {
+        const input = document.querySelector('[data-field="' + field + '"]');
+        if (!input) return;
+        input.value = value;
+        if (field === "imagen_principal") updatePreview();
+      }
+
+      function getFieldValue(field) {
+        const input = document.querySelector('[data-field="' + field + '"]');
+        return input ? input.value : "";
+      }
+
+      function uploadSelectedImage(input, target) {
+        const file = input.files && input.files[0];
+        input.value = "";
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function () {
+          const result = String(reader.result || "");
+          const base64 = result.split(",")[1];
+          if (!base64) {
+            setStatus("No pude leer la imagen.");
+            return;
+          }
+
+          setStatus("Subiendo imagen a Drive...");
+          const currentImages = getFieldValue("imagenes_extra").split(/[|,]/).filter(Boolean);
+          const product = collectProduct();
+          google.script.run
+            .withSuccessHandler(function (res) {
+              if (target === "main") {
+                setFieldValue("imagen_principal", res.url);
+              } else {
+                currentImages.push(res.url);
+                setFieldValue("imagenes_extra", currentImages.join("|"));
+              }
+              setStatus("Imagen subida a Drive. Toca Guardar cambios para fijarla en PRODUCTOS.");
+            })
+            .withFailureHandler(function (err) {
+              setStatus(err.message || "No se pudo subir la imagen.");
+            })
+            .uploadProductImage({
+              product: product,
+              fileName: file.name,
+              mimeType: file.type || "image/webp",
+              base64: base64,
+              index: target === "main" ? 1 : currentImages.length + 2
+            });
+        };
+        reader.readAsDataURL(file);
       }
     </script>
   </body>

@@ -156,7 +156,7 @@ export function ProductEditorClient() {
 
   async function uploadImage(file: File, target: "main" | "gallery") {
     setLoading(true);
-    setMessage("Subiendo imagen a Blob...");
+    setMessage("Subiendo imagen...");
     try {
       const formData = new FormData();
       formData.set("file", file);
@@ -177,7 +177,8 @@ export function ProductEditorClient() {
       }
       setMessage(`${payload.warning || `Imagen subida a ${payload.storage || "storage"}.`} Toca Guardar producto para fijarla en la Sheet.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo subir.");
+      const detail = error instanceof Error ? error.message : "No se pudo subir.";
+      setMessage(`${detail} Mientras Blob este suspendido, subi imagenes desde Google Sheets > COMETA G > Editor de producto, o pega links publicos de Drive aca y guarda.`);
     } finally {
       setLoading(false);
     }
@@ -214,6 +215,7 @@ export function ProductEditorClient() {
         <h1 className="mt-2 text-3xl font-black text-white">Editor de productos</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-400">
           Abri un producto por ID, SKU, slug o nombre. Edita fotos, descripcion, atributos y ficha tecnica; al guardar se actualiza la hoja PRODUCTOS.
+          Mientras Blob este suspendido, la subida estable de imagenes se hace desde Google Sheets con el menu COMETA G.
         </p>
       </div>
 

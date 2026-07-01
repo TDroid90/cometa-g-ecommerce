@@ -139,3 +139,14 @@ La hoja MENU_CAT_MAR guarda categorias, subcategorias, marcas y markups:
 
 Para editar productos desde Google Sheets, copia los archivos de `apps-script/` en `Extensiones > Apps Script` de la hoja de productos. Al recargar la Sheet aparece el menu `COMETA G > Editor de producto`.
 
+### Imagenes temporales en Google Drive
+
+Mientras Vercel Blob este suspendido, las imagenes de producto se manejan desde Google Drive:
+
+- Carpeta raiz: `Cometa G / CATALOGO / productos`.
+- El editor de Sheets sube imagenes a `categoria/subcategoria/producto` y pega la URL publica en `imagen_principal` o `imagenes_extra`.
+- Para mover links viejos de Blob a Drive, usar `COMETA G > Migrar 20 imagenes Blob a Drive`. Ejecutarlo varias veces hasta terminar.
+- Si queres reiniciar el proceso, usar `COMETA G > Reiniciar migracion de imagenes`.
+
+Importante: la subida desde Vercel con service account no sirve para Mi unidad porque Google no le asigna cuota de almacenamiento propia. Por eso la subida estable temporal se hace desde Apps Script, que corre con el usuario de la Sheet.
+
