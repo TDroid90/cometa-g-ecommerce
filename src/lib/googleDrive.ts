@@ -261,6 +261,7 @@ export async function uploadProductImageToDrive(input: {
         `--${boundary}`,
         `Content-Type: ${input.mimeType}`,
         "",
+        "",
       ].join("\r\n")
     ),
     input.buffer,
@@ -277,7 +278,8 @@ export async function uploadProductImageToDrive(input: {
   });
 
   if (!response.ok) {
-    throw new Error("No se pudo subir la imagen a Drive.");
+    const detail = await response.text().catch(() => "");
+    throw new Error(`No se pudo subir la imagen a Drive. ${response.status} ${detail}`.trim());
   }
 
   const file = (await response.json()) as { id: string; name: string };
