@@ -1,6 +1,8 @@
 const PRODUCT_SHEET_NAME = "PRODUCTOS";
+const PRODUCT_SPREADSHEET_ID = "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY";
 const PRODUCT_IMAGES_FOLDER_ID = "1afYWS6MdeLz8HHjYEdvRe32CG9exE2Hi";
 const PRODUCT_IMAGES_ZIP_ID = "1s_I-ilVyrvkngXA63cXW_zghxufcwtso";
+const MIGRATION_WEB_KEY = "CometaG-Migrate-Drive-2026";
 const EDITABLE_PRODUCT_FIELDS = [
   "id",
   "sku",
@@ -51,8 +53,16 @@ function showProductEditor() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
+function getSpreadsheet_() {
+  return SpreadsheetApp.openById(PRODUCT_SPREADSHEET_ID);
+}
+
+function toast_(message) {
+  getSpreadsheet_().toast(message, "COMETA G");
+}
+
 function getProductSheet_() {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(PRODUCT_SHEET_NAME);
+  const sheet = getSpreadsheet_().getSheetByName(PRODUCT_SHEET_NAME);
   if (!sheet) throw new Error("No existe la hoja PRODUCTOS.");
   return sheet;
 }
@@ -245,7 +255,7 @@ function migrateBlobImageUrl_(url, product, index) {
 
 function resetBlobImageMigration() {
   PropertiesService.getScriptProperties().deleteProperty("BLOB_IMAGE_MIGRATION_ROW");
-  SpreadsheetApp.getActive().toast("Migracion reiniciada. Ejecuta de nuevo el lote.", "COMETA G");
+  toast_("Migracion reiniciada. Ejecuta de nuevo el lote.");
 }
 
 function migrateBlobImagesBatch() {
@@ -295,10 +305,7 @@ function migrateBlobImagesBatch() {
     props.setProperty("BLOB_IMAGE_MIGRATION_ROW", String(rowNumber));
   }
 
-  SpreadsheetApp.getActive().toast(
-    "Migradas " + migrated + " imagenes. Proxima fila: " + (rowNumber > lastRow ? "fin" : rowNumber),
-    "COMETA G"
-  );
+  toast_("Migradas " + migrated + " imagenes. Proxima fila: " + (rowNumber > lastRow ? "fin" : rowNumber));
 }
 
 function parseCsvLine_(line) {
@@ -335,6 +342,24 @@ function getOrCreatePathFolder_(root, zipPath) {
 }
 
 function importProductImageZipToDrive() {
+  return importProductImageZipBatch(1000);
+}
+
+function doGet(e) {
+  const params = (e && e.parameter) || {};
+  if (params.key !== MIGRATION_WEB_KEY) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "forbidden" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  if (params.reset === "1") {
+    PropertiesService.getScriptProperties().deleteProperty("ZIP_IMPORT_INDEX");
+  }
+  const result = importProductImageZipBatch(Number(params.limit || 80));
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function importProductImageZipBatch(limit) {
   const zipFile = DriveApp.getFileById(PRODUCT_IMAGES_ZIP_ID);
   const zipBlobs = Utilities.unzip(zipFile.getBlob());
   const blobByName = {};
@@ -354,9 +379,12 @@ function importProductImageZipToDrive() {
   const root = DriveApp.getFolderById(PRODUCT_IMAGES_FOLDER_ID);
   const urlMap = {};
   const lines = manifestText.split(/\r?\n/).filter(Boolean).slice(1);
+  const props = PropertiesService.getScriptProperties();
+  const startIndex = Number(props.getProperty("ZIP_IMPORT_INDEX") || "0");
+  const endIndex = Math.min(lines.length, startIndex + Math.max(1, Number(limit || 80)));
   let imported = 0;
 
-  lines.forEach((line) => {
+  lines.slice(startIndex, endIndex).forEach((line) => {
     const parts = parseCsvLine_(line);
     const oldUrl = parts[0];
     const zipPath = parts[1];
@@ -373,7 +401,21 @@ function importProductImageZipToDrive() {
   });
 
   replaceProductImageUrls_(urlMap);
-  SpreadsheetApp.getActive().toast("Importadas/vinculadas " + imported + " imagenes desde ZIP.", "COMETA G");
+  if (endIndex >= lines.length) {
+    props.deleteProperty("ZIP_IMPORT_INDEX");
+  } else {
+    props.setProperty("ZIP_IMPORT_INDEX", String(endIndex));
+  }
+  const result = {
+    ok: true,
+    imported,
+    startIndex,
+    endIndex,
+    total: lines.length,
+    done: endIndex >= lines.length
+  };
+  toast_("Importadas/vinculadas " + imported + " imagenes desde ZIP. " + endIndex + "/" + lines.length);
+  return result;
 }
 
 function replaceProductImageUrls_(urlMap) {
@@ -405,5 +447,5 @@ function replaceProductImageUrls_(urlMap) {
   });
 
   sheet.getRange(2, 1, values.length, lastColumn).setValues(values);
-  SpreadsheetApp.getActive().toast("Filas de PRODUCTOS actualizadas: " + changedRows, "COMETA G");
+  toast_("Filas de PRODUCTOS actualizadas: " + changedRows);
 }
