@@ -23,3 +23,5 @@ data/
 data/*
 !data/versus/
 !data/versus/*.json
+
+.tmp/
