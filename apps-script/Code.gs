@@ -242,6 +242,17 @@ function fileExtensionFrom_(url, contentType) {
   return "webp";
 }
 
+function sourceImageUrl_(url) {
+  const text = String(url || "");
+  if (/^https?:\/\/wsrv\.nl\//i.test(text)) {
+    const match = text.match(/[?&]url=([^&]+)/i);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+  return text;
+}
+
 function migrateBlobImageUrl_(url, product, index) {
   if (!isBlobImageUrl_(url)) return url;
   return migrateRemoteImageUrl_(url, product, index);
@@ -250,7 +261,14 @@ function migrateBlobImageUrl_(url, product, index) {
 function migrateRemoteImageUrl_(url, product, index) {
   if (!isMigratableImageUrl_(url)) return url;
 
-  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const sourceUrl = sourceImageUrl_(url);
+  const response = UrlFetchApp.fetch(sourceUrl, {
+    muteHttpExceptions: true,
+    followRedirects: true,
+    headers: {
+      "User-Agent": "Mozilla/5.0 CometaGImageMigrator/1.0"
+    }
+  });
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) return url;
 
@@ -262,7 +280,7 @@ function migrateRemoteImageUrl_(url, product, index) {
   const subcategoryFolder = getOrCreateFolder_(categoryFolder, subcategory);
   const productFolder = getOrCreateFolder_(subcategoryFolder, productName);
   const contentType = response.getHeaders()["Content-Type"] || "image/webp";
-  const extension = fileExtensionFrom_(url, contentType);
+  const extension = fileExtensionFrom_(sourceUrl, contentType);
   const filename = safeName_(productName) + "-" + String(index).padStart(2, "0") + "." + extension;
   const existing = productFolder.getFilesByName(filename);
   const file = existing.hasNext()
