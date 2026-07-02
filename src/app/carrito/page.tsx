@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice, productPrice } from "@/lib/data";
+import { normalizeImageUrl } from "@/lib/images";
 import { useCart } from "@/components/cart/CartProvider";
 import { CheckoutButton } from "@/components/cart/CheckoutButton";
 
@@ -31,7 +32,7 @@ export default function CartPage() {
               <article key={item.product.id} className="grid gap-4 rounded-lg border border-comet-border bg-comet-panel p-4 sm:grid-cols-[110px_1fr_auto]">
                 <div className="relative aspect-square overflow-hidden rounded-md bg-comet-black">
                   {item.product.imagen_principal && (
-                    <Image src={item.product.imagen_principal} alt={item.product.nombre} fill sizes="110px" className="object-cover" />
+                    <Image src={normalizeImageUrl(item.product.imagen_principal) || item.product.imagen_principal} alt={item.product.nombre} fill sizes="110px" className="object-cover" />
                   )}
                 </div>
                 <div>

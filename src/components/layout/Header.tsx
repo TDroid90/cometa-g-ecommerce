@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Heart, Menu, PackageCheck, Search, ShoppingCart, User, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CategoryMenuItem, LayoutSection, Product } from "@/lib/types";
+import { normalizeImageUrl } from "@/lib/images";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 
@@ -300,7 +301,7 @@ export function Header({
                     <span className="overflow-hidden rounded bg-comet-panel">
                       {product.imagen_principal ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imagen_principal} alt="" className="h-12 w-12 object-cover" />
+                        <img src={normalizeImageUrl(product.imagen_principal)} alt="" className="h-12 w-12 object-cover" />
                       ) : (
                         <span className="grid h-12 w-12 place-items-center text-xs font-black text-comet-fuchsia">G</span>
                       )}

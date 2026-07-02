@@ -37,7 +37,7 @@ function getServiceAccountConfig(): ServiceAccountConfig | null {
   return { clientEmail, privateKey };
 }
 
-async function getDriveAccessToken() {
+export async function getDriveAccessToken() {
   const serviceAccount = getServiceAccountConfig();
   if (!serviceAccount) return null;
 
@@ -85,6 +85,32 @@ async function getDriveAccessToken() {
     expiresAt: now + token.expires_in
   };
   return cachedDriveToken.accessToken;
+}
+
+export async function fetchDriveFile(fileId: string) {
+  const accessToken = await getDriveAccessToken();
+  if (!accessToken) {
+    throw new Error("No se pudo autenticar Google Drive.");
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      next: { revalidate: 60 * 60 * 24 * 7 }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`No se pudo leer la imagen de Drive. ${response.status}`);
+  }
+
+  return {
+    body: await response.arrayBuffer(),
+    contentType: response.headers.get("content-type") || "image/webp"
+  };
 }
 
 async function findFolder(parentId: string, name: string, accessToken: string) {

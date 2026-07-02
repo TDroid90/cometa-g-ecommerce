@@ -6,7 +6,7 @@ export function normalizeImageUrl(url?: string): string | undefined {
   const id = fileMatch?.[1] || openMatch?.[1];
 
   if (url.includes("drive.google.com") && id) {
-    return `https://drive.google.com/uc?export=view&id=${id}`;
+    return `/api/drive-image/${encodeURIComponent(id)}`;
   }
 
   return url;
