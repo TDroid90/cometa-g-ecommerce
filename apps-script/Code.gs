@@ -179,6 +179,21 @@ function getOrCreateFolder_(parent, name) {
   return parent.createFolder(safe);
 }
 
+function safeFolderDisplayName_(value) {
+  return String(value || "carpeta")
+    .replace(/[\\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "carpeta";
+}
+
+function getOrCreateDisplayFolder_(parent, name) {
+  const safe = safeFolderDisplayName_(name);
+  const iterator = parent.getFoldersByName(safe);
+  if (iterator.hasNext()) return iterator.next();
+  return parent.createFolder(safe);
+}
+
 function driveImageUrl_(fileId) {
   return "https://drive.google.com/uc?export=view&id=" + fileId;
 }
@@ -195,9 +210,15 @@ function uploadProductImage(payload) {
   const extension = (payload.fileName || "").split(".").pop() || mimeType.split("/").pop() || "webp";
 
   const root = DriveApp.getFolderById(PRODUCT_IMAGES_FOLDER_ID);
-  const categoryFolder = getOrCreateFolder_(root, category);
-  const subcategoryFolder = getOrCreateFolder_(categoryFolder, subcategory);
-  const productFolder = getOrCreateFolder_(subcategoryFolder, productName);
+  let productFolder = root;
+  const pathParts = Array.isArray(payload.pathParts) && payload.pathParts.length
+    ? payload.pathParts
+    : [category, subcategory, productName];
+  pathParts.forEach((part) => {
+    productFolder = Array.isArray(payload.pathParts) && payload.pathParts.length
+      ? getOrCreateDisplayFolder_(productFolder, part)
+      : getOrCreateFolder_(productFolder, part);
+  });
   const bytes = Utilities.base64Decode(payload.base64);
   const filename = safeName_(productName) + "-" + String(index).padStart(2, "0") + "." + safeName_(extension).toLowerCase();
   const existing = productFolder.getFilesByName(filename);
@@ -214,6 +235,25 @@ function uploadProductImage(payload) {
     name: file.getName(),
     url: driveImageUrl_(file.getId())
   };
+}
+
+function trashDriveFiles(payload) {
+  const ids = (payload && payload.fileIds) || [];
+  let trashed = 0;
+  ids.forEach((id) => {
+    try {
+      DriveApp.getFileById(String(id)).setTrashed(true);
+      trashed += 1;
+    } catch (error) {
+      try {
+        DriveApp.getFolderById(String(id)).setTrashed(true);
+        trashed += 1;
+      } catch (folderError) {
+        // Keep going; reports are best-effort cleanup.
+      }
+    }
+  });
+  return { ok: true, trashed };
 }
 
 function isBlobImageUrl_(url) {
@@ -490,6 +530,12 @@ function doPost(e) {
 
   if (payload.action === "uploadProductImage") {
     const result = uploadProductImage(payload);
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (payload.action === "trashDriveFiles") {
+    const result = trashDriveFiles(payload);
     return ContentService.createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
   }
