@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, MessageCircle, PackagePlus, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatPrice, productPrice } from "@/lib/data";
-import { normalizeImageUrl } from "@/lib/images";
 import { Product } from "@/lib/types";
+import { ProductImage } from "@/components/products/ProductImage";
 
 type SlotKey = "cpu" | "motherboard" | "ram" | "gpu" | "storage" | "psu" | "case" | "cooler" | "monitor" | "peripherals";
 
@@ -66,16 +65,11 @@ function commercialLabel(product: Product) {
 }
 
 function ProductSummary({ product }: { product: Product }) {
-  const imageUrl = normalizeImageUrl(product.imagen_principal);
   return (
     <div className="mt-3 rounded-md border border-comet-border bg-comet-black p-3">
       <div className="flex gap-3">
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-white">
-          {imageUrl ? (
-            <Image src={imageUrl} alt={product.nombre} fill sizes="64px" className="object-contain p-1.5" />
-          ) : (
-            <div className="grid h-full place-items-center text-[10px] text-zinc-500">Sin imagen</div>
-          )}
+          <ProductImage src={product.imagen_principal} alt={product.nombre} className="h-full w-full object-contain p-1.5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-1.5">

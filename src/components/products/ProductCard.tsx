@@ -1,14 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingCart } from "lucide-react";
 import clsx from "clsx";
 import { Product } from "@/lib/types";
 import { formatPrice, productPrice } from "@/lib/data";
-import { normalizeImageUrl } from "@/lib/images";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
+import { ProductImage } from "@/components/products/ProductImage";
 
 function statusLabel(product: Product): string {
   if (product.preventa || product.stock_status === "preventa") return "Preventa";
@@ -21,7 +20,6 @@ export function ProductCard({ product }: { product: Product }) {
   const { hasItem, toggleItem } = useWishlist();
   const disabled = product.stock_status === "sin_stock" && !product.preventa;
   const isSaved = hasItem(product.id);
-  const imageUrl = normalizeImageUrl(product.imagen_principal);
   const hasLocalStock = Boolean(product.stockLocal && product.stockLocal > 0);
 
   return (
@@ -52,17 +50,11 @@ export function ProductCard({ product }: { product: Product }) {
       </button>
 
       <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-[#101014] p-5">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.nombre}
-            fill
-            sizes="(max-width: 768px) 50vw, 20vw"
-            className="object-contain p-7 transition duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="grid h-full place-items-center text-xs text-zinc-500">Sin imagen</div>
-        )}
+        <ProductImage
+          src={product.imagen_principal}
+          alt={product.nombre}
+          className="h-full w-full object-contain p-7 transition duration-300 group-hover:scale-105"
+        />
       </Link>
 
       <div className="flex flex-1 flex-col border-t border-comet-border p-4">

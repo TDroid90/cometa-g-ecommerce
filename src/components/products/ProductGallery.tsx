@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { normalizeImageUrl } from "@/lib/images";
+import { ProductImage } from "@/components/products/ProductImage";
 
 export function ProductGallery({
   name,
@@ -39,14 +39,12 @@ export function ProductGallery({
   return (
     <div className="space-y-3">
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
-        <Image
+        <ProductImage
           key={active}
           src={active || images[0]}
           alt={name}
-          fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          priority
-          className={clsx("object-cover", direction === "next" ? "gallery-slide-next" : "gallery-slide-prev")}
+          loading="eager"
+          className={clsx("h-full w-full object-contain", direction === "next" ? "gallery-slide-next" : "gallery-slide-prev")}
         />
       </div>
 
@@ -63,7 +61,7 @@ export function ProductGallery({
               aria-label={`Ver imagen ${index + 1} de ${name}`}
               title={`Imagen ${index + 1}`}
             >
-              <Image src={image} alt={`${name} ${index + 1}`} fill sizes="96px" className="object-cover" />
+              <ProductImage src={image} alt={`${name} ${index + 1}`} className="h-full w-full object-contain" />
             </button>
           ))}
         </div>

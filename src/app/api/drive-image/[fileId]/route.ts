@@ -4,6 +4,10 @@ import { fetchDriveFile } from "@/lib/googleDrive";
 export const runtime = "nodejs";
 export const revalidate = 604800;
 
+function placeholderSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000"><rect width="1000" height="1000" fill="#ffffff"/><text x="500" y="500" text-anchor="middle" dominant-baseline="middle" fill="#777" font-family="Arial, sans-serif" font-size="34">Sin imagen</text></svg>`;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ fileId: string }> }
@@ -11,7 +15,13 @@ export async function GET(
   const { fileId } = await params;
 
   if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) {
-    return new Response("Imagen invalida", { status: 400 });
+    return new Response(placeholderSvg(), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=300, s-maxage=300"
+      }
+    });
   }
 
   try {
@@ -23,6 +33,12 @@ export async function GET(
       }
     });
   } catch {
-    return new Response("Imagen no disponible", { status: 404 });
+    return new Response(placeholderSvg(), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=300, s-maxage=300"
+      }
+    });
   }
 }

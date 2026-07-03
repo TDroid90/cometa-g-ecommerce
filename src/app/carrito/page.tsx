@@ -1,12 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice, productPrice } from "@/lib/data";
-import { normalizeImageUrl } from "@/lib/images";
 import { useCart } from "@/components/cart/CartProvider";
 import { CheckoutButton } from "@/components/cart/CheckoutButton";
+import { ProductImage } from "@/components/products/ProductImage";
 
 export default function CartPage() {
   const { items, subtotal, hasPreorder, updateQuantity, removeItem, clearCart } = useCart();
@@ -31,9 +30,7 @@ export default function CartPage() {
             {items.map((item) => (
               <article key={item.product.id} className="grid gap-4 rounded-lg border border-comet-border bg-comet-panel p-4 sm:grid-cols-[110px_1fr_auto]">
                 <div className="relative aspect-square overflow-hidden rounded-md bg-comet-black">
-                  {item.product.imagen_principal && (
-                    <Image src={normalizeImageUrl(item.product.imagen_principal) || item.product.imagen_principal} alt={item.product.nombre} fill sizes="110px" className="object-cover" />
-                  )}
+                  <ProductImage src={item.product.imagen_principal} alt={item.product.nombre} className="h-full w-full object-contain p-2" />
                 </div>
                 <div>
                   <p className="text-sm font-black text-white">{item.product.nombre}</p>
