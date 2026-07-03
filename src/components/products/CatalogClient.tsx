@@ -33,6 +33,17 @@ export function CatalogClient({
   const [oferta, setOferta] = useState(Boolean(initialOffer));
   const [maxPrice, setMaxPrice] = useState("");
   const highestPrice = Math.max(...products.map(productPrice), 0);
+
+  useEffect(() => {
+    setQuery(initialQuery || "");
+    setCategoria(initialCategory || "");
+    setSubcategoria(initialSubcategory || "");
+    setMarca(initialBrand || "");
+    setDisponibilidad(initialAvailability || "todos");
+    setOferta(Boolean(initialOffer));
+    setMaxPrice("");
+  }, [initialQuery, initialCategory, initialSubcategory, initialBrand, initialAvailability, initialOffer]);
+
   const optionFilters = {
     query,
     disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
