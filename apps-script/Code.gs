@@ -200,6 +200,10 @@ function uploadProductImage(payload) {
   const productFolder = getOrCreateFolder_(subcategoryFolder, productName);
   const bytes = Utilities.base64Decode(payload.base64);
   const filename = safeName_(productName) + "-" + String(index).padStart(2, "0") + "." + safeName_(extension).toLowerCase();
+  const existing = productFolder.getFilesByName(filename);
+  while (existing.hasNext()) {
+    existing.next().setTrashed(true);
+  }
   const blob = Utilities.newBlob(bytes, mimeType, filename);
   const file = productFolder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -466,6 +470,31 @@ function doGet(e) {
     ? migrateRemoteImagesBatch(Number(params.limit || 20))
     : importProductImageZipBatch(Number(params.limit || 80));
   return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const body = e && e.postData && e.postData.contents;
+  let payload = {};
+  try {
+    payload = body ? JSON.parse(body) : {};
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "invalid_json" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (payload.key !== MIGRATION_WEB_KEY) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "forbidden" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (payload.action === "uploadProductImage") {
+    const result = uploadProductImage(payload);
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unknown_action" }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
