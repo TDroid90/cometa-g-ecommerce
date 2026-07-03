@@ -119,7 +119,22 @@ export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
   const products = await getProducts();
-  return products.find((product) => product.slug === slug);
+  const normalizedSlug = normalizeSlugLookup(slug);
+  return products.find((product) => normalizeSlugLookup(product.slug) === normalizedSlug);
+}
+
+function normalizeSlugLookup(value: string): string {
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    decoded = value;
+  }
+  return decoded
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }
 
 export function productPrice(product: Product): number {

@@ -8,6 +8,9 @@ import { formatPrice, getProducts, productPrice } from "@/lib/data";
 import { getProductBySlugWithTechData } from "@/lib/techData";
 import { Product, ProductTechSpecs } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function seededValue(seed: string) {
   return Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
 }
@@ -77,11 +80,6 @@ function technicalEntries(specs?: ProductTechSpecs) {
       return value === undefined || value === "" ? null : { key, label, value: formatTechValue(key, value) };
     })
     .filter(Boolean) as Array<{ key: keyof ProductTechSpecs; label: string; value: string }>;
-}
-
-export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.map((product) => ({ slug: product.slug }));
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
