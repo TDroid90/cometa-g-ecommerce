@@ -126,14 +126,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         )}
       </nav>
 
-      <div className="grid gap-8 md:grid-cols-[1fr_.9fr]">
-        <ProductGallery
-          name={product.nombre}
-          mainImage={product.imagen_principal}
-          extraImages={product.imagenes_extra}
-        />
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.68fr)]">
+        <div className="min-w-0">
+          <ProductGallery
+            name={product.nombre}
+            mainImage={product.imagen_principal}
+            extraImages={product.imagenes_extra}
+          />
+        </div>
 
-        <section>
+        <section className="min-w-0">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-md bg-comet-fuchsia/15 px-3 py-1 text-xs font-bold text-comet-fuchsia">
               {product.categoria}
@@ -148,21 +150,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             )}
           </div>
 
-          <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-5xl">{product.nombre}</h1>
-          <p className="mt-3 text-sm text-zinc-500">SKU {product.sku || product.id}</p>
-          <p className="mt-1 text-xs lowercase text-zinc-500">imagen ilustrativa</p>
+          <h1 className="mt-4 break-words text-3xl font-black leading-[1.04] text-white sm:text-4xl xl:text-5xl">
+            {product.nombre}
+          </h1>
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm text-zinc-500">SKU {product.sku || product.id}</p>
+              <p className="mt-1 text-xs lowercase text-zinc-500">imagen ilustrativa</p>
+            </div>
+            <div className="sm:text-right">
+              {product.precio_oferta && (
+                <p className="text-sm text-zinc-500 line-through">{formatPrice(product.precio)}</p>
+              )}
+              <p className={`text-2xl font-black sm:text-3xl ${product.precio_oferta ? "text-emerald-400" : "text-white"}`}>
+                {formatPrice(productPrice(product))}
+              </p>
+            </div>
+          </div>
           {product.descripcion_corta && (
             <p className="mt-5 text-base leading-7 text-zinc-300">{product.descripcion_corta}</p>
           )}
-
-          <div className="mt-6">
-            {product.precio_oferta && (
-              <p className="text-sm text-zinc-500 line-through">{formatPrice(product.precio)}</p>
-            )}
-            <p className={`text-3xl font-black ${product.precio_oferta ? "text-emerald-400" : "text-white"}`}>
-              {formatPrice(productPrice(product))}
-            </p>
-          </div>
 
           {product.preventa && (
             <div className="mt-5 rounded-lg border border-comet-violet/40 bg-comet-violet/10 p-4 text-sm text-zinc-200">
@@ -232,7 +239,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </section>
       </div>
 
-      <section className="mt-10 rounded-lg border border-comet-border bg-comet-panel p-4 sm:p-5">
+      <section className="mt-14 rounded-lg border border-comet-border bg-comet-panel p-4 sm:p-5 lg:mt-16">
         <h2 className="text-xl font-black text-white">Descripción</h2>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
           {product.descripcion_larga || product.descripcion_corta}
