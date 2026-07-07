@@ -20,6 +20,8 @@ const IMAGE_RE = /^image\//i;
 const DRY_RUN = process.argv.includes("--dry-run");
 const CLEANUP = process.argv.includes("--cleanup");
 const MISSING_ONLY = process.argv.includes("--missing-only");
+const INCOMPLETE_ONLY = process.argv.includes("--incomplete-only");
+const OUT_OF_SYNC_ONLY = process.argv.includes("--out-of-sync-only");
 const CATEGORY_ARG = process.argv.find((arg) => arg.startsWith("--category="));
 const CATEGORY = CATEGORY_ARG ? CATEGORY_ARG.split("=")[1] : "Coolers";
 const LIMIT_ARG = process.argv.find((arg) => arg.startsWith("--limit="));
@@ -27,8 +29,8 @@ const LIMIT = LIMIT_ARG ? Number(LIMIT_ARG.split("=")[1] || 0) : 0;
 const START_ARG = process.argv.find((arg) => arg.startsWith("--start="));
 const START = START_ARG ? Number(START_ARG.split("=")[1] || 0) : 0;
 const MAX_IMAGES_BY_CATEGORY = {
-  Coolers: 3,
-  Fuentes: 5,
+  Coolers: Infinity,
+  Fuentes: Infinity,
 };
 const KNOWN_BRANDS = [
   "ASROCK",
@@ -324,6 +326,47 @@ function safeName(value) {
     .slice(0, 130) || "producto";
 }
 
+function basenameWithoutExtension(value) {
+  return String(value || "").replace(/\.[^.]+$/, "");
+}
+
+function isGeneratedImage(file) {
+  return /-\d{2}\.webp$/i.test(file.name);
+}
+
+function imagePriority(image, product, leaf) {
+  const name = basenameWithoutExtension(image.name);
+  const normalizedName = normalize(name);
+  const normalizedCompactName = normalizedName.replace(/\s/g, "");
+  const model = normalize(leaf.pathParts[leaf.pathParts.length - 1] || "");
+  const modelCompact = model.replace(/\s/g, "");
+  const sku = normalize(product.sku || "");
+  const skuCompact = sku.replace(/\s/g, "");
+  let score = 0;
+
+  if (/^0?1(?:[\s_.-]|$)/i.test(name)) score += 1000;
+  if (model && normalizedName.includes(model)) score += 800;
+  if (modelCompact && normalizedCompactName.includes(modelCompact)) score += 800;
+  if (sku && normalizedName.includes(sku)) score += 650;
+  if (skuCompact && normalizedCompactName.includes(skuCompact)) score += 650;
+  if (/principal|main|front|frente|hero/i.test(image.name)) score += 140;
+  if (/box|caja|package|packaging/i.test(image.name)) score += 30;
+  if (/back|rear|side|lateral|detail|detalle/i.test(image.name)) score -= 20;
+
+  return score;
+}
+
+function sortProductImages(images, product, leaf) {
+  return [...images].sort((a, b) => {
+    const diff = imagePriority(b, product, leaf) - imagePriority(a, product, leaf);
+    return diff || a.name.localeCompare(b.name, "es", { numeric: true });
+  });
+}
+
+function currentImageCount(product) {
+  return (product.imagen_principal ? 1 : 0) + (product.imagenes_extra ? product.imagenes_extra.split("|").filter(Boolean).length : 0);
+}
+
 async function readProducts(token) {
   const response = await googleFetch(
     token,
@@ -390,15 +433,15 @@ async function collectLeafFolders(token, rootId) {
   async function walk(folder, pathParts, parentId) {
     const children = await listChildren(token, folder.id);
     const images = children.filter((file) => IMAGE_RE.test(file.mimeType));
+    const sourceImages = images.filter((image) => !isGeneratedImage(image));
     const folders = children.filter((file) => file.mimeType === FOLDER_MIME);
-    const generatedOnly = images.length > 0 && images.every((image) => /-\d{2}\.webp$/i.test(image.name));
-    if (images.length && !generatedOnly) {
+    if (sourceImages.length) {
       leaves.push({
         id: folder.id,
         name: folder.name,
         parentId,
         pathParts,
-        images,
+        images: sourceImages,
       });
     }
     for (const child of folders) {
@@ -520,7 +563,8 @@ async function processMatch(token, rootId, match, index, total) {
   const dir = path.join(TMP_ROOT, safeName(CATEGORY), safeName(product.sku || product.id));
   fs.mkdirSync(dir, { recursive: true });
   const uploaded = [];
-  const selectedImages = match.leaf.images.slice(0, MAX_IMAGES_BY_CATEGORY[CATEGORY] || 5);
+  const maxImages = MAX_IMAGES_BY_CATEGORY[CATEGORY] ?? Infinity;
+  const selectedImages = sortProductImages(match.leaf.images, product, match.leaf).slice(0, maxImages);
   console.log(`[${index}/${total}] ${match.leaf.pathParts.join(" / ")} -> ${product.sku} (${selectedImages.length} fotos)`);
   for (const [imageIndex, image] of selectedImages.entries()) {
     const source = await downloadFile(token, image.id);
@@ -552,16 +596,24 @@ async function main() {
   const token = await getAccessToken();
   const [sheet, leaves] = await Promise.all([readProducts(token), collectLeafFolders(token, rootId)]);
   const { matches, unmatched } = matchLeaves(leaves, sheet.products);
-  const selected = LIMIT ? matches.slice(START, START + LIMIT) : matches.slice(START);
+  const actionableMatches = INCOMPLETE_ONLY
+    ? matches.filter((match) => currentImageCount(match.product) < sortProductImages(match.leaf.images, match.product, match.leaf).length)
+    : OUT_OF_SYNC_ONLY
+      ? matches.filter((match) => currentImageCount(match.product) !== sortProductImages(match.leaf.images, match.product, match.leaf).length)
+    : matches;
+  const selected = LIMIT ? actionableMatches.slice(START, START + LIMIT) : actionableMatches.slice(START);
   const report = {
     category: CATEGORY,
     dryRun: DRY_RUN,
     cleanup: CLEANUP,
     missingOnly: MISSING_ONLY,
+    incompleteOnly: INCOMPLETE_ONLY,
+    outOfSyncOnly: OUT_OF_SYNC_ONLY,
     generatedAt: new Date().toISOString(),
     products: sheet.products.length,
     leaves: leaves.length,
     matched: matches.length,
+    actionable: actionableMatches.length,
     selected: selected.length,
     unmatched,
     matches: matches.map(({ leaf, product, score }) => ({
