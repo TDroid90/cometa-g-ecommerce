@@ -49,7 +49,7 @@ export function ProductCard({ product }: { product: Product }) {
         <Heart size={17} fill={isSaved ? "currentColor" : "none"} />
       </button>
 
-      <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-[#101014] p-5">
+      <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-white p-5">
         <ProductImage
           src={product.imagen_principal}
           alt={product.nombre}
