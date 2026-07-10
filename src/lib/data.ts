@@ -20,7 +20,7 @@ export async function getProducts(): Promise<Product[]> {
     const sheetProducts = await readProductsFromGoogleSheets();
     const baseProducts = sheetProducts?.length ? sheetProducts : seedProducts;
     const visibleProducts = baseProducts
-      .filter((product) => product.visible)
+      .filter((product) => product.visible && !isProductHiddenFromStore(product))
       .sort((a, b) => a.orden - b.orden);
 
     if (visibleProducts.length >= 100) return visibleProducts;
@@ -31,13 +31,32 @@ export async function getProducts(): Promise<Product[]> {
   } catch (error) {
     console.error(error);
     const visibleProducts = seedProducts
-      .filter((product) => product.visible)
+      .filter((product) => product.visible && !isProductHiddenFromStore(product))
       .sort((a, b) => a.orden - b.orden);
 
     return [...visibleProducts, ...generateDemoProducts(visibleProducts, 100)].sort(
       (a, b) => a.orden - b.orden
     );
   }
+}
+
+function normalizeProductText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function isProductHiddenFromStore(product: Product): boolean {
+  const text = normalizeProductText(
+    [product.nombre, product.sku, product.descripcion_corta, product.categoria, product.subcategoria].filter(Boolean).join(" ")
+  );
+  const isKit = /\bKIT\b/.test(text);
+  const isCaseWithPsu =
+    /\bGABINETE\b/.test(text) &&
+    (/\bFUENTE\b/.test(text) || /\bPSU\b/.test(text) || /\b[2-9][0-9]{2,3}\s*W\b/.test(text));
+
+  return isKit || isCaseWithPsu;
 }
 
 export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {

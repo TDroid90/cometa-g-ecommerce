@@ -30,7 +30,7 @@ export function ProductGallery({
 
   if (!images.length) {
     return (
-      <div className="grid aspect-[4/3] place-items-center rounded-lg border border-comet-border bg-comet-panel text-zinc-500">
+      <div className="mx-auto grid aspect-square w-full max-w-[550px] place-items-center rounded-lg border border-comet-border bg-comet-panel text-zinc-500">
         Sin imagen
       </div>
     );
@@ -38,13 +38,16 @@ export function ProductGallery({
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
+      <div className="group relative mx-auto aspect-square w-full max-w-[550px] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
         <ProductImage
           key={active}
           src={active || images[0]}
           alt={name}
           loading="eager"
-          className={clsx("h-full w-full object-contain", direction === "next" ? "gallery-slide-next" : "gallery-slide-prev")}
+          className={clsx(
+            "h-full w-full object-contain transition duration-300 group-hover:scale-[1.18]",
+            direction === "next" ? "gallery-slide-next" : "gallery-slide-prev"
+          )}
         />
       </div>
 

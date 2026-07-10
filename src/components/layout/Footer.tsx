@@ -88,6 +88,9 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
   const usefulLinks = defaultUsefulLinks;
   const commerceLinks = defaultCommerceLinks;
   const socialLinks = parseLinks(socialSection?.text);
+  const facebookUrl = socialLinks.find((link) => link.label.toLowerCase().includes("facebook"))?.href || "https://www.facebook.com/cometagtdf";
+  const instagramUrl = socialLinks.find((link) => link.label.toLowerCase().includes("instagram"))?.href || "https://www.instagram.com/cometagtdf";
+  const tiktokUrl = socialLinks.find((link) => link.label.toLowerCase().includes("tiktok"))?.href || "#";
   const paymentMethods = (paymentsSection?.text || "cabal,visa,master,naranja,mipyme,qr,cripto,amex")
     .split(",")
     .map((method) => method.trim().toLowerCase())
@@ -133,11 +136,11 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
             <a href="https://wa.me/5492964696717?text=Hola%20COMETA%20G,%20quiero%20hacer%20una%20consulta" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-emerald-400 hover:border-emerald-400" aria-label="WhatsApp solo mensajes" title="WhatsApp solo mensajes">
               <MessageCircle size={18} />
             </a>
-            <a href={socialLinks[0]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook" title="Facebook">
+            <a href={facebookUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook @cometagtdf" title="Facebook @cometagtdf">
               <span className="text-sm font-black">FB</span>
             </a>
-            <a href={socialLinks[1]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-sm font-black hover:border-comet-fuchsia" aria-label="TikTok" title="TikTok">TK</a>
-            <a href={socialLinks[2]?.href || "#"} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Instagram" title="Instagram">
+            <a href={tiktokUrl} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-sm font-black hover:border-comet-fuchsia" aria-label="TikTok" title="TikTok">TK</a>
+            <a href={instagramUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Instagram @cometagtdf" title="Instagram @cometagtdf">
               <Instagram size={18} />
             </a>
             <a href="http://qr.afip.gob.ar/?qr=HDul37GPIEuVUXh0EOKQ0g,," target="_F960AFIPInfo" rel="noreferrer" className="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-comet-border bg-[#242424] hover:border-comet-fuchsia" aria-label="Data Fiscal" title="Data Fiscal">

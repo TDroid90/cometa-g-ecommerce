@@ -13,7 +13,7 @@ const defaultNavItems = [
   { href: "/productos?disponibilidad=preventa", label: "Preventa" },
   { href: "/mecanica-de-compra", label: "Mecánica de compra" },
   { href: "/arma-tu-pc", label: "ARMA TU PC" },
-  { href: "https://cluster-save.vercel.app", label: "Cluster Save" }
+  { href: "https://www.clustersave.online", label: "Cluster Save" }
 ];
 
 const defaultTopLinks = [
@@ -116,10 +116,10 @@ export function Header({
 
   const navItems = useMemo(() => {
     const items = parseNavItems(categoryNav?.text).map((item) =>
-      item.label.toLowerCase() === "cluster save" ? { ...item, href: "https://cluster-save.vercel.app" } : item
+      item.label.toLowerCase() === "cluster save" ? { ...item, href: "https://www.clustersave.online" } : item
     );
     const hasClusterSave = items.some((item) => item.label.toLowerCase() === "cluster save");
-    return hasClusterSave ? items : [...items, { href: "https://cluster-save.vercel.app", label: "Cluster Save" }];
+    return hasClusterSave ? items : [...items, { href: "https://www.clustersave.online", label: "Cluster Save" }];
   }, [categoryNav?.text]);
   const topLinks = parseNavItems(topRight?.text, defaultTopLinks);
   const visibleTopLinks = topLinks.filter((item) => item.label.toLowerCase() !== "store locator");
@@ -218,7 +218,12 @@ export function Header({
       <div className="border-b border-comet-border/70 bg-[#18040d]" style={sectionStyle(topLeft)}>
         <div className="mx-auto flex h-9 w-full max-w-7xl items-center justify-between px-4 text-xs text-zinc-300 sm:px-6 lg:px-8">
           <p className="truncate">
-            <Link href="#" className="hover:text-white">
+            <Link
+              href="https://chat.whatsapp.com/LDDsBEP7m8o7SACH119jKh"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-white"
+            >
               Unite a nuestro grupo de wsap y enterate de todo
             </Link>
           </p>

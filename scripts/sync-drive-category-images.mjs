@@ -14,6 +14,7 @@ const MIGRATION_WEB_KEY = "CometaG-Migrate-Drive-2026";
 const CATEGORY_FOLDERS = {
   Coolers: "1A7TB_09mug9gmpHoqPpfqGrAkJlYa3V9",
   Fuentes: "14qghucdUYgFGwXhGv-1MZy_JveMEZxq9",
+  Gabinetes: "1JcFNwAtZ-mxDhFM6tmxs3-9IYqd0EAnn",
 };
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const IMAGE_RE = /^image\//i;
