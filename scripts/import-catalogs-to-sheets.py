@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 from html import unescape
 from datetime import datetime
 from pathlib import Path
@@ -15,16 +16,20 @@ from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
 
-ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SERVICE_ACCOUNT_FILE = ROOT / "cometag-444803-c2bdba83753e.json"
+ROOT = Path(__file__).resolve().parents[3]
+SERVICE_ACCOUNT_FILE = (
+    REPO_ROOT / "cometag-444803-c2bdba83753e.json"
+    if (REPO_ROOT / "cometag-444803-c2bdba83753e.json").exists()
+    else ROOT / "cometag-444803-c2bdba83753e.json"
+)
 PRODUCTS_SPREADSHEET_ID = os.environ.get("GOOGLE_SHEETS_PRODUCTOS_ID", "16OubRGr4OtQgo1g5s6xho-H2-yEGEUfB4eywUJ2YjTY")
 INVID_AUTH_URL = "https://www.invidcomputers.com/api/v1/auth.php"
 INVID_ARTICLE_URL = "https://www.invidcomputers.com/api/v1/articulo.php"
 NB_API_BASE_URL = "https://api.nb.com.ar/v1"
 
-ELIT_CSV = ROOT / "elit-tiendanube-196-515.csv"
-NB_CSV_FALLBACK = ROOT / "nb-price-list.csv"
+ELIT_CSV = REPO_ROOT / "elit-tiendanube-196-515.csv" if (REPO_ROOT / "elit-tiendanube-196-515.csv").exists() else ROOT / "elit-tiendanube-196-515.csv"
+NB_CSV_FALLBACK = REPO_ROOT / "nb-price-list.csv" if (REPO_ROOT / "nb-price-list.csv").exists() else ROOT / "nb-price-list.csv"
 
 OUTPUT_COLUMNS = [
     "proveedor",
@@ -375,7 +380,56 @@ def normalize_text(value: Any) -> str:
     }
     for source, target in replacements.items():
         text = text.replace(source, target)
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     return re.sub(r"\s+", " ", text)
+
+
+NAME_KEEP_UPPER = {
+    "a-rgb",
+    "argb",
+    "atx",
+    "bt",
+    "cm",
+    "cpu",
+    "ddr",
+    "fr",
+    "hz",
+    "icue",
+    "ii",
+    "iii",
+    "iv",
+    "lcd",
+    "led",
+    "lite",
+    "pwm",
+    "rgb",
+    "rog",
+    "rpm",
+    "rx",
+    "tuf",
+    "usb",
+}
+
+
+def display_product_name(value: Any) -> str:
+    text = re.sub(r"\s+", " ", clean(value)).strip()
+    if not text:
+        return ""
+
+    def format_token(token: str) -> str:
+        if not token:
+            return token
+        lower = normalize_text(token)
+        if re.fullmatch(r"\d+(?:mm|w|gb|tb|hz|ghz|mhz|rpm)", lower):
+            return lower.upper().replace("MM", "mm")
+        if lower in NAME_KEEP_UPPER or re.fullmatch(r"[a-z]{1,4}\d+[a-z0-9-]*", lower):
+            return token.upper()
+        if re.fullmatch(r"\d+[a-z]+", lower):
+            return lower.upper()
+        return lower[:1].upper() + lower[1:]
+
+    return " ".join(format_token(part) for part in text.split(" "))
 
 
 def should_reject(*values: str) -> str:
@@ -690,8 +744,43 @@ def image_proxy(url: str) -> str:
     return f"https://wsrv.nl/?url={quote(url, safe='')}&w=1000&h=1000&fit=cover&output=webp"
 
 
+def is_cooler_row(row: list[str]) -> bool:
+    category = normalize_text(row[4] if len(row) > 4 else "")
+    subcategory = normalize_text(row[5] if len(row) > 5 else "")
+    name = normalize_text(row[3] if len(row) > 3 else "")
+    return subcategory == "coolers" or (category == "hardware" and re.search(r"\bcooler\b|\bwater\s*cooler\b|\bair\s*cooler\b", name))
+
+
+def canonical_model_name(row: list[str]) -> str:
+    brand = canonical_brand(row[6] if len(row) > 6 else "")
+    text = normalize_text(row[3] if len(row) > 3 else "")
+    sku_text = normalize_text(row[2] if len(row) > 2 else "")
+    text = re.sub(r"\bwater\s*cooler\b|\bwatercooler\b|\bcooler\s+liquido\b", " cooler ", text)
+    text = re.sub(r"\bair\s*cooler\b", " cooler ", text)
+    text = re.sub(r"\bventiladores?\b|\bfan\s+cooler\b", " fan cooler ", text)
+    for variant in ("white", "black", "blanco", "negro"):
+        if re.search(rf"\b{variant}\b", sku_text) and not re.search(rf"\b{variant}\b", text):
+            text += f" {variant}"
+    for token in normalize_text(brand).split():
+        text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+    text = re.sub(
+        r"\b(cpu|gamer|gaming|para|procesador|refrigeracion|refrigerador|nuevo|new|edition|edicion)\b",
+        " ",
+        text,
+    )
+    text = re.sub(r"\bargb\b", "rgb", text)
+    text = re.sub(r"\ba-rgb\b", "rgb", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"[^a-z0-9]+", " ", text).strip()
+    return text
+
+
 def product_key(row: list[str]) -> str:
     brand = canonical_brand(row[6])
+    if is_cooler_row(row):
+        model_key = canonical_model_name(row)
+        if model_key:
+            return f"{brand}:cooler:{model_key}"
     by_name = normalize_text(f"{brand} {row[3]}")
     by_name = re.sub(r"\b(negro|black|blanco|white|gris|gray|rgb|gamer|usb|wireless)\b", "", by_name)
     by_name = re.sub(r"[^a-z0-9]+", " ", by_name).strip()
@@ -1154,6 +1243,7 @@ def read_normalized_catalog(path: Path) -> list[list[str]]:
         category, subcategory = normalize_category(values[4], values[5])
         values[4] = category
         values[5] = subcategory
+        values[3] = display_product_name(values[3])
         values[16] = strip_html(values[16])
         normalized_rows.append(values)
     return normalized_rows
@@ -1184,6 +1274,7 @@ def normalize_elit(rows: list[dict[str, str]], now: str, usd_rate: float) -> tup
         source_offer = is_offer_product(categoria, subcategoria, nombre, row.get("Tags", ""))
         if source_offer:
             nombre = clean_offer_name(nombre)
+        nombre = display_product_name(nombre)
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("Tags", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("Tags", ""))
@@ -1236,6 +1327,7 @@ def normalize_nb(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple
         source_offer = is_offer_product(categoria, subcategoria, nombre, row.get("ATRIBUTOS", ""))
         if source_offer:
             nombre = clean_offer_name(nombre)
+        nombre = display_product_name(nombre)
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
         reason = should_reject(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
         reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, row.get("ATRIBUTOS", ""))
@@ -1309,6 +1401,7 @@ def normalize_invid(rows: list[dict[str, Any]], now: str, usd_rate: float) -> tu
     for row in rows:
         categoria, subcategoria = invid_category(row)
         nombre = clean(row.get("TITLE"))
+        nombre = display_product_name(nombre)
         marca = canonical_brand(row.get("BRAND"))
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
         code = clean(row.get("ID"))
@@ -1331,10 +1424,12 @@ def normalize_invid(rows: list[dict[str, Any]], now: str, usd_rate: float) -> tu
             precio_usd = str(round(price / usd_rate, 2)) if price else ""
             precio_ars = final_price
 
-        stock_raw = row.get("STOCK")
-        stock = price_to_number(stock_raw) if stock_raw is not None else ""
         status_text = normalize_text(row.get("STOCK_STATUS"))
         stock_status = "sin_stock" if "sin stock" in status_text else "disponible"
+        stock_raw = row.get("STOCK")
+        stock = price_to_number(stock_raw) if stock_raw is not None else ""
+        if not stock:
+            stock = "0" if stock_status == "sin_stock" else "2"
         accepted.append([
             "INVID",
             code,
