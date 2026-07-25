@@ -1,7 +1,7 @@
 "use client";
 
 import { Upload, Wand2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/products/ProductImage";
 
 type ProductRecord = Record<string, string>;
@@ -40,6 +40,10 @@ function splitImages(value = "") {
   return value.split(/[|,]/).map((item) => item.trim()).filter(Boolean);
 }
 
+function uniqueImages(images: string[]) {
+  return Array.from(new Set(images.map((image) => image.trim()).filter(Boolean)));
+}
+
 function generateDescription(product: ProductRecord) {
   const brand = product.marca || "Marca seleccionada";
   const category = product.subcategoria || product.categoria || "producto";
@@ -65,6 +69,7 @@ export function ProductEditorClient() {
   const [product, setProduct] = useState<ProductRecord>({});
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mainDropActive, setMainDropActive] = useState(false);
 
   useEffect(() => {
     setSecret(window.localStorage.getItem("cometag-admin-secret") || "");
@@ -185,6 +190,41 @@ export function ProductEditorClient() {
     }
   }
 
+  function promoteImageToMain(nextMainImage: string) {
+    const nextMain = nextMainImage.trim();
+    if (!nextMain) return;
+
+    setProduct((current) => {
+      const previousMain = current.imagen_principal || "";
+      if (previousMain === nextMain) return current;
+
+      const nextGallery = uniqueImages([
+        previousMain,
+        ...splitImages(current.imagenes_extra).filter((image) => image !== nextMain && image !== previousMain)
+      ]);
+
+      return {
+        ...current,
+        imagen_principal: nextMain,
+        imagenes_extra: nextGallery.join("|")
+      };
+    });
+    setMessage("Imagen principal cambiada. Toca Guardar producto para fijarla en la Sheet.");
+  }
+
+  function handleMainDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setMainDropActive(false);
+
+    const droppedFile = event.dataTransfer.files?.[0];
+    if (droppedFile) {
+      uploadImage(droppedFile, "main");
+      return;
+    }
+
+    promoteImageToMain(event.dataTransfer.getData("text/plain"));
+  }
+
   function fieldControl(field: string) {
     const value = product[field] || "";
     const isLong = ["descripcion_larga", "imagenes_extra", "atributos", "techSpecs", "externalRefs", "tags"].includes(field);
@@ -246,7 +286,15 @@ export function ProductEditorClient() {
 
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <aside className="h-fit rounded-lg border border-comet-border bg-comet-panel p-4">
-          <div className="aspect-square overflow-hidden rounded-md border border-comet-border bg-comet-black">
+          <div
+            onDragOver={(event) => event.preventDefault()}
+            onDragEnter={() => setMainDropActive(true)}
+            onDragLeave={() => setMainDropActive(false)}
+            onDrop={handleMainDrop}
+            className={`relative aspect-square overflow-hidden rounded-md border bg-comet-black transition ${
+              mainDropActive ? "border-comet-fuchsia ring-2 ring-comet-fuchsia/40" : "border-comet-border"
+            }`}
+          >
             {product.imagen_principal ? (
               <ProductImage
                 src={product.imagen_principal}
@@ -258,18 +306,36 @@ export function ProductEditorClient() {
             ) : (
               <div className="grid h-full place-items-center text-sm text-zinc-600">Sin imagen principal</div>
             )}
+            {mainDropActive && (
+              <div className="absolute inset-0 grid place-items-center bg-black/55 text-center text-sm font-black text-white">
+                Solta aca para usarla como principal
+              </div>
+            )}
           </div>
 
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {images.slice(0, 8).map((image, index) => (
-              <div key={`${image}-${index}`} className="aspect-square overflow-hidden rounded border border-comet-border bg-white">
+          <div className="mt-3 grid max-h-[420px] grid-cols-4 gap-2 overflow-y-auto pr-1">
+            {images.map((image, index) => (
+              <button
+                key={`${image}-${index}`}
+                type="button"
+                draggable
+                title="Arrastra esta foto a la imagen grande para hacerla principal"
+                onClick={() => promoteImageToMain(image)}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", image);
+                  event.dataTransfer.effectAllowed = "move";
+                }}
+                className={`aspect-square overflow-hidden rounded border bg-white transition hover:border-comet-fuchsia ${
+                  product.imagen_principal === image ? "border-comet-fuchsia" : "border-comet-border"
+                }`}
+              >
                 <ProductImage
                   src={image}
                   alt={`${product.nombre || "Producto"} ${index + 1}`}
                   className="h-full w-full object-contain p-1"
                   fallbackClassName="grid h-full w-full place-items-center bg-comet-black text-[10px] text-zinc-500"
                 />
-              </div>
+              </button>
             ))}
           </div>
 
