@@ -1,7 +1,7 @@
 "use client";
 
 import { Upload, Wand2 } from "lucide-react";
-import { type DragEvent, useEffect, useMemo, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/products/ProductImage";
 
 type ProductRecord = Record<string, string>;
@@ -70,6 +70,7 @@ export function ProductEditorClient() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [mainDropActive, setMainDropActive] = useState(false);
+  const mainDropDepth = useRef(0);
 
   useEffect(() => {
     setSecret(window.localStorage.getItem("cometag-admin-secret") || "");
@@ -214,6 +215,7 @@ export function ProductEditorClient() {
 
   function handleMainDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
+    mainDropDepth.current = 0;
     setMainDropActive(false);
 
     const droppedFile = event.dataTransfer.files?.[0];
@@ -223,6 +225,20 @@ export function ProductEditorClient() {
     }
 
     promoteImageToMain(event.dataTransfer.getData("text/plain"));
+  }
+
+  function handleMainDragEnter(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    mainDropDepth.current += 1;
+    setMainDropActive(true);
+  }
+
+  function handleMainDragLeave(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    mainDropDepth.current = Math.max(0, mainDropDepth.current - 1);
+    if (mainDropDepth.current === 0) {
+      setMainDropActive(false);
+    }
   }
 
   function fieldControl(field: string) {
@@ -287,9 +303,12 @@ export function ProductEditorClient() {
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <aside className="h-fit rounded-lg border border-comet-border bg-comet-panel p-4">
           <div
-            onDragOver={(event) => event.preventDefault()}
-            onDragEnter={() => setMainDropActive(true)}
-            onDragLeave={() => setMainDropActive(false)}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+            }}
+            onDragEnter={handleMainDragEnter}
+            onDragLeave={handleMainDragLeave}
             onDrop={handleMainDrop}
             className={`relative aspect-square overflow-hidden rounded-md border bg-comet-black transition ${
               mainDropActive ? "border-comet-fuchsia ring-2 ring-comet-fuchsia/40" : "border-comet-border"
@@ -307,7 +326,7 @@ export function ProductEditorClient() {
               <div className="grid h-full place-items-center text-sm text-zinc-600">Sin imagen principal</div>
             )}
             {mainDropActive && (
-              <div className="absolute inset-0 grid place-items-center bg-black/55 text-center text-sm font-black text-white">
+              <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/55 text-center text-sm font-black text-white">
                 Solta aca para usarla como principal
               </div>
             )}
