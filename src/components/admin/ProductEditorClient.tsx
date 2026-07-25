@@ -2,6 +2,7 @@
 
 import { Upload, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ProductImage } from "@/components/products/ProductImage";
 
 type ProductRecord = Record<string, string>;
 
@@ -247,18 +248,27 @@ export function ProductEditorClient() {
         <aside className="h-fit rounded-lg border border-comet-border bg-comet-panel p-4">
           <div className="aspect-square overflow-hidden rounded-md border border-comet-border bg-comet-black">
             {product.imagen_principal ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.imagen_principal} alt="" className="h-full w-full object-contain" />
+              <ProductImage
+                src={product.imagen_principal}
+                alt={product.nombre || "Imagen principal"}
+                loading="eager"
+                className="h-full w-full bg-white object-contain p-2"
+                fallbackClassName="grid h-full w-full place-items-center text-sm text-zinc-600"
+              />
             ) : (
               <div className="grid h-full place-items-center text-sm text-zinc-600">Sin imagen principal</div>
             )}
           </div>
 
           <div className="mt-3 grid grid-cols-4 gap-2">
-            {images.slice(0, 8).map((image) => (
-              <div key={image} className="aspect-square overflow-hidden rounded border border-comet-border bg-comet-black">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image} alt="" className="h-full w-full object-contain" />
+            {images.slice(0, 8).map((image, index) => (
+              <div key={`${image}-${index}`} className="aspect-square overflow-hidden rounded border border-comet-border bg-white">
+                <ProductImage
+                  src={image}
+                  alt={`${product.nombre || "Producto"} ${index + 1}`}
+                  className="h-full w-full object-contain p-1"
+                  fallbackClassName="grid h-full w-full place-items-center bg-comet-black text-[10px] text-zinc-500"
+                />
               </div>
             ))}
           </div>
