@@ -542,20 +542,7 @@ async function readUsdRateFromMenu(): Promise<number> {
 }
 
 async function readBrandLogoMapFromMenu(): Promise<Map<string, string>> {
-  const rows = await fetchPrivateSheetRows(
-    "GOOGLE_SHEETS_MENU_CATEGORIAS_NAME",
-    DEFAULT_MENU_SHEET_NAME,
-    process.env.GOOGLE_SHEETS_PRODUCTOS_ID || DEFAULT_PRODUCTS_SPREADSHEET_ID
-  ).catch(() => null);
-
-  const map = new Map<string, string>();
-  for (const row of rows || []) {
-    const brand = clean(row.marca || row.marca_canonica).toUpperCase();
-    const visible = toBool(row.visible_marca ?? row.marca_visible ?? "TRUE", true);
-    const logo = clean(row.logo_url);
-    if (brand && visible && logo) map.set(brand, logo);
-  }
-  return map;
+  return new Map<string, string>();
 }
 
 function menuMarkupKey(category: string, subcategory: string) {
