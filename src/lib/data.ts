@@ -47,16 +47,35 @@ function normalizeProductText(value: string): string {
     .toUpperCase();
 }
 
-function isProductHiddenFromStore(product: Product): boolean {
+export function isProductHiddenFromStore(product: Product): boolean {
   const text = normalizeProductText(
-    [product.nombre, product.sku, product.descripcion_corta, product.categoria, product.subcategoria].filter(Boolean).join(" ")
+    [
+      product.nombre,
+      product.sku,
+      product.descripcion_corta,
+      product.descripcion_larga,
+      product.categoria,
+      product.subcategoria,
+      product.marca,
+      ...product.tags,
+      ...Object.entries(product.atributos || {}).flat()
+    ]
+      .filter(Boolean)
+      .join(" ")
   );
+  const hasImage = Boolean(product.imagen_principal?.trim());
+  const isOutlet = /\bOUTLET\b|CONDICION\s+OUTLET/.test(text);
   const isKit = /\bKIT\b/.test(text);
   const isCaseWithPsu =
     /\bGABINETE\b/.test(text) &&
     (/\bFUENTE\b/.test(text) || /\bPSU\b/.test(text) || /\b[2-9][0-9]{2,3}\s*W\b/.test(text));
 
-  return isKit || isCaseWithPsu;
+  return !hasImage || isOutlet || isKit || isCaseWithPsu;
+}
+
+export function formatStockQuantity(stock: number, noun = "unidades"): string {
+  if (stock > 10) return `+10 ${noun}`;
+  return `${Math.max(0, stock)} ${noun}`;
 }
 
 export async function getCategoryMenu(): Promise<CategoryMenuItem[]> {
