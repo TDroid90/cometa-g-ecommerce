@@ -14,8 +14,18 @@ export default async function ProductsPage({
       ? "LO QUE VIENE EN CAMINO 🚀"
       : "Productos gamer";
 
+  const catalogStateKey = [
+    params.q,
+    params.categoria,
+    params.subcategoria,
+    params.marca,
+    params.disponibilidad,
+    offerPage ? "oferta" : ""
+  ].join("|");
+
   return (
     <CatalogClient
+      key={catalogStateKey}
       products={products}
       pageTitle={pageTitle}
       initialQuery={params.q}

@@ -3,6 +3,7 @@
 import { Upload, Wand2 } from "lucide-react";
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/products/ProductImage";
+import { ProductCreativePanel } from "@/components/admin/ProductCreativePanel";
 
 type ProductRecord = Record<string, string>;
 
@@ -385,6 +386,8 @@ export function ProductEditorClient() {
             <h2 className="mb-4 text-lg font-black text-white">Datos principales</h2>
             <div className="grid gap-3 md:grid-cols-3">{mainFields.map(fieldControl)}</div>
           </div>
+
+          <ProductCreativePanel product={product} secret={secret} />
 
           <div className="rounded-lg border border-comet-border bg-comet-panel p-4">
             <h2 className="mb-4 text-lg font-black text-white">Fotos, descripcion y ficha tecnica</h2>

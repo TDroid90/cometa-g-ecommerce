@@ -16,7 +16,8 @@
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sdk-node-payway": "^1.0.8"
+    "sdk-node-payway": "^1.0.8",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

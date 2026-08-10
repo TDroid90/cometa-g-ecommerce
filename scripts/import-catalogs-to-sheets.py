@@ -1,4 +1,5 @@
 import csv
+from contextlib import contextmanager
 import io
 import json
 import os
@@ -12,6 +13,7 @@ from typing import Any
 from urllib.parse import quote
 
 import requests
+from urllib3.util import connection as urllib3_connection
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
@@ -28,8 +30,56 @@ INVID_AUTH_URL = "https://www.invidcomputers.com/api/v1/auth.php"
 INVID_ARTICLE_URL = "https://www.invidcomputers.com/api/v1/articulo.php"
 NB_API_BASE_URL = "https://api.nb.com.ar/v1"
 
+# This workstation has an unreliable IPv6 route to Google APIs. Requests must
+# use IPv4 so scheduled imports fail fast instead of remaining half-published.
+urllib3_connection.allowed_gai_family = lambda: __import__("socket").AF_INET
+
 ELIT_CSV = REPO_ROOT / "elit-tiendanube-196-515.csv" if (REPO_ROOT / "elit-tiendanube-196-515.csv").exists() else ROOT / "elit-tiendanube-196-515.csv"
 NB_CSV_FALLBACK = REPO_ROOT / "nb-price-list.csv" if (REPO_ROOT / "nb-price-list.csv").exists() else ROOT / "nb-price-list.csv"
+CATALOG_LOCK_FILE = REPO_ROOT / ".tmp" / "catalog-import.lock"
+
+
+@contextmanager
+def catalog_import_lock():
+    """Prevent manual and scheduled imports from writing the Sheet concurrently."""
+    CATALOG_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    lock_handle = CATALOG_LOCK_FILE.open("a+b")
+    lock_handle.seek(0)
+    if lock_handle.read(1) != b"1":
+        lock_handle.seek(0)
+        lock_handle.write(b"1")
+        lock_handle.flush()
+    lock_handle.seek(0)
+
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            try:
+                msvcrt.locking(lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise RuntimeError("Ya hay una actualizacion de catalogos en curso.") from exc
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise RuntimeError("Ya hay una actualizacion de catalogos en curso.") from exc
+        yield
+    finally:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                lock_handle.seek(0)
+                msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_handle.close()
 
 OUTPUT_COLUMNS = [
     "proveedor",
@@ -356,16 +406,20 @@ def clean(value: Any) -> str:
 
 
 def load_local_env() -> None:
-    env_path = REPO_ROOT / ".env.local"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    for env_path in (
+        REPO_ROOT / ".env.local",
+        REPO_ROOT / ".env.catalog.local",
+        REPO_ROOT / ".tmp" / "catalog-production.env",
+    ):
+        if not env_path.exists():
             continue
-        key, value = line.split("=", 1)
-        value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key.strip(), value)
+        for line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            value = value.strip().strip('"').strip("'")
+            os.environ.setdefault(key.strip(), value)
 
 
 def normalize_text(value: Any) -> str:
@@ -599,6 +653,7 @@ def provider_exchange_rates(
     scrape_enabled = os.environ.get("SCRAPE_PROVIDER_RATES", "FALSE").upper() == "TRUE"
     elit_rate = (
         parse_price(os.environ.get("ELIT_USD_RATE"))
+        or median([parse_price(row.get("cotizacion")) for row in elit_rows])
         or (scrape_exchange_rate("https://www.elit.com.ar") if scrape_enabled else 0)
         or nb_rate
         or default_rate
@@ -1051,11 +1106,25 @@ def products_for_store_with_markup(
     return products
 
 
-def build_menu_rows(consolidated: list[list[str]], markups: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
+def storefront_product_rows(products: list[list[str]]) -> list[list[str]]:
+    indexes = {column: index for index, column in enumerate(ECOMMERCE_PRODUCT_COLUMNS)}
+    visible_rows = []
+    for row in products:
+        visible = clean(row[indexes["visible"]] if len(row) > indexes["visible"] else "").upper()
+        image = clean(row[indexes["imagen_principal"]] if len(row) > indexes["imagen_principal"] else "")
+        stock = parse_price(row[indexes["stock"]] if len(row) > indexes["stock"] else "0")
+        if visible in {"FALSE", "0", "NO"} or not image or stock <= 1:
+            continue
+        visible_rows.append(row)
+    return visible_rows
+
+
+def build_menu_rows(products: list[list[str]], markups: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
+    indexes = {column: index for index, column in enumerate(ECOMMERCE_PRODUCT_COLUMNS)}
     counts: dict[tuple[str, str], int] = {}
-    for row in consolidated:
-        category = row[5]
-        subcategory = row[6]
+    for row in storefront_product_rows(products):
+        category = row[indexes["categoria"]]
+        subcategory = row[indexes["subcategoria"]]
         if not category:
             continue
         counts[(category, subcategory)] = counts.get((category, subcategory), 0) + 1
@@ -1092,7 +1161,48 @@ def read_csv_url(url: str, delimiter: str = ";") -> list[dict[str, str]]:
     response = requests.get(url, timeout=90)
     response.raise_for_status()
     content = response.content.decode("utf-8-sig", errors="replace")
+    if content.startswith("sep="):
+        content = content.split("\n", 1)[1]
     return list(csv.DictReader(io.StringIO(content), delimiter=delimiter))
+
+
+def read_elit_catalog() -> list[dict[str, str]]:
+    username = clean(os.environ.get("ELIT_USERNAME"))
+    password = clean(os.environ.get("ELIT_PASSWORD"))
+    token = clean(os.environ.get("ELIT_API_TOKEN"))
+
+    if username and password and not token:
+        session = requests.Session()
+        session.headers["User-Agent"] = "CometaG-CatalogImporter/1.0"
+        login_id: int | str = int(username) if username.isdigit() else username
+        login = session.post(
+            "https://www.elit.com.ar/api/login",
+            json={"id": login_id, "password": password, "agent": 0},
+            timeout=30,
+        )
+        login.raise_for_status()
+        integration = session.get("https://www.elit.com.ar/mi-cuenta/integracion-api", timeout=30)
+        integration.raise_for_status()
+        token_match = re.search(r'apiToken\\?":\{\\?"key\\?":\\?"([^"\\]+)', integration.text)
+        if token_match:
+            token = token_match.group(1)
+
+    if username and token:
+        response = requests.get(
+            "https://clientes.elit.com.ar/v1/api/productos/csv",
+            params={"user_id": username, "token": token, "store": "all"},
+            headers={"User-Agent": "CometaG-CatalogImporter/1.0"},
+            timeout=90,
+        )
+        response.raise_for_status()
+        content = response.content.decode("utf-8-sig", errors="replace")
+        if content.startswith("sep="):
+            content = content.split("\n", 1)[1]
+        return list(csv.DictReader(io.StringIO(content), delimiter=","))
+
+    if ELIT_CSV.exists():
+        return read_csv_path(ELIT_CSV)
+    raise RuntimeError("Faltan credenciales de ELIT y no existe el CSV local de respaldo.")
 
 
 def nb_api_login(username: str, password: str) -> str:
@@ -1262,6 +1372,54 @@ def split_category(value: str) -> tuple[str, str]:
     if not parts:
         return "", ""
     return normalize_category(parts[0], " > ".join(parts[1:]))
+
+
+def normalize_elit_api(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple[list[list[str]], list[list[str]]]:
+    accepted: list[list[str]] = []
+    rejected: list[list[str]] = []
+    for row in rows:
+        categoria, subcategoria = normalize_category(row.get("categoria", ""), row.get("sub_categoria", ""))
+        nombre = clean(row.get("nombre"))
+        marca = canonical_brand(row.get("marca"))
+        attributes = clean(row.get("atributos"))
+        nombre = display_product_name(nombre)
+        categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
+        reason = should_reject(categoria, subcategoria, nombre, marca, attributes)
+        reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, attributes)
+        code = clean(row.get("codigo_producto")) or clean(row.get("id"))
+        price_usd = price_to_number(row.get("precio"))
+        price_ars = str(round(parse_price(price_usd) * usd_rate, 2)) if price_usd else ""
+        if reason:
+            rejected.append(["ELIT", code, nombre, categoria, subcategoria, marca, reason, now])
+            continue
+        stock = clean(row.get("stock_total"))
+        accepted.append([
+            "ELIT",
+            code,
+            normalize_sku(row.get("codigo_producto")),
+            nombre,
+            categoria,
+            subcategoria,
+            marca,
+            price_usd,
+            price_ars,
+            "",
+            "USD",
+            stock,
+            "disponible" if parse_price(stock) > 0 else "sin_stock",
+            clean(row.get("garantia")),
+            clean(row.get("imagen")),
+            clean(row.get("imagenes")),
+            attributes,
+            clean(row.get("peso")),
+            "",
+            "",
+            "",
+            "TRUE",
+            now,
+            "FALSE",
+        ])
+    return accepted, rejected
 
 
 def normalize_elit(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple[list[list[str]], list[list[str]]]:
@@ -1584,8 +1742,7 @@ def ensure_sheet(service, title: str, min_rows: int = 1000, min_cols: int = 26) 
 def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
     if os.environ.get("CATALOG_ENSURE_SHEETS", "FALSE").upper() == "TRUE":
         ensure_sheet(service, sheet, min_rows=max(len(rows) + 10, 1000), min_cols=max(len(headers) + 2, 26))
-    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
-        values_clear(service, f"{sheet}!A:{column_letter(max(len(headers), 1))}")
+    previous_last_row = len(values_get(service, f"{sheet}!A1:A"))
     values = [headers] + rows
     updates = []
     chunk_size = 100 if sheet == "FULL_CATALOGO" else 500
@@ -1594,11 +1751,13 @@ def replace_values(service, sheet: str, headers: list[str], rows: list[list[str]
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
     values_batch_update(service, updates, value_input_option="RAW" if sheet == "FULL_CATALOGO" else "USER_ENTERED")
+    new_last_row = len(values)
+    if previous_last_row > new_last_row:
+        values_clear(service, f"{sheet}!A{new_last_row + 1}:{column_letter(max(len(headers), 1))}{previous_last_row}")
 
 
 def replace_existing_values(service, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
-    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
-        values_clear(service, f"{sheet}!A:{column_letter(max(len(headers), 1))}")
+    previous_last_row = len(values_get(service, f"{sheet}!A1:A"))
     values = [headers] + rows
     updates = []
     for index in range(0, len(values), 500):
@@ -1606,6 +1765,9 @@ def replace_existing_values(service, sheet: str, headers: list[str], rows: list[
         start = index + 1
         updates.append((f"{sheet}!A{start}", chunk))
     values_batch_update(service, updates)
+    new_last_row = len(values)
+    if previous_last_row > new_last_row:
+        values_clear(service, f"{sheet}!A{new_last_row + 1}:{column_letter(max(len(headers), 1))}{previous_last_row}")
 
 
 def rows_to_dicts(values: list[list[str]]) -> list[dict[str, str]]:
@@ -1674,8 +1836,9 @@ def column_letter(index: int) -> str:
     return letters or "A"
 
 
-def build_brand_rows(consolidated: list[list[str]]) -> list[list[str]]:
-    brands = sorted({clean(row[7]) for row in consolidated if clean(row[7])})
+def build_brand_rows(products: list[list[str]]) -> list[list[str]]:
+    brand_index = ECOMMERCE_PRODUCT_COLUMNS.index("marca")
+    brands = sorted({clean(row[brand_index]) for row in storefront_product_rows(products) if clean(row[brand_index])})
     return [[brand, canonical_brand(brand)] for brand in brands]
 
 
@@ -1729,8 +1892,8 @@ def replace_menu_values(
         for row in current_brand_values
         if len(row) >= 4 and clean(row[0]) and clean(row[2])
     }
-    if os.environ.get("CATALOG_CLEAR_RANGES", "FALSE").upper() == "TRUE":
-        values_clear(service, f"{sheet}!A:O")
+    previous_menu_rows = len(values_get(service, f"{sheet}!A1:A"))
+    previous_brand_rows = len(values_get(service, f"{sheet}!I1:I"))
     values = [headers] + rows
     updates = []
     for index in range(0, len(values), 500):
@@ -1747,6 +1910,11 @@ def replace_menu_values(
         ]
         updates.append((f"{sheet}!I2", brand_rows))
     values_batch_update(service, updates)
+    if previous_menu_rows > len(values):
+        values_clear(service, f"{sheet}!A{len(values) + 1}:H{previous_menu_rows}")
+    new_brand_last_row = len(brand_rows) + 1
+    if previous_brand_rows > new_brand_last_row:
+        values_clear(service, f"{sheet}!I{new_brand_last_row + 1}:L{previous_brand_rows}")
 
 
 def color_consolidated_rows(service, sheet: str) -> None:
@@ -1851,14 +2019,17 @@ def main() -> None:
         raise RuntimeError("Faltan INVID_USERNAME / INVID_PASSWORD en .env.local o variables de entorno.")
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    elit_rows = read_csv_path(ELIT_CSV)
+    elit_rows = read_elit_catalog()
     nb_rows = read_nb_catalog()
     refresh_invid = os.environ.get("INVID_REFRESH", "FALSE").upper() == "TRUE"
     full_invid_rows = read_invid_articles(invid_username, invid_password) if (refresh_invid or not invid_cache.exists()) and invid_username and invid_password else []
     invid_rows = [] if invid_cache.exists() else full_invid_rows
     provider_rates = provider_exchange_rates(elit_rows, nb_rows, invid_rows)
 
-    elit, elit_rejected = normalize_elit(elit_rows, now, provider_rates["ELIT"])
+    if elit_rows and "codigo_producto" in elit_rows[0]:
+        elit, elit_rejected = normalize_elit_api(elit_rows, now, provider_rates["ELIT"])
+    else:
+        elit, elit_rejected = normalize_elit(elit_rows, now, provider_rates["ELIT"])
     nb, nb_rejected = normalize_nb(nb_rows, now, provider_rates["NB"])
     if invid_cache.exists():
         invid = read_normalized_catalog(invid_cache)
@@ -1884,17 +2055,13 @@ def main() -> None:
     existing_product_overrides = read_existing_product_overrides(service)
     store_products = products_for_store_with_markup(consolidated, existing_markups, provider_rates)
     store_products = apply_product_overrides(store_products, existing_product_overrides)
-    menu_rows = build_menu_rows(consolidated, existing_markups)
-    brand_rows = build_brand_rows(consolidated)
+    menu_rows = build_menu_rows(store_products, existing_markups)
+    brand_rows = build_brand_rows(store_products)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
-    if not quick_publish:
-        replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
-        replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
+    refresh_full_catalog = os.environ.get("CATALOG_REFRESH_FULL", "FALSE").upper() == "TRUE"
+    replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
+    replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
     replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
-    full_headers, full_rows = build_full_catalog(elit_rows, nb_rows, full_invid_rows)
-    ensure_sheet(service, "FULL_CATALOGO", min_rows=max(len(full_rows) + 10, 1000), min_cols=max(len(full_headers) + 2, 26))
-    replace_values(service, "FULL_CATALOGO", full_headers, full_rows)
-    apply_basic_filter(service, "FULL_CATALOGO", len(full_rows), len(full_headers))
     replace_existing_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
     replace_menu_values(service, MENU_SHEET, MENU_COLUMNS, menu_rows, brand_rows)
     replace_values(service, "COMPRA_INTERNA_RECOMENDADA", INTERNAL_BUY_COLUMNS, internal_buy)
@@ -1914,6 +2081,12 @@ def main() -> None:
         color_consolidated_rows(service, "CATALOGO_CONSOLIDADO")
         format_menu_sheet(service, MENU_SHEET)
         replace_values(service, "CATALOGO_RECHAZADOS", REJECT_COLUMNS, rejected)
+    full_rows: list[list[str]] = []
+    if refresh_full_catalog:
+        full_headers, full_rows = build_full_catalog(elit_rows, nb_rows, full_invid_rows)
+        ensure_sheet(service, "FULL_CATALOGO", min_rows=max(len(full_rows) + 10, 1000), min_cols=max(len(full_headers) + 2, 26))
+        replace_values(service, "FULL_CATALOGO", full_headers, full_rows)
+        apply_basic_filter(service, "FULL_CATALOGO", len(full_rows), len(full_headers))
 
     print(json.dumps({
         "ELIT_importados": len(elit),
@@ -1926,7 +2099,7 @@ def main() -> None:
         "COMPRA_INTERNA_RECOMENDADA": len(internal_buy),
         "PRODUCTOS": len(store_products),
         "MENU_CAT_MAR": len(menu_rows),
-        "FULL_CATALOGO": len(full_rows),
+        "FULL_CATALOGO": len(full_rows) if refresh_full_catalog else "sin cambios",
         "COTIZACION_ELIT": provider_rates["ELIT"],
         "COTIZACION_NB": provider_rates["NB"],
         "COTIZACION_INVID": provider_rates["INVID"],
@@ -1936,4 +2109,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with catalog_import_lock():
+        main()

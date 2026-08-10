@@ -4,7 +4,7 @@ import { Eye, ShieldCheck, Truck } from "lucide-react";
 import { ProductActions } from "@/components/products/ProductActions";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductGrid } from "@/components/products/ProductGrid";
-import { formatPrice, getProducts, productPrice } from "@/lib/data";
+import { formatPrice, formatStockQuantity, getProducts, productPrice } from "@/lib/data";
 import { getProductBySlugWithTechData } from "@/lib/techData";
 import { Product, ProductTechSpecs } from "@/lib/types";
 
@@ -189,14 +189,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               <p className="text-xs uppercase text-zinc-500">Stock</p>
               <p className="mt-1 text-sm font-bold text-white">
                 {product.preventa
-                  ? `Preventa${product.stock > 0 ? ` - ${product.stock} disponibles` : ""}`
+                  ? `Preventa${product.stock > 0 ? ` - ${formatStockQuantity(product.stock, "disponibles")}` : ""}`
                   : product.stock > 0
-                    ? `${product.stock} unidades`
+                    ? formatStockQuantity(product.stock)
                     : "Sin stock"}
               </p>
               {hasLocalStock && (
                 <p className="mt-1 text-xs font-bold text-yellow-300">
-                  Stock local: {product.stockLocal} unidades
+                  Stock local: {formatStockQuantity(product.stockLocal ?? 0)}
                 </p>
               )}
             </div>
@@ -226,7 +226,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
             <div className="flex items-center gap-3 rounded-md border border-comet-border bg-comet-panel p-3 text-sm text-zinc-200">
               <Truck size={19} className="text-comet-violet" />
-              <span className="font-bold">Envíos a todo el País</span>
+              <span className="font-bold">Envios a toda la provincia (TDF)</span>
             </div>
           </div>
         </section>

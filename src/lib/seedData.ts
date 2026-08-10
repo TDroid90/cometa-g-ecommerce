@@ -50,7 +50,7 @@ export const seedLayout: LayoutSection[] = [
     section_id: "beneficios-home",
     area: "body",
     section_type: "service_strip",
-    text: "Envío rápido|a todo el país;Soporte gamer|asesoría de compra;Garantía oficial|productos seleccionados;Pago seguro|checkout preparado;Solo marcas top|stock actualizado",
+    text: "Envios|a toda la provincia (TDF);Soporte gamer|asesoría de compra;Garantía oficial|productos seleccionados;Pago seguro|checkout preparado;Solo marcas top|stock actualizado",
     order: 25,
     visible: true
   },
@@ -115,6 +115,16 @@ export const seedLayout: LayoutSection[] = [
     text: "Ventas online, reservas y asesoramiento gamer.",
     order: 100,
     visible: true
+  },
+  {
+    section_id: "footer-social",
+    area: "footer",
+    section_type: "text_block",
+    title: "Seguinos",
+    text: "Facebook|https://facebook.com/cometagtdf,Instagram|https://instagram.com/cometagtdf,WhatsApp|https://chat.whatsapp.com/LDDsBEP7m8o7SACH119jKh",
+    order: 110,
+    visible: true,
+    layout_variant: "footer_social"
   }
 ];
 

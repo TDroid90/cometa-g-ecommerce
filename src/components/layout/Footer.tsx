@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Instagram, MessageCircle, Send } from "lucide-react";
+import { Instagram, MessageCircle, Send, Facebook, Phone } from "lucide-react";
 import { LayoutSection } from "@/lib/types";
 
 function parseLinks(text?: string): Array<{ label: string; href: string }> {
@@ -133,16 +133,50 @@ export function Footer({ sections }: { sections: LayoutSection[] }) {
           </Link>
 
           <div className="mt-6 flex flex-wrap justify-center gap-3 lg:justify-start">
-            <a href="https://wa.me/5492964696717?text=Hola%20COMETA%20G,%20quiero%20hacer%20una%20consulta" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-emerald-400 hover:border-emerald-400" aria-label="WhatsApp solo mensajes" title="WhatsApp solo mensajes">
-              <MessageCircle size={18} />
-            </a>
-            <a href={facebookUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Facebook @cometagtdf" title="Facebook @cometagtdf">
-              <span className="text-sm font-black">FB</span>
-            </a>
-            <a href={tiktokUrl} className="grid h-10 w-10 place-items-center rounded-full border border-comet-border text-sm font-black hover:border-comet-fuchsia" aria-label="TikTok" title="TikTok">TK</a>
-            <a href={instagramUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-full border border-comet-border hover:border-comet-fuchsia" aria-label="Instagram @cometagtdf" title="Instagram @cometagtdf">
-              <Instagram size={18} />
-            </a>
+            {[
+              { label: "WhatsApp solo mensajes", href: "https://wa.me/5492964696717?text=Hola%20COMETA%20G,%20quiero%20hacer%20una%20consulta" },
+              { label: "Facebook @cometagtdf", href: facebookUrl },
+              ...(tiktokUrl && tiktokUrl !== "#" ? [{ label: "TikTok", href: tiktokUrl }] : []),
+              { label: "Instagram @cometagtdf", href: instagramUrl },
+              ...socialLinks.filter((link) => {
+                const lowerLabel = link.label.toLowerCase();
+                return (
+                  !lowerLabel.includes("whatsapp") &&
+                  !lowerLabel.includes("facebook") &&
+                  !lowerLabel.includes("instagram") &&
+                  !lowerLabel.includes("tiktok")
+                );
+              }),
+            ].map((link, index) => {
+              let icon = null;
+              let colorClass = "text-zinc-300";
+              const lowerLabel = link.label.toLowerCase();
+              
+              if (lowerLabel.includes("whatsapp")) {
+                icon = <MessageCircle size={18} />;
+                colorClass = "text-emerald-400 hover:border-emerald-400";
+              } else if (lowerLabel.includes("facebook")) {
+                icon = <Facebook size={18} />;
+              } else if (lowerLabel.includes("instagram")) {
+                icon = <Instagram size={18} />;
+              } else if (lowerLabel.includes("teléfono") || lowerLabel.includes("telefono")) {
+                icon = <Phone size={18} />;
+              }
+              
+              return (
+                <a 
+                  key={index}
+                  href={link.href}
+                  target={link.href.startsWith("tel:") ? "_self" : "_blank"}
+                  rel={link.href.startsWith("tel:") ? "" : "noopener noreferrer"}
+                  className={`grid h-10 w-10 place-items-center rounded-full border border-comet-border transition ${colorClass} hover:border-comet-fuchsia`}
+                  aria-label={link.label}
+                  title={link.label}
+                >
+                  {icon || <span className="text-xs font-black">{link.label.slice(0, 2).toUpperCase()}</span>}
+                </a>
+              );
+            })}
             <a href="http://qr.afip.gob.ar/?qr=HDul37GPIEuVUXh0EOKQ0g,," target="_F960AFIPInfo" rel="noreferrer" className="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-comet-border bg-[#242424] hover:border-comet-fuchsia" aria-label="Data Fiscal" title="Data Fiscal">
               <img src="http://www.afip.gob.ar/images/f960/DATAWEB.jpg" alt="Data Fiscal" width={28} height={28} className="h-7 w-7 object-contain" />
             </a>

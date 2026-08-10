@@ -51,13 +51,13 @@ export function CatalogClient({
     maxPrice: maxPrice ? Number(maxPrice) : undefined
   };
   const categoryProducts = useMemo(
-    () => filterProducts(products, { ...optionFilters, marca: marca || undefined }),
-    [products, query, marca, disponibilidad, oferta, maxPrice]
+    () => filterProducts(products, optionFilters),
+    [products, query, disponibilidad, oferta, maxPrice]
   );
   const categories = uniqueValues(categoryProducts, "categoria");
   const subcategoryProducts = useMemo(
-    () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined, marca: marca || undefined }),
-    [products, query, categoria, marca, disponibilidad, oferta, maxPrice]
+    () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined }),
+    [products, query, categoria, disponibilidad, oferta, maxPrice]
   );
   const subcategories = Array.from(
     new Set(subcategoryProducts.map((product) => product.subcategoria).filter(Boolean) as string[])
@@ -117,6 +117,7 @@ export function CatalogClient({
           onChange={(event) => {
             setCategoria(event.target.value);
             setSubcategoria("");
+            setMarca("");
           }}
           className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
         >
@@ -130,7 +131,10 @@ export function CatalogClient({
 
         <select
           value={subcategoria}
-          onChange={(event) => setSubcategoria(event.target.value)}
+          onChange={(event) => {
+            setSubcategoria(event.target.value);
+            setMarca("");
+          }}
           className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
         >
           <option value="">Subcategorias</option>

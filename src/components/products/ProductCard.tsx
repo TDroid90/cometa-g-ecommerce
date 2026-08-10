@@ -7,7 +7,7 @@ import { Product } from "@/lib/types";
 import { formatPrice, productPrice } from "@/lib/data";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
-import { ProductImage } from "@/components/products/ProductImage";
+import { ProductCardGallery } from "@/components/products/ProductCardGallery";
 
 function statusLabel(product: Product): string {
   if (product.preventa || product.stock_status === "preventa") return "Preventa";
@@ -50,11 +50,7 @@ export function ProductCard({ product }: { product: Product }) {
       </button>
 
       <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-white p-5">
-        <ProductImage
-          src={product.imagen_principal}
-          alt={product.nombre}
-          className="h-full w-full object-contain p-7 transition duration-300 group-hover:scale-105"
-        />
+        <ProductCardGallery product={product} />
       </Link>
 
       <div className="flex flex-1 flex-col border-t border-comet-border p-4">

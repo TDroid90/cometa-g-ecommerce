@@ -23,7 +23,9 @@ export function ProductImage({
 
   if (!imageUrl || failed) {
     return (
-      <div className={fallbackClassName || "grid h-full w-full place-items-center text-xs text-zinc-500"}>
+      <div
+        className={`bg-white ${fallbackClassName || "grid h-full w-full place-items-center text-xs text-zinc-500"}`}
+      >
         Sin imagen
       </div>
     );
@@ -36,7 +38,7 @@ export function ProductImage({
       loading={loading}
       decoding="async"
       onError={() => setFailed(true)}
-      className={className}
+      className={`bg-white ${className || ""}`}
     />
   );
 }

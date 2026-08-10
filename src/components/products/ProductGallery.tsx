@@ -30,7 +30,7 @@ export function ProductGallery({
 
   if (!images.length) {
     return (
-      <div className="mx-auto grid aspect-square w-full max-w-[550px] place-items-center rounded-lg border border-comet-border bg-comet-panel text-zinc-500">
+      <div className="mx-auto grid aspect-square w-full max-w-[550px] place-items-center rounded-lg border border-comet-border bg-white text-zinc-500">
         Sin imagen
       </div>
     );
@@ -38,7 +38,7 @@ export function ProductGallery({
 
   return (
     <div className="space-y-3">
-      <div className="group relative mx-auto aspect-square w-full max-w-[550px] overflow-hidden rounded-lg border border-comet-border bg-comet-panel">
+      <div className="group relative mx-auto aspect-square w-full max-w-[550px] overflow-hidden rounded-lg border border-comet-border bg-white">
         <ProductImage
           key={active}
           src={active || images[0]}
@@ -57,7 +57,7 @@ export function ProductGallery({
             <button
               key={`${image}-${index}`}
               className={clsx(
-                "relative aspect-square overflow-hidden rounded-md border bg-comet-panel transition",
+                "relative aspect-square overflow-hidden rounded-md border bg-white transition",
                 activeIndex === index ? "border-comet-fuchsia" : "border-comet-border hover:border-comet-violet"
               )}
               onClick={() => selectImage(index)}
