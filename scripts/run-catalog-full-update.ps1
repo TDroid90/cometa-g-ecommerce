@@ -20,6 +20,11 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
+node "scripts\sync-missing-store-images.mjs" --repair *>> $OutLog
+if ($LASTEXITCODE -ne 0) {
+  Add-Content -Path $ErrLog -Value "Missing-image audit/repair failed with exit code $LASTEXITCODE"
+}
+
 Get-ChildItem $LogDir -Filter "*.log" |
   Sort-Object LastWriteTime -Descending |
   Select-Object -Skip 80 |

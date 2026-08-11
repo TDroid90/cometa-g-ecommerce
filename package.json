@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "scrape:versus": "node scripts/scrape-versus.mjs"
+    "scrape:versus": "node scripts/scrape-versus.mjs",
+    "images:audit": "node scripts/sync-missing-store-images.mjs",
+    "images:repair": "node scripts/sync-missing-store-images.mjs --repair"
   },
   "dependencies": {
     "@vercel/blob": "^2.4.0",
