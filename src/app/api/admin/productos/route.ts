@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { appendSheetRow, readSheetValues, updateSheetRow } from "@/lib/googleSheets";
+import { appendSheetRow, updateSheetRow } from "@/lib/googleSheets";
 import { verifyAdminSecret } from "@/lib/adminAuth";
+import {
+  adminProductRowToObject,
+  cleanAdminValue,
+  findAdminProduct,
+  readAdminProductsSheet
+} from "@/lib/adminProducts";
 
 const PRODUCTS_SHEET = process.env.GOOGLE_SHEETS_PRODUCTOS_NAME || "PRODUCTOS";
 const PRODUCTS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_PRODUCTOS_ID;
 
-function clean(value: unknown) {
-  return String(value ?? "").trim();
-}
+const clean = cleanAdminValue;
 
 function slugify(value: string) {
   return clean(value)
@@ -18,36 +22,11 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function rowToObject(headers: string[], row: string[]) {
-  return Object.fromEntries(headers.map((header, index) => [header, clean(row[index])]));
-}
-
 async function readProductsSheet() {
-  const values = await readSheetValues(PRODUCTS_SHEET, PRODUCTS_SPREADSHEET_ID);
-  const headers = (values[0] || []).map(clean);
-  const rows = values.slice(1);
-  return { headers, rows };
+  return readAdminProductsSheet();
 }
 
-function findProduct(headers: string[], rows: string[][], lookup: string) {
-  const normalized = clean(lookup).toLowerCase();
-  const idIndex = headers.indexOf("id");
-  const skuIndex = headers.indexOf("sku");
-  const slugIndex = headers.indexOf("slug");
-  const nameIndex = headers.indexOf("nombre");
-
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index];
-    const candidates = [idIndex, skuIndex, slugIndex, nameIndex]
-      .filter((column) => column >= 0)
-      .map((column) => clean(row[column]).toLowerCase());
-    if (candidates.some((candidate) => candidate === normalized || candidate.includes(normalized))) {
-      return { rowNumber: index + 2, product: rowToObject(headers, row) };
-    }
-  }
-
-  return null;
-}
+const findProduct = findAdminProduct;
 
 export async function GET(request: Request) {
   try {
@@ -101,7 +80,7 @@ export async function PATCH(request: Request) {
     );
 
     await updateSheetRow(PRODUCTS_SHEET, rowNumber, nextRow, PRODUCTS_SPREADSHEET_ID);
-    return NextResponse.json({ ok: true, rowNumber, product: rowToObject(headers, nextRow) });
+    return NextResponse.json({ ok: true, rowNumber, product: adminProductRowToObject(headers, nextRow) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo guardar el producto." },
@@ -139,7 +118,7 @@ export async function POST(request: Request) {
     });
 
     await appendSheetRow(PRODUCTS_SHEET, row, PRODUCTS_SPREADSHEET_ID);
-    return NextResponse.json({ ok: true, rowNumber: rows.length + 2, product: rowToObject(headers, row) });
+    return NextResponse.json({ ok: true, rowNumber: rows.length + 2, product: adminProductRowToObject(headers, row) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo crear el producto." },

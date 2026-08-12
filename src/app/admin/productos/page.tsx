@@ -1,7 +1,5 @@
-import { ProductEditorClient } from "@/components/admin/ProductEditorClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default function AdminProductsPage() {
-  return <ProductEditorClient />;
+export default function LegacyAdminProductsPage() {
+  redirect("/admin/dashboard/productos");
 }

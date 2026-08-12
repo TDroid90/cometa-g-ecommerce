@@ -62,7 +62,7 @@ function generateDescription(product: ProductRecord) {
   return `${name} de ${brand}, pensado para configuraciones gamer, trabajo diario o upgrades de hardware dentro de la categoria ${category}.${highlights} Revisar compatibilidad con el resto de los componentes antes de confirmar la compra.`;
 }
 
-export function ProductEditorClient() {
+export function ProductEditorClient({ embedded = false }: { embedded?: boolean }) {
   const [secret, setSecret] = useState("");
   const [lookup, setLookup] = useState("");
   const [rowNumber, setRowNumber] = useState<number | null>(null);
@@ -268,7 +268,7 @@ export function ProductEditorClient() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
+      <div className={embedded ? "mb-5" : "mb-6"}>
         <p className="text-xs font-black uppercase tracking-[0.18em] text-comet-fuchsia">Administrador</p>
         <h1 className="mt-2 text-3xl font-black text-white">Editor de productos</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-400">
@@ -277,14 +277,14 @@ export function ProductEditorClient() {
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 lg:grid-cols-[1fr_1fr_auto_auto]">
-        <input
+      <div className={`mb-5 grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 ${embedded ? "lg:grid-cols-[1fr_auto_auto]" : "lg:grid-cols-[1fr_1fr_auto_auto]"}`}>
+        {!embedded && <input
           type="password"
           value={secret}
           onChange={(event) => saveSecret(event.target.value)}
           placeholder="Clave admin"
           className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
-        />
+        />}
         <input
           value={lookup}
           onChange={(event) => setLookup(event.target.value)}
