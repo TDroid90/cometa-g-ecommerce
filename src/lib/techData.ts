@@ -66,6 +66,12 @@ export function inferTechSpecs(product: Product): ProductTechSpecs {
   const wattage = firstMatchNumber(text, [/\b(\d{3,4})\s?W\b/i]);
   if (wattage && /FUENTE|POWER SUPPLY|PSU/.test(text)) specs.wattage = wattage;
 
+  const tdpWatts = firstMatchNumber(text, [/\bTDP\D{0,12}(\d{2,3})\s?W\b/i, /\b(\d{2,3})\s?W\s?TDP\b/i]);
+  if (tdpWatts && /PROCESADOR|CPU|RYZEN|CORE I[3579]|GEFORCE|RADEON|RTX|GTX/.test(text)) specs.tdpWatts = tdpWatts;
+
+  if (/SIN\s+COOLER|\bS\/C\b|\bTRAY\b/.test(text)) specs.coolerIncluded = false;
+  else if (/CON\s+COOLER|INCLUYE\s+COOLER|WRAITH|\bBOXED\b/.test(text)) specs.coolerIncluded = true;
+
   const capacityGb = firstMatchNumber(text, [/\b(\d{3,5})\s?GB\b/i, /\b(\d{1,2})\s?TB\b/i]);
   if (capacityGb) specs.capacityGb = /\b\d{1,2}\s?TB\b/i.test(text) ? capacityGb * 1024 : capacityGb;
 

@@ -10,8 +10,8 @@ export default async function PcBuilderPage() {
         <p className="text-sm font-black uppercase tracking-[0.18em] text-comet-fuchsia">COMETA G</p>
         <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">ARMA TU PC</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
-          Elegi componentes, revisa compatibilidades basicas y consulta tu armado. El sistema usa datos propios cacheados
-          y especificaciones tecnicas disponibles; no depende de scraping en tiempo real.
+          Elegi cada componente por grupo, revisa compatibilidades basicas y arma tu presupuesto. Los productos se ordenan
+          por procesador, mother, almacenamiento, memoria, gabinete, fuente y setup.
         </p>
       </section>
 

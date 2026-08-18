@@ -6,6 +6,7 @@ import { formatPrice, productPrice } from "@/lib/data";
 import { useCart } from "@/components/cart/CartProvider";
 import { CheckoutButton } from "@/components/cart/CheckoutButton";
 import { ProductImage } from "@/components/products/ProductImage";
+import { displayProductName } from "@/lib/productNames";
 
 export default function CartPage() {
   const { items, subtotal, hasPreorder, updateQuantity, removeItem, clearCart } = useCart();
@@ -33,7 +34,7 @@ export default function CartPage() {
                   <ProductImage src={item.product.imagen_principal} alt={item.product.nombre} className="h-full w-full object-contain p-2" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-white">{item.product.nombre}</p>
+                  <p className="text-sm font-black text-white">{displayProductName(item.product)}</p>
                   <p className="mt-1 text-xs text-zinc-500">{item.product.sku}</p>
                   {item.preorder && <p className="mt-2 text-xs font-bold text-comet-violet">Producto de preventa</p>}
                   <p className="mt-3 text-sm font-bold text-zinc-200">{formatPrice(productPrice(item.product))}</p>

@@ -17,6 +17,8 @@ from urllib3.util import connection as urllib3_connection
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
+from product_attributes import normalize_product_attributes
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOT = Path(__file__).resolve().parents[3]
@@ -697,36 +699,9 @@ def strip_html(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def normalize_attributes(value: Any, limit: int = 12) -> str:
-    text = unescape(clean(value))
-    if not text:
-        return ""
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
-    text = re.sub(r"</(p|tr|li|div|table)>", "\n", text, flags=re.I)
-    text = re.sub(r"<[^>]+>", " ", text)
-    parts = re.split(r"[\r\n|;]+", text)
-
-    pieces: list[str] = []
-    seen: set[str] = set()
-    for part in parts:
-        part = re.sub(r"\s+", " ", part).strip(" |-")
-        if ":" not in part:
-            continue
-        key, val = [piece.strip(" |-") for piece in part.split(":", 1)]
-        if normalize_text(key).startswith("otal output"):
-            key = f"T{key}"
-        if normalize_text(key) in {"a, w", "w"}:
-            continue
-        val = re.sub(r"^A,\s*W:\s*", "", val, flags=re.I)
-        if key and val and key.lower() not in seen:
-            seen.add(key.lower())
-            pieces.append(f"{key}:{val}")
-        if len(pieces) >= limit:
-            break
-
-    if pieces:
-        return "|".join(pieces)
-    return strip_html(value)[:500]
+def normalize_attributes(value: Any, category: str = "", subcategory: str = "") -> str:
+    """Return the validated pipe-delimited value written to PRODUCTOS column S."""
+    return normalize_product_attributes(value, category, subcategory).serialized_attributes
 
 
 def canonical_brand(value: Any) -> str:
@@ -1061,7 +1036,7 @@ def products_for_store_with_markup(
         warranty = row[14]
         image = image_proxy(row[15])
         extra_images = "|".join(image_proxy(url) for url in row[16].split("|") if clean(url))
-        attributes = row[17]
+        attributes = normalize_attributes(row[17], category, subcategory)
         source_offer = clean(row[24] if len(row) > 24 else "")
         base_slug = slugify(f"{brand} {name}" if brand else name)
         slug_count = used_slugs.get(base_slug, 0)
@@ -1381,17 +1356,18 @@ def normalize_elit_api(rows: list[dict[str, str]], now: str, usd_rate: float) ->
         categoria, subcategoria = normalize_category(row.get("categoria", ""), row.get("sub_categoria", ""))
         nombre = clean(row.get("nombre"))
         marca = canonical_brand(row.get("marca"))
-        attributes = clean(row.get("atributos"))
+        raw_attributes = clean(row.get("atributos"))
         nombre = display_product_name(nombre)
         categoria, subcategoria = recategorize_product(categoria, subcategoria, nombre, marca)
-        reason = should_reject(categoria, subcategoria, nombre, marca, attributes)
-        reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, attributes)
+        reason = should_reject(categoria, subcategoria, nombre, marca, raw_attributes)
+        reason = reason or should_reject_normalized(categoria, subcategoria, nombre, marca, raw_attributes)
         code = clean(row.get("codigo_producto")) or clean(row.get("id"))
         price_usd = price_to_number(row.get("precio"))
         price_ars = str(round(parse_price(price_usd) * usd_rate, 2)) if price_usd else ""
         if reason:
             rejected.append(["ELIT", code, nombre, categoria, subcategoria, marca, reason, now])
             continue
+        attributes = normalize_attributes(raw_attributes, categoria, subcategoria)
         stock = clean(row.get("stock_total"))
         accepted.append([
             "ELIT",
@@ -1446,6 +1422,8 @@ def normalize_elit(rows: list[dict[str, str]], now: str, usd_rate: float) -> tup
             rejected.append(["ELIT", code, nombre, categoria, subcategoria, marca, reason, now])
             continue
         stock = clean(row.get("Stock"))
+        raw_attributes = clean(row.get("Descripción")) or clean(row.get("Tags"))
+        attributes = normalize_attributes(raw_attributes, categoria, subcategoria)
         accepted.append([
             "ELIT",
             code,
@@ -1463,7 +1441,7 @@ def normalize_elit(rows: list[dict[str, str]], now: str, usd_rate: float) -> tup
             "",
             clean(row.get("Imagen")) or clean(row.get("Imagen principal")),
             "",
-            clean(row.get("Descripción")) or clean(row.get("Tags")),
+            attributes,
             clean(row.get("Peso (kg)")),
             "",
             "",
@@ -1514,7 +1492,7 @@ def normalize_nb(rows: list[dict[str, str]], now: str, usd_rate: float) -> tuple
             clean(row.get("GARANTIA")),
             clean(row.get("IMAGEN")),
             "",
-            normalize_attributes(row.get("ATRIBUTOS")),
+            normalize_attributes(row.get("ATRIBUTOS"), categoria, subcategoria),
             clean(row.get("PESO")),
             clean(row.get("ALTO")),
             clean(row.get("ANCHO")),
@@ -1605,7 +1583,11 @@ def normalize_invid(rows: list[dict[str, Any]], now: str, usd_rate: float) -> tu
             "",
             clean(row.get("IMAGE_URL")),
             "",
-            invid_attributes(row) or strip_html(row.get("LONG_DESCRIPTION"))[:1500],
+            normalize_attributes(
+                invid_attributes(row) or strip_html(row.get("LONG_DESCRIPTION"))[:1500],
+                categoria,
+                subcategoria,
+            ),
             price_to_number(row.get("WEIGHT")),
             price_to_number(row.get("HEIGHT")),
             price_to_number(row.get("WIDTH")),
@@ -1819,7 +1801,12 @@ def apply_product_overrides(rows: list[list[str]], overrides: dict[str, dict[str
         for column, value in override.items():
             index = column_index.get(column)
             if index is not None and index < len(row):
-                row[index] = value
+                if column == "atributos":
+                    category = row[column_index["categoria"]]
+                    subcategory = row[column_index["subcategoria"]]
+                    row[index] = normalize_attributes(value, category, subcategory)
+                else:
+                    row[index] = value
     return rows
 
 

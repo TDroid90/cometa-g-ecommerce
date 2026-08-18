@@ -256,12 +256,13 @@ export async function uploadProductImageToDrive(input: {
   mimeType: string;
   buffer: Buffer;
 }) {
-  const rootFolderId =
-    clean(process.env.GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID) ||
-    clean(process.env.GOOGLE_DRIVE_COMETA_FOLDER_ID) ||
-    clean(process.env.GOOGLE_DRIVE_COMPRAS_FOLDER_ID);
+  // Product media has one canonical home: COMETA G / imagenes-productos.
+  // Never fall back to purchases, a generic folder, or a personal Drive.
+  const rootFolderId = clean(process.env.GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID);
   if (!rootFolderId) {
-    throw new Error("Blob esta suspendido y falta configurar GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID.");
+    throw new Error(
+      "Falta configurar GOOGLE_DRIVE_PRODUCT_IMAGES_FOLDER_ID de COMETA G. La imagen no se subio.",
+    );
   }
 
   const accessToken = await getDriveAccessToken();
@@ -269,8 +270,7 @@ export async function uploadProductImageToDrive(input: {
     throw new Error("No se pudo autenticar Google Drive.");
   }
 
-  const productFolderId = await createFolder(rootFolderId, "imagenes-productos", accessToken);
-  const itemFolderId = await createFolder(productFolderId, safeFileName(input.productId), accessToken);
+  const itemFolderId = await createFolder(rootFolderId, safeFileName(input.productId), accessToken);
   const boundary = `cometag_product_${Date.now()}`;
   const metadata = {
     name: safeFileName(input.filename),

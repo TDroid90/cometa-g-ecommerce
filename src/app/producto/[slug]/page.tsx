@@ -7,6 +7,7 @@ import { ProductGrid } from "@/components/products/ProductGrid";
 import { formatPrice, formatStockQuantity, getProducts, productPrice } from "@/lib/data";
 import { getProductBySlugWithTechData } from "@/lib/techData";
 import { Product, ProductTechSpecs } from "@/lib/types";
+import { displayProductName } from "@/lib/productNames";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -89,6 +90,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const products = await getProducts();
   const relatedProducts = mixedProducts(products, product);
   const hasLocalStock = Boolean(product.stockLocal && product.stockLocal > 0);
+  const displayName = displayProductName(product);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -129,7 +131,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.68fr)]">
         <div className="min-w-0">
           <ProductGallery
-            name={product.nombre}
+            name={displayName}
             mainImage={product.imagen_principal}
             extraImages={product.imagenes_extra}
           />
@@ -151,7 +153,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
 
           <h1 className="mt-4 break-words text-3xl font-black leading-[1.04] text-white sm:text-4xl xl:text-5xl">
-            {product.nombre}
+            {displayName}
           </h1>
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 sm:flex-row sm:items-end sm:justify-between">
             <div>

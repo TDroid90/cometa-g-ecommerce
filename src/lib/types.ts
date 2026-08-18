@@ -29,6 +29,7 @@ export type ProductTechSpecs = {
   baseClockGhz?: number;
   boostClockGhz?: number;
   tdpWatts?: number;
+  coolerIncluded?: boolean;
   gpuMemoryGb?: number;
   gpuMemoryType?: string;
   recommendedPsuWattage?: number;

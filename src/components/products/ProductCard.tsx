@@ -8,6 +8,7 @@ import { formatPrice, productPrice } from "@/lib/data";
 import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 import { ProductCardGallery } from "@/components/products/ProductCardGallery";
+import { displayProductName } from "@/lib/productNames";
 
 function statusLabel(product: Product): string {
   if (product.preventa || product.stock_status === "preventa") return "Preventa";
@@ -21,6 +22,7 @@ export function ProductCard({ product }: { product: Product }) {
   const disabled = product.stock_status === "sin_stock" && !product.preventa;
   const isSaved = hasItem(product.id);
   const hasLocalStock = Boolean(product.stockLocal && product.stockLocal > 0);
+  const displayName = displayProductName(product);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-comet-border bg-comet-card shadow-sm transition hover:-translate-y-0.5 hover:border-comet-fuchsia/50 hover:shadow-lg">
@@ -59,7 +61,7 @@ export function ProductCard({ product }: { product: Product }) {
           href={`/producto/${product.slug}`}
           className="mt-2 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-zinc-100 hover:text-comet-fuchsia"
         >
-          {product.nombre}
+          {displayName}
         </Link>
 
         <div className="mt-4 flex items-end justify-between gap-3">
