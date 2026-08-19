@@ -216,6 +216,7 @@ export function filterProducts(products: Product[], filters: ProductFilters): Pr
       !filters.oferta ||
       product.oferta ||
       Boolean(product.precio_oferta && product.precio_oferta > 0);
+    const matchesPreventa = !filters.preventa || product.preventa;
     const matchesMin = !filters.minPrice || price >= filters.minPrice;
     const matchesMax = !filters.maxPrice || price <= filters.maxPrice;
 
@@ -226,6 +227,7 @@ export function filterProducts(products: Product[], filters: ProductFilters): Pr
       matchesBrand &&
       matchesAvailability &&
       matchesOffer &&
+      matchesPreventa &&
       matchesMin &&
       matchesMax
     );

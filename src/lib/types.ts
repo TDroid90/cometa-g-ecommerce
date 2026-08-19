@@ -149,6 +149,7 @@ export type ProductFilters = {
   marca?: string;
   disponibilidad?: "todos" | "disponible" | "sin_stock" | "preventa";
   oferta?: boolean;
+  preventa?: boolean;
   minPrice?: number;
   maxPrice?: number;
 };

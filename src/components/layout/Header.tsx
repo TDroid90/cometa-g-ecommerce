@@ -10,8 +10,8 @@ import { useCart } from "@/components/cart/CartProvider";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 
 const defaultNavItems = [
-  { href: "/productos?oferta=true", label: "Ofertas" },
-  { href: "/productos?disponibilidad=preventa", label: "Preventa" },
+  { href: "#", label: "Ofertas" },
+  { href: "#", label: "Preventa" },
   { href: "/mecanica-de-compra", label: "Mecánica de compra" },
   { href: "#", label: "ARMA TU PC" },
   { href: "https://www.clustersave.online", label: "Cluster Save" }
@@ -92,6 +92,11 @@ function formatQuickPrice(value: number) {
   }).format(value);
 }
 
+function isComingSoonNavItem(label: string) {
+  const normalized = label.toLowerCase();
+  return normalized === "ofertas" || normalized === "preventa" || normalized === "arma tu pc";
+}
+
 export function Header({
   sections,
   categoryMenu
@@ -119,7 +124,7 @@ export function Header({
     const items = parseNavItems(categoryNav?.text).map((item) => {
       const label = item.label.toLowerCase();
       if (label === "cluster save") return { ...item, href: "https://www.clustersave.online" };
-      if (label === "arma tu pc") return { ...item, href: "#" };
+      if (label === "arma tu pc" || label === "ofertas" || label === "preventa") return { ...item, href: "#" };
       return item;
     });
     const hasClusterSave = items.some((item) => item.label.toLowerCase() === "cluster save");
@@ -474,13 +479,13 @@ export function Header({
               className={
                 item.label.toLowerCase() === "cluster save"
                   ? "ml-2 inline-flex h-9 items-center rounded-md border border-sky-300/40 bg-sky-500 px-4 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400"
-                  : item.label.toLowerCase() === "arma tu pc"
+                  : isComingSoonNavItem(item.label)
                     ? "inline-flex h-12 flex-col items-center justify-center border-r border-white/15 px-4 text-sm font-black leading-none text-white transition hover:bg-black/15"
                   : "inline-flex h-12 items-center border-r border-white/15 px-4 text-sm font-black text-white transition hover:bg-black/15"
               }
             >
               {item.label}
-              {item.label.toLowerCase() === "arma tu pc" && (
+              {isComingSoonNavItem(item.label) && (
                 <span className="mt-0.5 text-[9px] font-semibold leading-none text-white/70">proximamente</span>
               )}
             </Link>
@@ -500,13 +505,13 @@ export function Header({
               className={
                 item.label.toLowerCase() === "cluster save"
                   ? "mt-2 block rounded-md bg-sky-500 px-3 py-3 text-sm font-black text-white"
-                  : item.label.toLowerCase() === "arma tu pc"
+                  : isComingSoonNavItem(item.label)
                     ? "block rounded-md px-3 py-3 text-sm font-black text-zinc-200 hover:bg-white/5"
                   : "block rounded-md px-3 py-3 text-sm text-zinc-200 hover:bg-white/5"
               }
             >
               {item.label}
-              {item.label.toLowerCase() === "arma tu pc" && (
+              {isComingSoonNavItem(item.label) && (
                 <span className="ml-2 text-[10px] font-semibold text-zinc-500">proximamente</span>
               )}
             </Link>
