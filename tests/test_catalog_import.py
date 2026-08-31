@@ -47,6 +47,54 @@ def provider_row(provider: str, code: str, sku: str, name: str) -> list[str]:
 
 
 class CatalogImportTests(unittest.TestCase):
+    def test_store_products_are_visible_by_default(self):
+        source = [provider_row("INVID", "invid-1", "INVID-SKU", "Procesador INVID")]
+        consolidated, _ = catalog_import.consolidate_public_catalog([], [], source)
+
+        products = catalog_import.products_for_store(consolidated)
+        visible_index = catalog_import.ECOMMERCE_PRODUCT_COLUMNS.index("visible")
+
+        self.assertEqual(products[0][visible_index], "TRUE")
+
+    def test_menu_visibility_is_preserved_during_rebuild(self):
+        product = [""] * len(catalog_import.ECOMMERCE_PRODUCT_COLUMNS)
+        indexes = {
+            column: index
+            for index, column in enumerate(catalog_import.ECOMMERCE_PRODUCT_COLUMNS)
+        }
+        product[indexes["id"]] = "test-1"
+        product[indexes["categoria"]] = "Seguridad"
+        product[indexes["subcategoria"]] = "Camaras IP"
+        product[indexes["imagen_principal"]] = "https://example.com/product.jpg"
+        product[indexes["stock"]] = "5"
+        product[indexes["visible"]] = "TRUE"
+        settings = {
+            catalog_import.menu_markup_key("Seguridad", "Camaras IP"): {
+                "normal": "1.5",
+                "offer": "1.5",
+                "visible": "FALSE",
+            }
+        }
+
+        rows = catalog_import.build_menu_rows([product], settings)
+
+        self.assertEqual(rows[0][5], "FALSE")
+        self.assertEqual(rows[0][6], "1.5")
+
+    def test_menu_settings_reader_includes_visibility(self):
+        original_values_get = catalog_import.values_get
+        catalog_import.values_get = lambda _service, _range: [
+            catalog_import.MENU_COLUMNS,
+            ["Seguridad", "Camaras IP", "10", "/productos", "130", "FALSE", "1.5", "1.5"],
+        ]
+        try:
+            settings = catalog_import.read_menu_settings(object(), "MENU_CAT_MAR")
+        finally:
+            catalog_import.values_get = original_values_get
+
+        key = catalog_import.menu_markup_key("Seguridad", "Camaras IP")
+        self.assertEqual(settings[key]["visible"], "FALSE")
+
     def test_invid_unique_products_reach_public_catalog(self):
         nb = [provider_row("NB", "nb-1", "DUPLICATE-SKU", "Procesador compartido")]
         elit = [provider_row("ELIT", "elit-1", "ELIT-SKU", "Procesador ELIT")]

@@ -391,7 +391,15 @@ MENU_COLUMNS = [
 
 MENU_SHEET = "MENU_CAT_MAR"
 DEFAULT_USD_RATE = "1470"
-CATALOG_LOG_COLUMNS = ["fecha", "proveedor", "importados", "rechazados", "cotizacion_usd"]
+CATALOG_LOG_COLUMNS = [
+    "fecha",
+    "proveedor",
+    "importados",
+    "rechazados",
+    "cotizacion_usd",
+    "origen",
+    "estado",
+]
 IMAGE_GUIDE_HEADERS = ["resolucion", "aspect_ratio", "sugerencia", "donde_integrarla"]
 IMAGE_GUIDE_ROWS = [
     ["1920x1080", "16:9", "Slider principal y banners grandes de home", "LAYOUT: main_banner"],
@@ -1101,7 +1109,7 @@ def storefront_product_rows(products: list[list[str]]) -> list[list[str]]:
     return visible_rows
 
 
-def build_menu_rows(products: list[list[str]], markups: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
+def build_menu_rows(products: list[list[str]], settings: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
     indexes = {column: index for index, column in enumerate(ECOMMERCE_PRODUCT_COLUMNS)}
     counts: dict[tuple[str, str], int] = {}
     for row in storefront_product_rows(products):
@@ -1117,16 +1125,17 @@ def build_menu_rows(products: list[list[str]], markups: dict[str, dict[str, str]
         if subcategory:
             params += f"&subcategoria={requests.utils.quote(subcategory)}"
         order = MENU_CATEGORY_ORDER.get(category, 999)
-        existing_markup = (markups or {}).get(menu_markup_key(category, subcategory), {})
-        normal_markup = existing_markup.get("normal") or "1.00"
-        offer_markup = existing_markup.get("offer") or normal_markup
+        existing_settings = (settings or {}).get(menu_markup_key(category, subcategory), {})
+        normal_markup = existing_settings.get("normal") or "1.00"
+        offer_markup = existing_settings.get("offer") or normal_markup
+        visible = "FALSE" if clean(existing_settings.get("visible")).upper() in {"FALSE", "0", "NO"} else "TRUE"
         rows.append([
             category,
             subcategory,
             str(count),
             f"/productos?{params}",
             str(order),
-            "TRUE",
+            visible,
             normal_markup,
             offer_markup,
         ])
@@ -1879,7 +1888,7 @@ def build_brand_rows(products: list[list[str]]) -> list[list[str]]:
     return [[brand, canonical_brand(brand)] for brand in brands]
 
 
-def read_menu_markups(service, sheet: str) -> dict[str, dict[str, str]]:
+def read_menu_settings(service, sheet: str) -> dict[str, dict[str, str]]:
     rows = values_get(service, f"{sheet}!A1:H1000")
     if not rows:
         return {}
@@ -1892,21 +1901,25 @@ def read_menu_markups(service, sheet: str) -> dict[str, dict[str, str]]:
         offer_markup_index = headers.index("markup_oferta")
     except ValueError:
         offer_markup_index = 7
+    try:
+        visible_index = headers.index("visible")
+    except ValueError:
+        visible_index = 5
 
-    markups: dict[str, dict[str, str]] = {}
+    settings: dict[str, dict[str, str]] = {}
     for row in rows[1:]:
-        if len(row) <= markup_index:
-            continue
         category = clean(row[0] if len(row) > 0 else "")
         subcategory = clean(row[1] if len(row) > 1 else "")
-        markup = clean(row[markup_index])
+        markup = clean(row[markup_index]) if len(row) > markup_index else ""
         offer_markup = clean(row[offer_markup_index]) if len(row) > offer_markup_index else ""
-        if category and markup:
-            markups[menu_markup_key(category, subcategory)] = {
-                "normal": markup,
-                "offer": offer_markup or markup,
+        visible = clean(row[visible_index]) if len(row) > visible_index else "TRUE"
+        if category:
+            settings[menu_markup_key(category, subcategory)] = {
+                "normal": markup or "1.00",
+                "offer": offer_markup or markup or "1.00",
+                "visible": "FALSE" if visible.upper() in {"FALSE", "0", "NO"} else "TRUE",
             }
-    return markups
+    return settings
 
 
 def replace_menu_values(
@@ -1927,7 +1940,7 @@ def replace_menu_values(
     visible_by_brand = {
         clean(row[0]).upper(): clean(row[2])
         for row in current_brand_values
-        if len(row) >= 4 and clean(row[0]) and clean(row[2])
+        if len(row) >= 3 and clean(row[0]) and clean(row[2])
     }
     previous_menu_rows = len(values_get(service, f"{sheet}!A1:A"))
     previous_brand_rows = len(values_get(service, f"{sheet}!I1:I"))
@@ -2116,11 +2129,11 @@ def main() -> None:
         + invid_stock_rejected
     )
     consolidated, internal_buy = consolidate_public_catalog(nb, elit, invid)
-    existing_markups = read_menu_markups(service, MENU_SHEET)
+    existing_menu_settings = read_menu_settings(service, MENU_SHEET)
     existing_product_overrides = read_existing_product_overrides(service)
-    store_products = products_for_store_with_markup(consolidated, existing_markups, provider_rates)
+    store_products = products_for_store_with_markup(consolidated, existing_menu_settings, provider_rates)
     store_products = apply_product_overrides(store_products, existing_product_overrides)
-    menu_rows = build_menu_rows(store_products, existing_markups)
+    menu_rows = build_menu_rows(store_products, existing_menu_settings)
     brand_rows = build_brand_rows(store_products)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
     refresh_full_catalog = os.environ.get("CATALOG_REFRESH_FULL", "FALSE").upper() == "TRUE"
@@ -2135,14 +2148,38 @@ def main() -> None:
         "CATALOGO_LOG",
         CATALOG_LOG_COLUMNS,
         [
-            [now, "ELIT", str(len(elit)), str(len(elit_rejected) + len(elit_stock_rejected)), format_number(provider_rates["ELIT"])],
-            [now, "NB", str(len(nb)), str(len(nb_rejected) + len(nb_stock_rejected)), format_number(provider_rates["NB"])],
-            [now, "INVID", str(len(invid)), str(len(invid_rejected) + len(invid_stock_rejected)), format_number(provider_rates["INVID"])],
+            [
+                now,
+                "ELIT",
+                str(len(elit)),
+                "N/D" if elit_source_error else str(len(elit_rejected) + len(elit_stock_rejected)),
+                format_number(provider_rates["ELIT"]),
+                "CATALOGO_ELIT (respaldo)" if elit_source_error else "API/CSV ELIT",
+                "RESPALDO" if elit_source_error else "OK",
+            ],
+            [
+                now,
+                "NB",
+                str(len(nb)),
+                "N/D" if nb_source_error else str(len(nb_rejected) + len(nb_stock_rejected)),
+                format_number(provider_rates["NB"]),
+                "CATALOGO_NB (respaldo)" if nb_source_error else "API/CSV NB",
+                "RESPALDO" if nb_source_error else "OK",
+            ],
+            [
+                now,
+                "INVID",
+                str(len(invid)),
+                str(len(invid_rejected) + len(invid_stock_rejected)),
+                format_number(provider_rates["INVID"]),
+                "API INVID" if refresh_invid else "cache local INVID",
+                "OK",
+            ],
         ],
     )
-    if not quick_publish:
+    if not quick_publish or refresh_full_catalog:
         replace_existing_values(service, "CATALOGO_CONSOLIDADO", CONSOLIDATED_COLUMNS, consolidated)
-    if not quick_publish:
+    if not quick_publish or refresh_full_catalog:
         color_consolidated_rows(service, "CATALOGO_CONSOLIDADO")
         format_menu_sheet(service, MENU_SHEET)
         replace_values(service, "CATALOGO_RECHAZADOS", REJECT_COLUMNS, rejected)

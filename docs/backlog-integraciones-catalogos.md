@@ -23,7 +23,7 @@ Automatizar la descarga diaria de catalogos CSV/API de proveedores y consolidarl
 - `CATALOGO_NB_RAW`: datos originales descargados de NB.
 - `CATALOGO_CONSOLIDADO`: pre resultado unificado.
 - `CATALOGO_RECHAZADOS`: productos descartados por reglas de rubro.
-- `CATALOGO_LOG`: fecha, proveedor, cantidad importada, cantidad descartada, errores.
+- `CATALOGO_LOG`: fecha, proveedor, cantidad importada, cantidad descartada, cotización, origen y estado. Cuando se usa una hoja de respaldo, los rechazados quedan como `N/D` porque no se reprocesó el catálogo crudo.
 
 ## Regla de consolidacion
 
