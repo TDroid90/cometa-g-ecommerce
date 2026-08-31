@@ -18,7 +18,7 @@ The catalog update is orchestrated by `scripts/import-catalogs-to-sheets.py`:
 2. NB is read from its API or CSV fallback.
 3. INVID is read from its API or normalized local cache.
 4. Each supplier is converted to the positional `OUTPUT_COLUMNS` format.
-5. NB and ELIT are consolidated by `consolidate_public_catalog()`.
+5. NB, ELIT and INVID are consolidated by `consolidate_public_catalog()`. For duplicate products, the existing public priority remains NB, then ELIT, then INVID.
 6. `products_for_store_with_markup()` converts consolidated rows to `ECOMMERCE_PRODUCT_COLUMNS`.
 7. Existing manual edits from `PRODUCTOS` are restored by `apply_product_overrides()`.
 8. `replace_existing_values()` writes the final rows to `PRODUCTOS`.

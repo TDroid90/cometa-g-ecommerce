@@ -9,7 +9,7 @@
     "lint": "next lint",
     "test:attributes": "python -m unittest tests.test_product_attributes",
     "test:admin": "python -m unittest tests.test_admin_dashboard",
-    "test": "python -m unittest tests.test_product_attributes tests.test_admin_dashboard",
+    "test": "python -m unittest tests.test_product_attributes tests.test_admin_dashboard tests.test_catalog_import",
     "scrape:versus": "node scripts/scrape-versus.mjs",
     "images:audit": "node scripts/sync-missing-store-images.mjs",
     "images:repair": "node scripts/sync-missing-store-images.mjs --repair"

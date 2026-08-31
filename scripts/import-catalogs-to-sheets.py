@@ -913,22 +913,29 @@ def cheapest_by_key(catalog: list[list[str]]) -> dict[str, list[str]]:
     return best
 
 
-def consolidate_public_catalog(nb: list[list[str]], elit: list[list[str]]) -> tuple[list[list[str]], list[list[str]]]:
+def consolidate_public_catalog(
+    nb: list[list[str]],
+    elit: list[list[str]],
+    invid: list[list[str]] | None = None,
+) -> tuple[list[list[str]], list[list[str]]]:
     nb_by_key = cheapest_by_key(nb)
     elit_by_key = cheapest_by_key(elit)
+    invid_by_key = cheapest_by_key(invid or [])
     public_rows: list[list[str]] = []
     internal_rows: list[list[str]] = []
 
     ordered_keys = sorted(
-        set(nb_by_key) | set(elit_by_key),
+        set(nb_by_key) | set(elit_by_key) | set(invid_by_key),
         key=lambda key: (
-            0 if key in nb_by_key else 1,
-            normalize_text((nb_by_key.get(key) or elit_by_key[key])[4]),
+            0 if key in nb_by_key else 1 if key in elit_by_key else 2,
+            normalize_text((nb_by_key.get(key) or elit_by_key.get(key) or invid_by_key[key])[4]),
         ),
     )
 
     for index, key in enumerate(ordered_keys, start=1):
-        public_source = nb_by_key.get(key) or elit_by_key[key]
+        # Preserve the current commercial priority for duplicates while adding
+        # INVID products that are not already supplied by NB or ELIT.
+        public_source = nb_by_key.get(key) or elit_by_key.get(key) or invid_by_key[key]
         row = public_source
         provider = row[0]
         provider_code = row[1]
@@ -1240,7 +1247,10 @@ def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
         response = requests.get(INVID_ARTICLE_URL, params={"offset": offset}, headers=headers, timeout=90)
         if response.status_code == 429:
             wait_seconds = int(response.headers.get("Retry-After") or "60")
-            print(f"INVID rate limit en offset {offset}. Reintentando en {wait_seconds}s...")
+            print(
+                f"INVID rate limit en offset {offset}. Reintentando en {wait_seconds}s...",
+                flush=True,
+            )
             time.sleep(wait_seconds)
             continue
         response.raise_for_status()
@@ -1249,6 +1259,8 @@ def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
         if isinstance(data, dict):
             data = [data]
         articles.extend(data)
+        if len(articles) % 500 == 0 or not payload.get("next_page_url") or len(data) < 100:
+            print(f"INVID descargados: {len(articles)} articulos.", flush=True)
         if not payload.get("next_page_url") or len(data) < 100:
             break
         offset += 100
@@ -1332,6 +1344,44 @@ def read_normalized_catalog(path: Path) -> list[list[str]]:
         values[16] = strip_html(values[16])
         normalized_rows.append(values)
     return normalized_rows
+
+
+def read_normalized_sheet_catalog(service, sheet: str) -> list[list[str]]:
+    """Use the last valid provider sheet when its remote source is unavailable."""
+    values = values_get(service, f"{sheet}!A1:X")
+    if len(values) < 2:
+        raise RuntimeError(f"{sheet} no contiene un catalogo de respaldo utilizable.")
+    headers = [clean(value) for value in values[0]]
+    index_by_header = {header: index for index, header in enumerate(headers) if header}
+    missing_headers = [header for header in OUTPUT_COLUMNS if header not in index_by_header]
+    if missing_headers:
+        raise RuntimeError(f"{sheet} no tiene las columnas requeridas: {', '.join(missing_headers)}")
+
+    rows = []
+    for source_row in values[1:]:
+        row = [
+            clean(source_row[index_by_header[column]])
+            if index_by_header[column] < len(source_row)
+            else ""
+            for column in OUTPUT_COLUMNS
+        ]
+        if row[0] and row[1]:
+            rows.append(row)
+    if not rows:
+        raise RuntimeError(f"{sheet} no contiene productos de respaldo.")
+    return rows
+
+
+def write_catalog_cache(path: Path, headers: list[str], rows: list[list[str]]) -> None:
+    """Replace a local provider cache atomically after a successful refresh."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = path.with_suffix(f"{path.suffix}.tmp")
+    with temporary_path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow([clean(row[index]) if index < len(row) else "" for index in range(len(headers))])
+    os.replace(temporary_path, path)
 
 
 def read_rejected_catalog(path: Path) -> list[list[str]]:
@@ -1998,6 +2048,7 @@ def format_menu_sheet(service, sheet: str) -> None:
 
 def main() -> None:
     load_local_env()
+    service = sheets_service()
     invid_username = os.environ.get("INVID_USERNAME")
     invid_password = os.environ.get("INVID_PASSWORD")
     invid_cache = REPO_ROOT / "data" / "catalogos" / "catalogo_invid_normalizado.csv"
@@ -2006,28 +2057,56 @@ def main() -> None:
         raise RuntimeError("Faltan INVID_USERNAME / INVID_PASSWORD en .env.local o variables de entorno.")
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    elit_rows = read_elit_catalog()
-    nb_rows = read_nb_catalog()
+    elit_rows: list[dict[str, Any]] = []
+    nb_rows: list[dict[str, Any]] = []
+    elit_source_error = ""
+    nb_source_error = ""
+    try:
+        elit_rows = read_elit_catalog()
+    except Exception as exc:
+        elit_source_error = f"{type(exc).__name__}: {exc}"
+        print(f"ELIT no disponible; se conserva CATALOGO_ELIT. Motivo: {elit_source_error}")
+    try:
+        nb_rows = read_nb_catalog()
+    except Exception as exc:
+        nb_source_error = f"{type(exc).__name__}: {exc}"
+        print(f"NB no disponible; se conserva CATALOGO_NB. Motivo: {nb_source_error}")
     refresh_invid = os.environ.get("INVID_REFRESH", "FALSE").upper() == "TRUE"
     full_invid_rows = read_invid_articles(invid_username, invid_password) if (refresh_invid or not invid_cache.exists()) and invid_username and invid_password else []
-    invid_rows = [] if invid_cache.exists() else full_invid_rows
-    provider_rates = provider_exchange_rates(elit_rows, nb_rows, invid_rows)
+    provider_rates = provider_exchange_rates(elit_rows, nb_rows, full_invid_rows)
 
-    if elit_rows and "codigo_producto" in elit_rows[0]:
+    if elit_source_error:
+        elit = read_normalized_sheet_catalog(service, "CATALOGO_ELIT")
+        elit_rejected = []
+        elit_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, elit)
+    elif elit_rows and "codigo_producto" in elit_rows[0]:
         elit, elit_rejected = normalize_elit_api(elit_rows, now, provider_rates["ELIT"])
     else:
         elit, elit_rejected = normalize_elit(elit_rows, now, provider_rates["ELIT"])
-    nb, nb_rejected = normalize_nb(nb_rows, now, provider_rates["NB"])
-    if invid_cache.exists():
+    if nb_source_error:
+        nb = read_normalized_sheet_catalog(service, "CATALOGO_NB")
+        nb_rejected = []
+        nb_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, nb)
+    else:
+        nb, nb_rejected = normalize_nb(nb_rows, now, provider_rates["NB"])
+    if full_invid_rows:
+        invid, invid_rejected = normalize_invid(full_invid_rows, now, provider_rates["INVID"])
+    elif invid_cache.exists():
         invid = read_normalized_catalog(invid_cache)
         invid_rejected = read_rejected_catalog(invid_rejected_cache)
-        if not full_invid_rows:
-            full_invid_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, invid)
+        full_invid_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, invid)
     else:
-        invid, invid_rejected = normalize_invid(invid_rows, now, provider_rates["INVID"])
+        raise RuntimeError("INVID no devolvio productos y no existe una cache utilizable.")
     elit, elit_stock_rejected = reject_low_stock(elit, now)
     nb, nb_stock_rejected = reject_low_stock(nb, now)
     invid, invid_stock_rejected = reject_low_stock(invid, now)
+    if refresh_invid or not invid_cache.exists():
+        write_catalog_cache(invid_cache, OUTPUT_COLUMNS, invid)
+        write_catalog_cache(
+            invid_rejected_cache,
+            REJECT_COLUMNS,
+            invid_rejected + invid_stock_rejected,
+        )
     rejected = (
         elit_rejected
         + nb_rejected
@@ -2036,8 +2115,7 @@ def main() -> None:
         + nb_stock_rejected
         + invid_stock_rejected
     )
-    consolidated, internal_buy = consolidate_public_catalog(nb, elit)
-    service = sheets_service()
+    consolidated, internal_buy = consolidate_public_catalog(nb, elit, invid)
     existing_markups = read_menu_markups(service, MENU_SHEET)
     existing_product_overrides = read_existing_product_overrides(service)
     store_products = products_for_store_with_markup(consolidated, existing_markups, provider_rates)
