@@ -81,6 +81,71 @@ class CatalogImportTests(unittest.TestCase):
         self.assertEqual(rows[0][5], "FALSE")
         self.assertEqual(rows[0][6], "1.5")
 
+    def test_new_subcategory_inherits_fully_hidden_category(self):
+        settings = {
+            catalog_import.menu_markup_key("Electro", "Cocina"): {"visible": "FALSE"},
+            catalog_import.menu_markup_key("Electro", "Limpieza"): {"visible": "FALSE"},
+        }
+
+        visible = catalog_import.menu_visibility_for(settings, "Electro", "Nuevo proveedor")
+
+        self.assertEqual(visible, "FALSE")
+
+    def test_provider_taxonomies_map_to_public_catalog(self):
+        cases = {
+            ("Discos Rígidos / Ssd", "Disco SSD M2"): ("Almacenamiento", "Discos Internos SSD"),
+            ("Memoria Sodimm", "Ddr5"): ("Memorias", "Memorias Notebook"),
+            ("Memorias Ram", "Memoria Ddr4"): ("Memorias", "Memorias PC"),
+            ("Microprocesadores", "Amd"): ("Hardware", "Procesadores"),
+            ("Mothers", "Plataforma Intel"): ("Hardware", "Motherboards"),
+            ("Placas De Video", "Línea Nvidia Geforce"): ("Hardware", "Placas de Video"),
+        }
+
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(catalog_import.normalize_category(*source), expected)
+
+    def test_unknown_and_consumable_categories_are_rejected(self):
+        self.assertEqual(
+            catalog_import.should_reject_normalized("Categoria inventada", "DDR7", "Producto", "Marca"),
+            "taxonomia no permitida",
+        )
+        self.assertEqual(
+            catalog_import.should_reject_normalized("Consumibles", "Consumibles Hp", "Cartucho", "HP"),
+            "tintas/insumos impresion",
+        )
+
+    def test_printer_filter_does_not_reject_product_descriptions_with_generic_words(self):
+        accepted = [
+            "Auricular Logitech G335 Mint",
+            "Auricular JBL Endurance Dive",
+            "Parlante Bluetooth 12W Cilindro RGB",
+            "Mouse HyperX Pulsefire Haste 2 Mini White",
+        ]
+
+        for name in accepted:
+            with self.subTest(name=name):
+                self.assertEqual(catalog_import.should_reject("Perifericos", "", name), "")
+
+        self.assertEqual(
+            catalog_import.should_reject("Consumibles", "Impresion", "Cartucho de tinta HP"),
+            "tintas/insumos impresion",
+        )
+        self.assertEqual(
+            catalog_import.should_reject("Consumibles", "", "Cilindro Laserjet"),
+            "tintas/insumos impresion",
+        )
+
+    def test_uncategorized_hubs_and_notebook_supports_are_recategorized(self):
+        self.assertEqual(
+            catalog_import.recategorize_product("", "Varios", "Hub Genius UH-500 5 en 1", "GENIUS"),
+            ("Conectividad", "Hubs"),
+        )
+        self.assertEqual(
+            catalog_import.recategorize_product("", "Varios", "Soporte de Notebook Genius M-200", "GENIUS"),
+            ("Perifericos", "Bases Notebook"),
+        )
+
     def test_menu_settings_reader_includes_visibility(self):
         original_values_get = catalog_import.values_get
         catalog_import.values_get = lambda _service, _range: [

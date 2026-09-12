@@ -17,10 +17,18 @@ export async function getLayoutSections(): Promise<LayoutSection[]> {
 
 export async function getProducts(): Promise<Product[]> {
   try {
-    const sheetProducts = await readProductsFromGoogleSheets();
+    const [sheetProducts, menuItems] = await Promise.all([
+      readProductsFromGoogleSheets(),
+      readCategoryMenuFromGoogleSheets().catch(() => null)
+    ]);
     const baseProducts = sheetProducts?.length ? sheetProducts : seedProducts;
     const visibleProducts = baseProducts
-      .filter((product) => product.visible && !isProductHiddenFromStore(product))
+      .filter(
+        (product) =>
+          product.visible &&
+          isProductTaxonomyVisible(product, menuItems) &&
+          !isProductHiddenFromStore(product)
+      )
       .sort((a, b) => a.orden - b.orden);
 
     if (visibleProducts.length >= 100) return visibleProducts;
@@ -71,6 +79,27 @@ export function isProductHiddenFromStore(product: Product): boolean {
     (/\bFUENTE\b/.test(text) || /\bPSU\b/.test(text) || /\b[2-9][0-9]{2,3}\s*W\b/.test(text));
 
   return !hasImage || isOutlet || isKit || isCaseWithPsu;
+}
+
+export function isProductTaxonomyVisible(
+  product: Product,
+  menuItems: CategoryMenuItem[] | null
+): boolean {
+  const categoryItems = (menuItems || []).filter(
+    (item) => item.tipo !== "marca" && item.categoria === product.categoria
+  );
+  if (!menuItems?.length) return true;
+  if (!categoryItems.length) return false;
+
+  const exact = categoryItems.find(
+    (item) => item.subcategoria === (product.subcategoria || "")
+  );
+  if (exact) return exact.visible;
+
+  const categoryRoot = categoryItems.find((item) => !item.subcategoria);
+  if (categoryRoot) return categoryRoot.visible;
+
+  return categoryItems.some((item) => item.visible);
 }
 
 export function formatStockQuantity(stock: number, noun = "unidades"): string {

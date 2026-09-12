@@ -847,7 +847,7 @@ export async function readCategoryMenuFromGoogleSheets(): Promise<CategoryMenuIt
       tipo: clean(row.tipo) === "marca" ? ("marca" as const) : ("categoria" as const)
     }))
     .filter((item) => item.tipo !== "marca")
-    .filter((item) => item.visible && item.categoria)
+    .filter((item) => item.categoria)
     .sort((a, b) => a.orden - b.orden || a.categoria.localeCompare(b.categoria) || a.subcategoria.localeCompare(b.subcategoria));
 
   const brandItems = rows

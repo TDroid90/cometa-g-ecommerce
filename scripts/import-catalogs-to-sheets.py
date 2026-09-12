@@ -226,7 +226,12 @@ EXCLUDED_PATTERNS = [
     (r"\bimpresor", "impresoras"),
     (r"\bplotter", "impresoras"),
     (r"\bscanner\b|\besc[áa]ner", "escaners"),
-    (r"\btinta\b|\btintas\b|\btoner\b|\btoners\b|\bcartucho|\bcartuchos|\bcilindro|\bcintas?\b|\brollos?\b", "tintas/insumos impresion"),
+    (
+        r"\btintas?\b|\btoners?\b|\bcartuchos?\b|"
+        r"\b(?:cilindro|cintas?|rollos?)\b.*\b(?:impresora|impresion|laserjet|deskjet)\b|"
+        r"\b(?:impresora|impresion|laserjet|deskjet)\b.*\b(?:cilindro|cintas?|rollos?)\b",
+        "tintas/insumos impresion",
+    ),
     (r"\bresma\b|\bpapel\b|\bhojas?\b|\blapicera|\bboligrafo|\bbolígrafo", "insumos oficina"),
     (r"\btelevisor|\btelevisores|\btv\b", "televisores"),
     (r"\bcelular|\bcelulares|\bsmartphone|\btelefon", "celulares/telefonia"),
@@ -266,22 +271,34 @@ CATEGORY_ALIASES = {
     "MUEBLES": ("Muebles", ""),
     "UNIDAD DE ENERGIA": ("Unidad de Energia", ""),
     "UNIDAD DE ENERGÍA": ("Unidad de Energia", ""),
+    "ENERGIA": ("Unidad de Energia", ""),
+    "ENERGÍA": ("Unidad de Energia", ""),
     "SIMULADORES": ("Perifericos", "Simuladores"),
+    "SETUP GAMER": ("Perifericos", "Simuladores"),
+    "DISCOS RIGIDOS / SSD": ("Almacenamiento", ""),
+    "DISCOS RÍGIDOS / SSD": ("Almacenamiento", ""),
     "DISCOS SSD": ("Almacenamiento", "Discos Internos SSD"),
     "DISCOS HDD": ("Almacenamiento", "Discos Internos"),
     "DISCOS EXTERNOS": ("Almacenamiento", "Discos Externos"),
     "MEMORIAS": ("Memorias", "Memorias PC"),
+    "MEMORIA SODIMM": ("Memorias", "Memorias Notebook"),
+    "MEMORIAS RAM": ("Memorias", "Memorias PC"),
     "MEMORIAS USB": ("Almacenamiento", "Memorias Flash"),
     "COOLERS": ("Hardware", "Coolers"),
     "FUENTES": ("Hardware", "Fuentes"),
     "GABINETE": ("Hardware", "Gabinetes"),
     "GABINETE GAMER": ("Hardware", "Gabinetes"),
     "PLACA DE VIDEO": ("Hardware", "Placas de Video"),
+    "PLACAS DE VIDEO": ("Hardware", "Placas de Video"),
     "PROCESADORES": ("Hardware", "Procesadores"),
+    "MICROPROCESADORES": ("Hardware", "Procesadores"),
+    "MOTHERS": ("Hardware", "Motherboards"),
+    "GABINETES Y FUENTES": ("Hardware", ""),
     "MOTHER ASROCK": ("Hardware", "Motherboards"),
     "MOTHER ASUS": ("Hardware", "Motherboards"),
     "MOTHER GIGABYTE": ("Hardware", "Motherboards"),
     "NOTEBOOKS Y PORTATILES": ("Computadoras", "Notebooks"),
+    "NOTEBOOKS": ("Computadoras", "Notebooks"),
     "PC DE ESCRITORIO AMD": ("Computadoras", "PC de Escritorio"),
     "PC DE ESCRITORIO INTEL": ("Computadoras", "PC de Escritorio"),
     "MONITORES": ("Monitores", "Monitores"),
@@ -338,6 +355,12 @@ SUBCATEGORY_ALIASES = {
     "DISCOS INTERNOS SSD": "Discos Internos SSD",
     "DISCOS INTERNOS SSD": "Discos Internos SSD",
     "DISCOS EXTERNOS SSD": "Discos Externos SSD",
+    "DISCO RIGIDO EXTERNO": "Discos Externos",
+    "DISCO RÍGIDO EXTERNO": "Discos Externos",
+    "DISCO RIGIDO SATA": "Discos Internos",
+    "DISCO RÍGIDO SATA": "Discos Internos",
+    "DISCO SSD": "Discos Internos SSD",
+    "DISCO SSD M2": "Discos Internos SSD",
     "PLACAS DE VIDEO": "Placas de Video",
     "PLACAS DE RED": "Placas de Red",
     "MEMORIAS PC": "Memorias PC",
@@ -366,7 +389,7 @@ SUBCATEGORY_ALIASES = {
     "COCINA": "Cocina",
     "LIMPIEZA": "Limpieza",
     "TEMPERATURA": "Temperatura",
-    "UPS": "UPS",
+    "UPS": "UPS y Estabilizadores",
     "UPS Y ESTABILIZADORES": "UPS y Estabilizadores",
     "ESTABILIZADORES": "UPS y Estabilizadores",
     "PROTECTORES": "UPS y Estabilizadores",
@@ -374,6 +397,9 @@ SUBCATEGORY_ALIASES = {
     "CARGADORES PORTATILES": "UPS y Estabilizadores",
     "CARGADORES PORTÁTILES": "UPS y Estabilizadores",
     "MEMORIAS NOTEBOOK": "Memorias Notebook",
+    "FUENTES DE ALIMENTACION": "Fuentes",
+    "FUENTES DE ALIMENTACIÓN": "Fuentes",
+    "GABINETES SIN FUENTE": "Gabinetes",
     "NAS": "NAS",
     "MOUSE": "Mouses",
 }
@@ -513,8 +539,14 @@ def should_reject(*values: str) -> str:
 
 def should_reject_normalized(category: str, subcategory: str, name: str, brand: str, extra: str = "") -> str:
     haystack = normalize_text(" ".join([category, subcategory, name, brand, extra]))
+    if category == "Consumibles":
+        return "tintas/insumos impresion"
     if category in {"Combos", "Cables"}:
         return normalize_text(category)
+    if category not in MENU_CATEGORY_ORDER:
+        return "taxonomia no permitida"
+    if re.search(r"\bgabinete[s]?\s+con\s+fuente\b", haystack):
+        return "gabinete con fuente"
     if re.search(r"\bcondici[oó]n\s+outlet\b|\bcondicion\s+outlet\b|\boutlet\b", haystack):
         return "outlet"
     if ("cables" in haystack or re.search(r"\bcable[s]?\b", haystack)) and not re.search(r"\bwiz\b|\bhue\b|\bphilips\b|\blightstrip\b|\bled smart\b|\bsmart led\b", haystack):
@@ -536,6 +568,21 @@ def clean_offer_name(name: str) -> str:
 def recategorize_product(category: str, subcategory: str, name: str, brand: str) -> tuple[str, str]:
     haystack = normalize_text(" ".join([category, subcategory, name, brand]))
     name_text = normalize_text(name)
+    if not category and normalize_text(subcategory) in {"", "varios"}:
+        if re.search(r"\bhub\b", name_text):
+            return "Conectividad", "Hubs"
+        if re.search(r"\b(?:soporte|base)\b.*\bnotebook\b", name_text):
+            return "Perifericos", "Bases Notebook"
+    if category == "Destacados":
+        if re.search(r"\bmemoria\b|\bddr[345]\b|\bsodimm\b", name_text):
+            return "Memorias", "Memorias Notebook" if "sodimm" in name_text else "Memorias PC"
+        if re.search(r"\bmicrofono\b|\bauricular\b|\bparlante\b", name_text):
+            return "Audio", "Microfonos" if "microfono" in name_text else "Auriculares" if "auricular" in name_text else "Parlantes"
+        if re.search(r"\bescritorio\b|\bsilla\b", name_text):
+            return "Muebles", "Escritorios" if "escritorio" in name_text else "Sillas Gamer"
+        if re.search(r"\bpc\b|\bsist(?:ema)?\b", name_text):
+            return "Computadoras", "PC de Escritorio"
+        return "Accesorios", "Accesorios"
     if category == "Outlet":
         if re.search(r"\bmonitor\b", haystack):
             return "Monitores", "Monitores"
@@ -581,6 +628,8 @@ def recategorize_product(category: str, subcategory: str, name: str, brand: str)
             return "Muebles", "Sillas Gamer"
         return "Muebles", subcategory or "Escritorios"
     if category == "Accesorios" and not subcategory:
+        return "Accesorios", "Accesorios"
+    if category == "Almacenamiento" and re.search(r"\bcarry\s+disk\b|\badaptador\b", haystack):
         return "Accesorios", "Accesorios"
     if category == "Soportes" and not subcategory:
         return "Soportes", "Soportes"
@@ -696,6 +745,18 @@ def reject_low_stock(catalog: list[list[str]], now: str) -> tuple[list[list[str]
             accepted.append(row)
         else:
             rejected.append([row[0], row[1], row[3], row[4], row[5], row[6], "stock <= 1", now])
+    return accepted, rejected
+
+
+def reject_invalid_taxonomy(catalog: list[list[str]], now: str) -> tuple[list[list[str]], list[list[str]]]:
+    accepted: list[list[str]] = []
+    rejected: list[list[str]] = []
+    for row in catalog:
+        reason = should_reject_normalized(row[4], row[5], row[3], row[6], row[16])
+        if reason:
+            rejected.append([row[0], row[1], row[3], row[4], row[5], row[6], reason, now])
+        else:
+            accepted.append(row)
     return accepted, rejected
 
 
@@ -1109,6 +1170,29 @@ def storefront_product_rows(products: list[list[str]]) -> list[list[str]]:
     return visible_rows
 
 
+def menu_visibility_for(
+    settings: dict[str, dict[str, str]],
+    category: str,
+    subcategory: str,
+) -> str:
+    exact = settings.get(menu_markup_key(category, subcategory))
+    if exact:
+        return "FALSE" if clean(exact.get("visible")).upper() in {"FALSE", "0", "NO"} else "TRUE"
+
+    category_root = settings.get(menu_markup_key(category, ""))
+    if category_root:
+        return "FALSE" if clean(category_root.get("visible")).upper() in {"FALSE", "0", "NO"} else "TRUE"
+
+    prefix = f"{normalize_text(category)}|"
+    category_entries = [entry for key, entry in settings.items() if key.startswith(prefix)]
+    if category_entries and all(
+        clean(entry.get("visible")).upper() in {"FALSE", "0", "NO"}
+        for entry in category_entries
+    ):
+        return "FALSE"
+    return "TRUE"
+
+
 def build_menu_rows(products: list[list[str]], settings: dict[str, dict[str, str]] | None = None) -> list[list[str]]:
     indexes = {column: index for index, column in enumerate(ECOMMERCE_PRODUCT_COLUMNS)}
     counts: dict[tuple[str, str], int] = {}
@@ -1128,7 +1212,7 @@ def build_menu_rows(products: list[list[str]], settings: dict[str, dict[str, str
         existing_settings = (settings or {}).get(menu_markup_key(category, subcategory), {})
         normal_markup = existing_settings.get("normal") or "1.00"
         offer_markup = existing_settings.get("offer") or normal_markup
-        visible = "FALSE" if clean(existing_settings.get("visible")).upper() in {"FALSE", "0", "NO"} else "TRUE"
+        visible = menu_visibility_for(settings or {}, category, subcategory)
         rows.append([
             category,
             subcategory,
@@ -1347,10 +1431,11 @@ def read_normalized_catalog(path: Path) -> list[list[str]]:
     for row in rows:
         values = [clean(row.get(column)) for column in OUTPUT_COLUMNS]
         category, subcategory = normalize_category(values[4], values[5])
+        category, subcategory = recategorize_product(category, subcategory, values[3], values[6])
         values[4] = category
         values[5] = subcategory
         values[3] = display_product_name(values[3])
-        values[16] = strip_html(values[16])
+        values[16] = normalize_attributes(values[16], category, subcategory)
         normalized_rows.append(values)
     return normalized_rows
 
@@ -1375,6 +1460,11 @@ def read_normalized_sheet_catalog(service, sheet: str) -> list[list[str]]:
             for column in OUTPUT_COLUMNS
         ]
         if row[0] and row[1]:
+            category, subcategory = normalize_category(row[4], row[5])
+            category, subcategory = recategorize_product(category, subcategory, row[3], row[6])
+            row[4] = category
+            row[5] = subcategory
+            row[16] = normalize_attributes(row[16], category, subcategory)
             rows.append(row)
     if not rows:
         raise RuntimeError(f"{sheet} no contiene productos de respaldo.")
@@ -2110,6 +2200,12 @@ def main() -> None:
         full_invid_rows = normalized_rows_as_dicts(OUTPUT_COLUMNS, invid)
     else:
         raise RuntimeError("INVID no devolvio productos y no existe una cache utilizable.")
+    elit, elit_taxonomy_rejected = reject_invalid_taxonomy(elit, now)
+    nb, nb_taxonomy_rejected = reject_invalid_taxonomy(nb, now)
+    invid, invid_taxonomy_rejected = reject_invalid_taxonomy(invid, now)
+    elit_rejected += elit_taxonomy_rejected
+    nb_rejected += nb_taxonomy_rejected
+    invid_rejected += invid_taxonomy_rejected
     elit, elit_stock_rejected = reject_low_stock(elit, now)
     nb, nb_stock_rejected = reject_low_stock(nb, now)
     invid, invid_stock_rejected = reject_low_stock(invid, now)

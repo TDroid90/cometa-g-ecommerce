@@ -6,6 +6,59 @@ import { Product } from "@/lib/types";
 import { filterProducts, productPrice, uniqueValues } from "@/lib/data";
 import { ProductGrid } from "@/components/products/ProductGrid";
 
+type CatalogSort = "default" | "price_asc" | "price_desc";
+
+function normalizeFilterText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function productFilterText(product: Product): string {
+  return normalizeFilterText(
+    [
+      product.nombre,
+      product.categoria,
+      product.subcategoria,
+      product.descripcion_corta,
+      product.descripcion_larga,
+      ...Object.entries(product.atributos || {}).flat()
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function technicalFilterOptions(category: string, subcategory: string) {
+  const taxonomy = normalizeFilterText(`${category} ${subcategory}`);
+  if (/almacenamiento|disco.*ssd/.test(taxonomy)) {
+    return [
+      { value: "storage_m2", label: "M.2 / NVMe" },
+      { value: "storage_sata", label: "SATA" }
+    ];
+  }
+  if (/teclado/.test(taxonomy)) {
+    return [
+      { value: "keyboard_mechanical", label: "Mecánico" },
+      { value: "keyboard_semi", label: "Semi-mecánico" },
+      { value: "keyboard_membrane", label: "Membrana" }
+    ];
+  }
+  return [];
+}
+
+function matchesTechnicalFilter(product: Product, filter: string): boolean {
+  if (!filter) return true;
+  const text = productFilterText(product);
+  if (filter === "storage_m2") return /\bssd\b/.test(text) && (/\bnvme\b/.test(text) || /\bm\.?\s*2\b/.test(text));
+  if (filter === "storage_sata") return /\bssd\b/.test(text) && /\bsata\b|2\.5/.test(text);
+  if (filter === "keyboard_semi") return /semi[ -]?mecanic/.test(text);
+  if (filter === "keyboard_mechanical") return /\bmecanic/.test(text) && !/semi[ -]?mecanic/.test(text);
+  if (filter === "keyboard_membrane") return /\bmembrana\b|\bmembrane\b/.test(text);
+  return true;
+}
+
 export function CatalogClient({
   products,
   pageTitle,
@@ -14,6 +67,8 @@ export function CatalogClient({
   initialSubcategory,
   initialBrand,
   initialAvailability,
+  initialSort,
+  initialTechnicalFilter,
   initialOffer,
   initialPreventa,
   requiredOffer = false,
@@ -27,6 +82,8 @@ export function CatalogClient({
   initialSubcategory?: string;
   initialBrand?: string;
   initialAvailability?: string;
+  initialSort?: CatalogSort;
+  initialTechnicalFilter?: string;
   initialOffer?: boolean;
   initialPreventa?: boolean;
   requiredOffer?: boolean;
@@ -40,8 +97,8 @@ export function CatalogClient({
   const [disponibilidad, setDisponibilidad] = useState(initialAvailability || "todos");
   const [oferta, setOferta] = useState(Boolean(initialOffer));
   const [preventa, setPreventa] = useState(Boolean(initialPreventa));
-  const [maxPrice, setMaxPrice] = useState("");
-  const highestPrice = Math.max(...products.map(productPrice), 0);
+  const [sortOrder, setSortOrder] = useState<CatalogSort>(initialSort || "default");
+  const [technicalFilter, setTechnicalFilter] = useState(initialTechnicalFilter || "");
   const effectiveOffer = requiredOffer || oferta;
   const effectivePreventa = requiredPreventa || preventa;
 
@@ -53,48 +110,53 @@ export function CatalogClient({
     setDisponibilidad(initialAvailability || "todos");
     setOferta(Boolean(initialOffer));
     setPreventa(Boolean(initialPreventa));
-    setMaxPrice("");
-  }, [initialQuery, initialCategory, initialSubcategory, initialBrand, initialAvailability, initialOffer, initialPreventa]);
+    setSortOrder(initialSort || "default");
+    setTechnicalFilter(initialTechnicalFilter || "");
+  }, [initialQuery, initialCategory, initialSubcategory, initialBrand, initialAvailability, initialOffer, initialPreventa, initialSort, initialTechnicalFilter]);
 
   const optionFilters = {
     query,
     disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
     oferta: effectiveOffer,
-    preventa: effectivePreventa,
-    maxPrice: maxPrice ? Number(maxPrice) : undefined
+    preventa: effectivePreventa
   };
   const categoryProducts = useMemo(
     () => filterProducts(products, optionFilters),
-    [products, query, disponibilidad, effectiveOffer, effectivePreventa, maxPrice]
+    [products, query, disponibilidad, effectiveOffer, effectivePreventa]
   );
   const categories = uniqueValues(categoryProducts, "categoria");
   const subcategoryProducts = useMemo(
     () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined }),
-    [products, query, categoria, disponibilidad, effectiveOffer, effectivePreventa, maxPrice]
+    [products, query, categoria, disponibilidad, effectiveOffer, effectivePreventa]
   );
   const subcategories = Array.from(
     new Set(subcategoryProducts.map((product) => product.subcategoria).filter(Boolean) as string[])
   ).sort((a, b) => a.localeCompare(b));
   const brandProducts = useMemo(
     () => filterProducts(products, { ...optionFilters, categoria: categoria || undefined, subcategoria: subcategoria || undefined }),
-    [products, query, categoria, subcategoria, disponibilidad, effectiveOffer, effectivePreventa, maxPrice]
+    [products, query, categoria, subcategoria, disponibilidad, effectiveOffer, effectivePreventa]
   );
   const brands = uniqueValues(brandProducts, "marca");
 
-  const filtered = useMemo(
-    () =>
-      filterProducts(products, {
+  const activeTechnicalOptions = useMemo(
+    () => technicalFilterOptions(categoria, subcategoria),
+    [categoria, subcategoria]
+  );
+
+  const filtered = useMemo(() => {
+    const matches = filterProducts(products, {
         query,
         categoria: categoria || undefined,
         subcategoria: subcategoria || undefined,
         marca: marca || undefined,
         disponibilidad: disponibilidad as "todos" | "disponible" | "sin_stock" | "preventa",
         oferta: effectiveOffer,
-        preventa: effectivePreventa,
-        maxPrice: maxPrice ? Number(maxPrice) : undefined
-      }),
-    [products, query, categoria, subcategoria, marca, disponibilidad, effectiveOffer, effectivePreventa, maxPrice]
-  );
+        preventa: effectivePreventa
+      }).filter((product) => matchesTechnicalFilter(product, technicalFilter));
+    if (sortOrder === "price_asc") return matches.sort((left, right) => productPrice(left) - productPrice(right));
+    if (sortOrder === "price_desc") return matches.sort((left, right) => productPrice(right) - productPrice(left));
+    return matches;
+  }, [products, query, categoria, subcategoria, marca, disponibilidad, effectiveOffer, effectivePreventa, technicalFilter, sortOrder]);
 
   useEffect(() => {
     if (categoria && !categories.includes(categoria)) setCategoria("");
@@ -108,6 +170,28 @@ export function CatalogClient({
     if (marca && !brands.includes(marca)) setMarca("");
   }, [marca, brands]);
 
+  useEffect(() => {
+    if (technicalFilter && !activeTechnicalOptions.some((option) => option.value === technicalFilter)) {
+      setTechnicalFilter("");
+    }
+  }, [technicalFilter, activeTechnicalOptions]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (categoria) params.set("categoria", categoria);
+    if (subcategoria) params.set("subcategoria", subcategoria);
+    if (marca) params.set("marca", marca);
+    if (disponibilidad !== "todos") params.set("disponibilidad", disponibilidad);
+    if (effectiveOffer && !requiredOffer) params.set("oferta", "1");
+    if (effectivePreventa && !requiredPreventa) params.set("preventa", "1");
+    if (sortOrder !== "default") params.set("orden", sortOrder);
+    if (technicalFilter) params.set("filtro", technicalFilter);
+    const queryString = params.toString();
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [query, categoria, subcategoria, marca, disponibilidad, effectiveOffer, effectivePreventa, requiredOffer, requiredPreventa, sortOrder, technicalFilter]);
+
   const clearFilters = () => {
     setQuery("");
     setCategoria("");
@@ -116,7 +200,8 @@ export function CatalogClient({
     setDisponibilidad("todos");
     if (!requiredOffer) setOferta(false);
     if (!requiredPreventa) setPreventa(false);
-    setMaxPrice("");
+    setSortOrder("default");
+    setTechnicalFilter("");
   };
 
   const filterControls = (
@@ -137,6 +222,7 @@ export function CatalogClient({
           setCategoria(event.target.value);
           setSubcategoria("");
           setMarca("");
+          setTechnicalFilter("");
         }}
         className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
       >
@@ -151,6 +237,7 @@ export function CatalogClient({
         onChange={(event) => {
           setSubcategoria(event.target.value);
           setMarca("");
+          setTechnicalFilter("");
         }}
         className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
       >
@@ -182,15 +269,28 @@ export function CatalogClient({
         <option value="sin_stock">Sin stock</option>
       </select>
 
-      <input
-        value={maxPrice}
-        onChange={(event) => setMaxPrice(event.target.value)}
-        type="number"
-        min={0}
-        max={highestPrice}
-        placeholder="Precio max."
+      {activeTechnicalOptions.length > 0 && (
+        <select
+          value={technicalFilter}
+          onChange={(event) => setTechnicalFilter(event.target.value)}
+          className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none focus:border-comet-fuchsia"
+        >
+          <option value="">Características</option>
+          {activeTechnicalOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      )}
+
+      <select
+        value={sortOrder}
+        onChange={(event) => setSortOrder(event.target.value as CatalogSort)}
         className="h-11 rounded-md border border-comet-border bg-comet-black px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-comet-fuchsia"
-      />
+      >
+        <option value="default">Ordenar por</option>
+        <option value="price_asc">Precio: menor a mayor</option>
+        <option value="price_desc">Precio: mayor a menor</option>
+      </select>
 
       {!requiredOffer && (
         <label className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-comet-border bg-comet-black px-3 text-sm font-bold text-white">
@@ -202,7 +302,7 @@ export function CatalogClient({
   );
 
   const filters = (
-    <div className={`grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 ${filtersPlacement === "sidebar" ? "grid-cols-1" : "md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto]"}`}>
+    <div className={`grid gap-3 rounded-lg border border-comet-border bg-comet-panel p-4 ${filtersPlacement === "sidebar" ? "grid-cols-1" : "md:grid-cols-2 xl:grid-cols-4"}`}>
       {filterControls}
       {filtersPlacement === "sidebar" && (
         <button onClick={clearFilters} className="h-11 rounded-md border border-comet-border text-sm font-bold text-zinc-300 hover:border-comet-fuchsia hover:text-white">
