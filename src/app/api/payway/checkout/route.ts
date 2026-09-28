@@ -114,10 +114,10 @@ function paymentDescription(args: Record<string, unknown>) {
 
 async function paywayCheckout(args: Record<string, unknown>) {
   const environment = paywayEnvironment();
-  const publicKey = requiredEnv("PAYWAY_PUBLIC_KEY");
-  const privateKey = requiredEnv("PAYWAY_PRIVATE_KEY");
-  const company = process.env.PAYWAY_COMPANY || "COMETA G";
-  const user = process.env.PAYWAY_USER || "COMETA G Web";
+  const publicKey = requiredEnv("PAYWAY_PUBLIC_API_KEY");
+  const privateKey = requiredEnv("PAYWAY_PRIVATE_API_KEY");
+  const company = "COMETA G";
+  const user = "COMETA G Web";
 
   if (!publicKey || !privateKey) {
     return Promise.resolve({
@@ -126,7 +126,7 @@ async function paywayCheckout(args: Record<string, unknown>) {
       body: {
         ok: false,
         error: "payway_not_configured",
-        message: "Faltan PAYWAY_PUBLIC_KEY y/o PAYWAY_PRIVATE_KEY en Vercel."
+        message: "Faltan las credenciales Payway compartidas en Vercel."
       }
     });
   }
@@ -183,14 +183,14 @@ async function paywayCheckout(args: Record<string, unknown>) {
 
 export async function POST(request: NextRequest) {
   const site = requiredEnv("PAYWAY_SITE_ID");
-  const publicKey = requiredEnv("PAYWAY_PUBLIC_KEY");
+  const publicKey = requiredEnv("PAYWAY_PUBLIC_API_KEY");
 
   if (!site || !publicKey) {
     return NextResponse.json(
       {
         ok: false,
         error: "payway_not_configured",
-        message: "Faltan PAYWAY_SITE_ID y/o PAYWAY_PUBLIC_KEY en Vercel."
+        message: "Faltan las credenciales Payway compartidas en Vercel."
       },
       { status: 500 }
     );
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
     establishment_number: optionalNumber(process.env.PAYWAY_ESTABLISHMENT_NUMBER || process.env.PAYWAY_TERMINAL_ID),
     cuit: process.env.PAYWAY_CUIT?.trim() || undefined,
     public_apikey: publicKey,
-    auth_3ds: process.env.PAYWAY_AUTH_3DS !== "false"
+    auth_3ds: process.env.PAYWAY_3DS !== "false"
   };
 
   const response = await paywayCheckout(args);
