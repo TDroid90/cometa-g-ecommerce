@@ -35,10 +35,11 @@ $env:NEXT_PUBLIC_SITE_URL = "http://127.0.0.1:$Port"
 
 # Local payments always use the sandbox block. Production stays configured in Vercel.
 $env:PAYWAY_ENVIRONMENT = "developer"
-$env:PAYWAY_PUBLIC_KEY = Get-CredentialValue $credentialLines[$sandboxStart + 1]
-$env:PAYWAY_PRIVATE_KEY = Get-CredentialValue $credentialLines[$sandboxStart + 2]
+$env:PAYWAY_PUBLIC_API_KEY = Get-CredentialValue $credentialLines[$sandboxStart + 1]
+$env:PAYWAY_PRIVATE_API_KEY = Get-CredentialValue $credentialLines[$sandboxStart + 2]
 $env:PAYWAY_SITE_ID = Get-CredentialValue $credentialLines[$sandboxStart + 3]
 $env:PAYWAY_TERMINAL_ID = Get-CredentialValue $credentialLines[$sandboxStart + 4]
+$env:PAYWAY_3DS = "true"
 
 Set-Location $repoRoot
 npm run dev -- --hostname 127.0.0.1 --port $Port
