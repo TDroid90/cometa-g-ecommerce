@@ -122,6 +122,8 @@ NEXT_PUBLIC_SITE_URL=https://www.cometag.store
 
 Usa `PAYWAY_ENVIRONMENT=developer` para sandbox y `PAYWAY_ENVIRONMENT=production` para cobros reales.
 
+En producción, estas credenciales comunes se administran como variables compartidas del equipo de Vercel y se vinculan a cada tienda. COMETA G conserva su lógica de órdenes y conciliación propia; sus identificadores usan el prefijo `CG-`.
+
 ## Catalogo y markups
 
 El catalogo no es en tiempo real: se importa a Google Sheets y la web lee la hoja PRODUCTOS.
