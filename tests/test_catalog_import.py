@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +48,49 @@ def provider_row(provider: str, code: str, sku: str, name: str) -> list[str]:
 
 
 class CatalogImportTests(unittest.TestCase):
+    def test_nb_login_sends_required_email_field(self):
+        response = Mock()
+        response.json.return_value = {"token": "test-token"}
+        response.raise_for_status.return_value = None
+
+        with patch.object(catalog_import.requests, "post", return_value=response) as post:
+            token = catalog_import.nb_api_login("catalogo@example.com", "secret")
+
+        self.assertEqual(token, "test-token")
+        self.assertEqual(post.call_args.kwargs["json"]["email"], "catalogo@example.com")
+
+    def test_existing_exchange_rates_are_preserved_when_sources_fail(self):
+        rates = catalog_import.provider_exchange_rates(
+            [],
+            [],
+            [],
+            {"ELIT": 1545.0, "NB": 1545.0, "INVID": 1545.0},
+        )
+
+        self.assertEqual(rates, {"ELIT": 1545.0, "NB": 1545.0, "INVID": 1545.0})
+
+    def test_configured_exchange_rate_overrides_stale_log_rate(self):
+        with patch.dict(catalog_import.os.environ, {"CATALOG_USD_RATE": "1545"}):
+            rates = catalog_import.provider_exchange_rates(
+                [],
+                [],
+                [],
+                {"ELIT": 1470.0, "NB": 1470.0, "INVID": 1470.0},
+            )
+
+        self.assertEqual(rates, {"ELIT": 1545.0, "NB": 1545.0, "INVID": 1545.0})
+
+    def test_stock_without_image_report_uses_pre_storefront_catalog(self):
+        row = provider_row("INVID", "invid-1", "INVID-SKU", "Procesador sin foto")
+        row[14] = ""
+        consolidated, _ = catalog_import.consolidate_public_catalog([], [], [row])
+
+        report = catalog_import.stock_without_image_rows(consolidated, "2026-10-22 08:00:00")
+
+        self.assertEqual(len(report), 1)
+        self.assertEqual(report[0][2], "INVID-SKU")
+        self.assertEqual(report[0][7], "IMAGEN_AUSENTE")
+
     def test_store_products_are_visible_by_default(self):
         source = [provider_row("INVID", "invid-1", "INVID-SKU", "Procesador INVID")]
         consolidated, _ = catalog_import.consolidate_public_catalog([], [], source)
@@ -90,6 +134,22 @@ class CatalogImportTests(unittest.TestCase):
         visible = catalog_import.menu_visibility_for(settings, "Electro", "Nuevo proveedor")
 
         self.assertEqual(visible, "FALSE")
+
+    def test_hidden_subcategory_is_retained_without_products(self):
+        settings = {
+            catalog_import.menu_markup_key("Conectividad", "Accesorios Bluetooth"): {
+                "category": "Conectividad",
+                "subcategory": "Accesorios Bluetooth",
+                "order": "80",
+                "normal": "1.00",
+                "offer": "1.00",
+                "visible": "FALSE",
+            }
+        }
+
+        rows = catalog_import.build_menu_rows([], settings)
+
+        self.assertEqual(rows[0][:6], ["Conectividad", "Accesorios Bluetooth", "0", "/productos?categoria=Conectividad&subcategoria=Accesorios%20Bluetooth", "80", "FALSE"])
 
     def test_provider_taxonomies_map_to_public_catalog(self):
         cases = {

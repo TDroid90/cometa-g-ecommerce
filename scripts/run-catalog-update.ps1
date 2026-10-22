@@ -10,6 +10,7 @@ $ErrLog = Join-Path $LogDir "$Stamp-err.log"
 
 Set-Location $RepoRoot
 $env:CATALOG_QUICK_PUBLISH = "TRUE"
+$env:CATALOG_USD_RATE = "1545"
 $env:INVID_REFRESH = "FALSE"
 $env:CATALOG_REFRESH_FULL = "FALSE"
 

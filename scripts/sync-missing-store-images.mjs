@@ -320,9 +320,10 @@ async function writeReport(token, rows) {
 
 async function main() {
   const token = await accessToken();
-  const [productsValues, catalogValues, storeHtml] = await Promise.all([
+  const [productsValues, catalogValues, reportValues, storeHtml] = await Promise.all([
     readSheet(token, `${PRODUCTS_SHEET}!A1:AI5000`),
     readSheet(token, `${PROVIDER_SHEET}!A1:Z10000`),
+    readSheet(token, `${REPORT_SHEET}!A1:L1000`),
     fetchText(STORE_URL),
   ]);
   const productsTable = tableFromValues(productsValues);
@@ -334,11 +335,30 @@ async function main() {
     slug: cell(row, productsTable.index, "slug"), nombre: cell(row, productsTable.index, "nombre"),
     categoria: cell(row, productsTable.index, "categoria"), subcategoria: cell(row, productsTable.index, "subcategoria"),
     marca: cell(row, productsTable.index, "marca"),
+    imagen_principal: cell(row, productsTable.index, "imagen_principal"),
+    stock: Number(cell(row, productsTable.index, "stock").replace(",", ".")) || 0,
+    visible: !["FALSE", "0", "NO"].includes(cell(row, productsTable.index, "visible").toUpperCase()),
   }));
   const bySlug = new Map(products.map((product) => [product.slug, product]));
   const cards = parseStoreCards(storeHtml);
   const checks = await mapLimit(cards, CONCURRENCY, async (card) => ({ card, works: await imageWorks(card.imageUrl) }));
-  const missing = checks.filter(({ works }) => !works).map(({ card }) => ({ card, product: bySlug.get(card.slug) })).filter(({ product }) => product);
+  const missingByProduct = new Map();
+  const storeOrigin = new URL(STORE_URL).origin;
+  for (const product of products) {
+    if (!product.visible || product.stock <= 1 || product.imagen_principal) continue;
+    missingByProduct.set(product.id, {
+      product,
+      card: { siteUrl: `${storeOrigin}/producto/${product.slug}`, imageUrl: "" },
+      imageStatus: "IMAGEN_AUSENTE",
+    });
+  }
+  for (const { card, works } of checks) {
+    if (works) continue;
+    const product = bySlug.get(card.slug);
+    if (!product) continue;
+    missingByProduct.set(product.id, { card, product, imageStatus: "IMAGEN_ROTA_EN_SITIO" });
+  }
+  const missing = [...missingByProduct.values()];
   if (DRY_RUN) {
     for (const { card, product } of missing.slice(0, 20)) console.log(`Falta: ${product.id} | ${card.imageUrl}`);
   }
@@ -365,11 +385,19 @@ async function main() {
     }
     report.push([
       item.product.id, info.provider, item.product.sku, item.product.nombre, item.card.siteUrl, info.url,
-      item.card.imageUrl, "IMAGEN_ROTA_EN_SITIO", item.product.rowNumber, info.externalId, now, status,
+      item.card.imageUrl, item.imageStatus, item.product.rowNumber, info.externalId, now, status,
     ]);
   }
+  const reportedIds = new Set(report.map((row) => String(row[0])));
+  for (const row of reportValues.slice(1)) {
+    const productId = String(row[0] || "").trim();
+    const imageStatus = String(row[7] || "").trim();
+    if (!productId || imageStatus !== "IMAGEN_AUSENTE" || reportedIds.has(productId)) continue;
+    report.push(row.slice(0, HEADERS.length));
+    reportedIds.add(productId);
+  }
   await writeReport(token, report);
-  console.log(`Auditadas ${cards.length} tarjetas. Imagenes rotas: ${missing.length}.`);
+  console.log(`Auditadas ${cards.length} tarjetas. Productos sin foto o con imagen rota: ${missing.length}.`);
 }
 
 main().catch((error) => {

@@ -157,6 +157,21 @@ INTERNAL_BUY_COLUMNS = [
     "accion",
 ]
 
+STOCK_WITHOUT_IMAGE_COLUMNS = [
+    "id_producto",
+    "proveedor",
+    "sku",
+    "producto",
+    "url_tienda",
+    "url_proveedor",
+    "imagen_actual",
+    "estado_imagen",
+    "fila_productos",
+    "id_proveedor",
+    "detectado_en",
+    "estado_proceso",
+]
+
 ECOMMERCE_PRODUCT_COLUMNS = [
     "id",
     "sku",
@@ -706,24 +721,59 @@ def provider_exchange_rates(
     elit_rows: list[dict[str, str]],
     nb_rows: list[dict[str, str]],
     invid_rows: list[dict[str, Any]],
+    existing_rates: dict[str, float] | None = None,
 ) -> dict[str, float]:
-    default_rate = parse_price(os.environ.get("CATALOG_USD_RATE", DEFAULT_USD_RATE)) or parse_price(DEFAULT_USD_RATE)
-    nb_rate = median([parse_price(row.get("COTIZACION DOLAR")) for row in nb_rows]) or default_rate
+    existing_rates = existing_rates or {}
+    configured_rate = parse_price(os.environ.get("CATALOG_USD_RATE"))
+    default_rate = (
+        configured_rate
+        or median(list(existing_rates.values()))
+        or parse_price(DEFAULT_USD_RATE)
+    )
+    nb_rate = (
+        median([parse_price(row.get("COTIZACION DOLAR")) for row in nb_rows])
+        or configured_rate
+        or existing_rates.get("NB")
+        or default_rate
+    )
     scrape_enabled = os.environ.get("SCRAPE_PROVIDER_RATES", "FALSE").upper() == "TRUE"
     elit_rate = (
         parse_price(os.environ.get("ELIT_USD_RATE"))
         or median([parse_price(row.get("cotizacion")) for row in elit_rows])
         or (scrape_exchange_rate("https://www.elit.com.ar") if scrape_enabled else 0)
+        or configured_rate
+        or existing_rates.get("ELIT")
         or nb_rate
         or default_rate
     )
     invid_rate = (
         parse_price(os.environ.get("INVID_USD_RATE"))
         or (scrape_exchange_rate("https://www.invidcomputers.com") if scrape_enabled else 0)
+        or configured_rate
+        or existing_rates.get("INVID")
         or nb_rate
         or default_rate
     )
     return {"ELIT": elit_rate, "NB": nb_rate, "INVID": invid_rate}
+
+
+def read_existing_provider_rates(service) -> dict[str, float]:
+    rows = values_get(service, "CATALOGO_LOG!A1:G10")
+    if not rows:
+        return {}
+    headers = [normalize_text(value) for value in rows[0]]
+    try:
+        provider_index = headers.index("proveedor")
+        rate_index = headers.index("cotizacion_usd")
+    except ValueError:
+        return {}
+    rates: dict[str, float] = {}
+    for row in rows[1:]:
+        provider = clean(row[provider_index] if len(row) > provider_index else "").upper()
+        rate = parse_price(row[rate_index] if len(row) > rate_index else "")
+        if provider and rate > 0:
+            rates[provider] = rate
+    return rates
 
 
 def provider_rate_for_row(row: list[str], rates: dict[str, float]) -> float:
@@ -1170,6 +1220,32 @@ def storefront_product_rows(products: list[list[str]]) -> list[list[str]]:
     return visible_rows
 
 
+def stock_without_image_rows(consolidated: list[list[str]], detected_at: str) -> list[list[str]]:
+    indexes = {column: index for index, column in enumerate(CONSOLIDATED_COLUMNS)}
+    rows = []
+    for row in consolidated:
+        image = clean(row[indexes["imagen_principal"]] if len(row) > indexes["imagen_principal"] else "")
+        stock = parse_price(row[indexes["stock"]] if len(row) > indexes["stock"] else "0")
+        visible = clean(row[indexes["visible"]] if len(row) > indexes["visible"] else "TRUE").upper()
+        if image or stock <= 1 or visible in {"FALSE", "0", "NO"}:
+            continue
+        rows.append([
+            clean(row[indexes["id"]]),
+            clean(row[indexes["proveedor"]]),
+            clean(row[indexes["sku"]]),
+            clean(row[indexes["nombre"]]),
+            "",
+            "",
+            "",
+            "IMAGEN_AUSENTE",
+            "",
+            clean(row[indexes["proveedor_codigo"]]),
+            detected_at,
+            "PENDIENTE",
+        ])
+    return rows
+
+
 def menu_visibility_for(
     settings: dict[str, dict[str, str]],
     category: str,
@@ -1203,13 +1279,20 @@ def build_menu_rows(products: list[list[str]], settings: dict[str, dict[str, str
             continue
         counts[(category, subcategory)] = counts.get((category, subcategory), 0) + 1
 
+    for existing in (settings or {}).values():
+        category = clean(existing.get("category"))
+        subcategory = clean(existing.get("subcategory"))
+        hidden = clean(existing.get("visible")).upper() in {"FALSE", "0", "NO"}
+        if category and hidden:
+            counts.setdefault((category, subcategory), 0)
+
     rows = []
     for (category, subcategory), count in counts.items():
         params = f"categoria={requests.utils.quote(category)}"
         if subcategory:
             params += f"&subcategoria={requests.utils.quote(subcategory)}"
-        order = MENU_CATEGORY_ORDER.get(category, 999)
         existing_settings = (settings or {}).get(menu_markup_key(category, subcategory), {})
+        order = int(parse_price(existing_settings.get("order")) or MENU_CATEGORY_ORDER.get(category, 999))
         normal_markup = existing_settings.get("normal") or "1.00"
         offer_markup = existing_settings.get("offer") or normal_markup
         visible = menu_visibility_for(settings or {}, category, subcategory)
@@ -1243,16 +1326,16 @@ def read_csv_url(url: str, delimiter: str = ";") -> list[dict[str, str]]:
 
 def read_elit_catalog() -> list[dict[str, str]]:
     username = clean(os.environ.get("ELIT_USERNAME"))
+    login_email = clean(os.environ.get("ELIT_EMAIL")) or username
     password = clean(os.environ.get("ELIT_PASSWORD"))
     token = clean(os.environ.get("ELIT_API_TOKEN"))
 
-    if username and password and not token:
+    if login_email and password and not token:
         session = requests.Session()
         session.headers["User-Agent"] = "CometaG-CatalogImporter/1.0"
-        login_id: int | str = int(username) if username.isdigit() else username
         login = session.post(
             "https://www.elit.com.ar/api/login",
-            json={"id": login_id, "password": password, "agent": 0},
+            json={"id": login_email, "password": password, "agent": 0},
             timeout=30,
         )
         login.raise_for_status()
@@ -1283,7 +1366,7 @@ def read_elit_catalog() -> list[dict[str, str]]:
 def nb_api_login(username: str, password: str) -> str:
     response = requests.post(
         f"{NB_API_BASE_URL}/auth/login",
-        json={"user": username, "password": password, "mode": "web"},
+        json={"email": username, "user": username, "password": password, "mode": "web"},
         timeout=30,
         headers={"User-Agent": "CometaG-CatalogImporter/1.0"},
     )
@@ -2005,6 +2088,9 @@ def read_menu_settings(service, sheet: str) -> dict[str, dict[str, str]]:
         visible = clean(row[visible_index]) if len(row) > visible_index else "TRUE"
         if category:
             settings[menu_markup_key(category, subcategory)] = {
+                "category": category,
+                "subcategory": subcategory,
+                "order": clean(row[4] if len(row) > 4 else ""),
                 "normal": markup or "1.00",
                 "offer": offer_markup or markup or "1.00",
                 "visible": "FALSE" if visible.upper() in {"FALSE", "0", "NO"} else "TRUE",
@@ -2176,7 +2262,8 @@ def main() -> None:
         print(f"NB no disponible; se conserva CATALOGO_NB. Motivo: {nb_source_error}")
     refresh_invid = os.environ.get("INVID_REFRESH", "FALSE").upper() == "TRUE"
     full_invid_rows = read_invid_articles(invid_username, invid_password) if (refresh_invid or not invid_cache.exists()) and invid_username and invid_password else []
-    provider_rates = provider_exchange_rates(elit_rows, nb_rows, full_invid_rows)
+    existing_provider_rates = read_existing_provider_rates(service)
+    provider_rates = provider_exchange_rates(elit_rows, nb_rows, full_invid_rows, existing_provider_rates)
 
     if elit_source_error:
         elit = read_normalized_sheet_catalog(service, "CATALOGO_ELIT")
@@ -2225,6 +2312,7 @@ def main() -> None:
         + invid_stock_rejected
     )
     consolidated, internal_buy = consolidate_public_catalog(nb, elit, invid)
+    stock_without_image = stock_without_image_rows(consolidated, now)
     existing_menu_settings = read_menu_settings(service, MENU_SHEET)
     existing_product_overrides = read_existing_product_overrides(service)
     store_products = products_for_store_with_markup(consolidated, existing_menu_settings, provider_rates)
@@ -2239,6 +2327,7 @@ def main() -> None:
     replace_existing_values(service, "PRODUCTOS", ECOMMERCE_PRODUCT_COLUMNS, store_products)
     replace_menu_values(service, MENU_SHEET, MENU_COLUMNS, menu_rows, brand_rows)
     replace_values(service, "COMPRA_INTERNA_RECOMENDADA", INTERNAL_BUY_COLUMNS, internal_buy)
+    replace_values(service, "STOCK_SIN_FOTO", STOCK_WITHOUT_IMAGE_COLUMNS, stock_without_image)
     replace_values(
         service,
         "CATALOGO_LOG",
@@ -2295,6 +2384,7 @@ def main() -> None:
         "INVID_rechazados": len(invid_rejected) + len(invid_stock_rejected),
         "CONSOLIDADO": len(consolidated),
         "COMPRA_INTERNA_RECOMENDADA": len(internal_buy),
+        "STOCK_SIN_FOTO": len(stock_without_image),
         "PRODUCTOS": len(store_products),
         "MENU_CAT_MAR": len(menu_rows),
         "FULL_CATALOGO": len(full_rows) if refresh_full_catalog else "sin cambios",
