@@ -2321,6 +2321,10 @@ def main() -> None:
     brand_rows = build_brand_rows(store_products)
     quick_publish = os.environ.get("CATALOG_QUICK_PUBLISH", "TRUE").upper() != "FALSE"
     refresh_full_catalog = os.environ.get("CATALOG_REFRESH_FULL", "FALSE").upper() == "TRUE"
+    invid_origin = "API INVID"
+    if not refresh_invid:
+        cache_updated_at = datetime.fromtimestamp(invid_cache.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        invid_origin = f"cache local INVID (actualizada {cache_updated_at})"
     replace_values(service, "CATALOGO_ELIT", OUTPUT_COLUMNS, elit)
     replace_values(service, "CATALOGO_INVID", OUTPUT_COLUMNS, invid)
     replace_values(service, "CATALOGO_NB", OUTPUT_COLUMNS, nb)
@@ -2357,7 +2361,7 @@ def main() -> None:
                 str(len(invid)),
                 str(len(invid_rejected) + len(invid_stock_rejected)),
                 format_number(provider_rates["INVID"]),
-                "API INVID" if refresh_invid else "cache local INVID",
+                invid_origin,
                 "OK",
             ],
         ],
