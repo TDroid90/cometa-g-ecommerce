@@ -75,6 +75,11 @@ async function fetchNbRate(): Promise<number> {
 }
 
 async function getNbCsvUrl(): Promise<string> {
+  const apiToken = clean(process.env.NB_API_TOKEN);
+  if (apiToken) {
+    return `${NB_API_BASE_URL}/priceListCsv/${encodeURIComponent(apiToken)}`;
+  }
+
   const username = clean(process.env.NB_USERNAME);
   const password = clean(process.env.NB_PASSWORD);
   if (username && password) {
@@ -86,7 +91,7 @@ async function getNbCsvUrl(): Promise<string> {
           "Content-Type": "application/json",
           "User-Agent": "CometaG-Cron/1.0"
         },
-        body: JSON.stringify({ user: username, password, mode: "web" })
+        body: JSON.stringify({ email: username, user: username, password, mode: "web" })
       });
       if (login.ok) {
         const loginPayload = (await login.json()) as { token?: string };

@@ -48,6 +48,22 @@ def provider_row(provider: str, code: str, sku: str, name: str) -> list[str]:
 
 
 class CatalogImportTests(unittest.TestCase):
+    def test_nb_hard_token_downloads_catalog_without_login(self):
+        response = Mock()
+        response.content = b'"CODIGO";"DETALLE"\n"NB-1";"Producto NB"\n'
+        response.raise_for_status.return_value = None
+
+        with (
+            patch.dict(catalog_import.os.environ, {"NB_API_TOKEN": "hard-token"}, clear=False),
+            patch.object(catalog_import.requests, "get", return_value=response) as get,
+            patch.object(catalog_import.requests, "post") as post,
+        ):
+            rows = catalog_import.read_nb_catalog()
+
+        self.assertEqual(rows[0]["CODIGO"], "NB-1")
+        self.assertIn("/priceListCsv/hard-token", get.call_args.args[0])
+        post.assert_not_called()
+
     def test_nb_login_sends_required_email_field(self):
         response = Mock()
         response.json.return_value = {"token": "test-token"}

@@ -1318,6 +1318,10 @@ def read_csv_path(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
 def read_csv_url(url: str, delimiter: str = ";") -> list[dict[str, str]]:
     response = requests.get(url, timeout=90)
     response.raise_for_status()
+    return read_csv_response(response, delimiter)
+
+
+def read_csv_response(response: requests.Response, delimiter: str = ";") -> list[dict[str, str]]:
     content = response.content.decode("utf-8-sig", errors="replace")
     if content.startswith("sep="):
         content = content.split("\n", 1)[1]
@@ -1378,6 +1382,16 @@ def nb_api_login(username: str, password: str) -> str:
 
 
 def read_nb_catalog() -> list[dict[str, str]]:
+    api_token = clean(os.environ.get("NB_API_TOKEN"))
+    if api_token:
+        response = requests.get(
+            f"{NB_API_BASE_URL}/priceListCsv/{quote(api_token, safe='')}",
+            headers={"User-Agent": "CometaG-CatalogImporter/1.0"},
+            timeout=90,
+        )
+        response.raise_for_status()
+        return read_csv_response(response, delimiter=";")
+
     username = os.environ.get("NB_USERNAME")
     password = os.environ.get("NB_PASSWORD")
     if username and password:
@@ -1401,7 +1415,7 @@ def read_nb_catalog() -> list[dict[str, str]]:
         return read_csv_url(nb_csv_url, delimiter=";")
     if NB_CSV_FALLBACK.exists():
         return read_csv_path(NB_CSV_FALLBACK, delimiter=";")
-    raise RuntimeError("Falta NB_USERNAME/NB_PASSWORD, NB_PRICE_LIST_CSV_URL o nb-price-list.csv.")
+    raise RuntimeError("Falta NB_API_TOKEN, NB_USERNAME/NB_PASSWORD, NB_PRICE_LIST_CSV_URL o nb-price-list.csv.")
 
 
 def read_invid_articles(username: str, password: str) -> list[dict[str, Any]]:
