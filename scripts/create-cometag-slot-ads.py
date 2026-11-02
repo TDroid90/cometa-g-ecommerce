@@ -142,6 +142,27 @@ def feed_small(background):
     save(image, "COMETA_G_feed_lateral_small_350x45.png")
 
 
+def ultimas_noticias(background):
+    image = canvas(background, (500, 700), 78, 120, 78)
+    draw = ImageDraw.Draw(image)
+    paste_logo(image, 156, 42, 188)
+    draw.text((250, 256), "ARMÁ TU", fill=WHITE, font=font(54, True), anchor="ma")
+    draw.text((250, 315), "PC GAMER", fill=PINK, font=font(54, True), anchor="ma")
+    draw.multiline_text(
+        (250, 389),
+        "Componentes, periféricos\ny notebooks.",
+        fill=MUTED,
+        font=font(23, False),
+        spacing=4,
+        anchor="ma",
+        align="center",
+    )
+    draw.rounded_rectangle((67, 494, 433, 560), radius=18, fill=(232, 22, 140, 255))
+    draw.text((250, 511), "Tu consulta no molesta  →", fill=WHITE, font=font(21, True), anchor="ma")
+    draw.text((250, 614), "www.cometag.store", fill=WHITE, font=font(21, True), anchor="ma")
+    save(image, "COMETA_G_ultimas_noticias_500x700.png")
+
+
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     background = Image.open(BACKGROUND).convert("RGBA")
@@ -152,6 +173,7 @@ def main():
     home_header(background)
     feed_large(background)
     feed_small(background)
+    ultimas_noticias(background)
 
 
 if __name__ == "__main__":
